@@ -6,30 +6,17 @@ export async function middleware(req: NextRequest) {
   const res = NextResponse.next()
   const supabase = createMiddlewareClient({ req, res })
 
-  // This refreshes the session if it's expired
   const { data: { session } } = await supabase.auth.getSession()
 
-  // If no session and trying to access the home page (calendar)
-  if (!session && req.nextUrl.pathname === '/') {
-    const url = req.nextUrl.clone()
-    url.pathname = '/login'
-    return NextResponse.redirect(url)
+  // If NO session and NOT already on the login page, redirect to login
+  if (!session && req.nextUrl.pathname !== '/login') {
+    return NextResponse.redirect(new URL('/login', req.url))
   }
 
   return res
 }
 
-// THIS PART IS MANDATORY
+// Ensure the middleware checks every page except static assets
 export const config = {
-  matcher: [
-    /*
-     * Match all request paths except for the ones starting with:
-     * - api (API routes)
-     * - _next/static (static files)
-     * - _next/image (image optimization files)
-     * - favicon.ico (favicon file)
-     * - login (allow the login page itself!)
-     */
-    '/((?!api|_next/static|_next/image|favicon.ico|login).*)',
-  ],
+  matcher: ['/((?!api|_next/static|_next/image|favicon.ico).*)'],
 }
