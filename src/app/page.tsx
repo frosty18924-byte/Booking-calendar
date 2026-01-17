@@ -18,6 +18,7 @@ export default function CalendarPage() {
   const [user, setUser] = useState<any>(null);
   const [userRole, setUserRole] = useState<string | null>(null);
 
+  // Helper for colors
   const courseColors: { [key: string]: { bg: string; text: string } } = {
     'Team Teach L2': { bg: '#3b82f6', text: '#ffffff' },
     'Team Teach Refresher': { bg: '#a855f7', text: '#ffffff' },
@@ -38,44 +39,39 @@ export default function CalendarPage() {
   const getCourseColor = (courseName: string) => courseColors[courseName] || { bg: '#6b7280', text: '#ffffff' };
 
   useEffect(() => {
+    const checkTheme = () => {
+      const theme = localStorage.getItem('theme');
+      setIsDark(theme !== 'light');
+    };
     checkTheme();
-    fetchUser();
-    fetchEvents(); 
-  }, [currentMonth]);
+    window.addEventListener('storage', checkTheme);
+    return () => window.removeEventListener('storage', checkTheme);
+  }, []);
 
   useEffect(() => {
     document.documentElement.classList.toggle('dark', isDark);
   }, [isDark]);
 
-  function checkTheme() {
-    if (typeof window !== 'undefined') {
-      const theme = localStorage.getItem('theme');
-      setIsDark(theme !== 'light');
-    }
-  }
+  useEffect(() => {
+    fetchUser();
+    fetchEvents(); 
+  }, [currentMonth]);
 
   async function fetchUser() {
     const { data: { user: currentUser } } = await supabase.auth.getUser();
     setUser(currentUser);
-    if (currentUser) fetchUserRole(currentUser.id);
+    if (currentUser) {
+      const { data: profile } = await supabase.from('profiles').select('role_tier').eq('id', currentUser.id).single();
+      if (profile) setUserRole(profile.role_tier);
+    }
   }
 
-  async function fetchUserRole(userId: string) {
-    const { data: profile } = await supabase.from('profiles').select('role_tier').eq('id', userId).single();
-    if (profile) setUserRole(profile.role_tier);
-  }
-
-  async function handleSignOut() {
-    await supabase.auth.signOut();
-    window.location.href = '/login';
-  }
-  
   async function fetchEvents() {
     setLoading(true);
     const startDate = format(startOfMonth(currentMonth), 'yyyy-MM-dd');
     const endDate = format(endOfMonth(currentMonth), 'yyyy-MM-dd');
-    const { data: eventsData } = await supabase.from('training_events').select('*, courses(*), bookings(*)').gte('event_date', startDate).lte('event_date', endDate);
-    setEvents(eventsData || []);
+    const { data } = await supabase.from('training_events').select('*, courses(*), bookings(*)').gte('event_date', startDate).lte('event_date', endDate);
+    setEvents(data || []);
     setLoading(false);
   }
 
@@ -90,57 +86,65 @@ export default function CalendarPage() {
   const canSchedule = hasPermission(userRole, 'COURSE_SCHEDULING', 'canCreate');
 
   return (
-    <main style={{ backgroundColor: isDark ? '#0f172a' : '#f1f5f9', minHeight: '100vh' }} className="p-4 md:p-8 transition-colors">
+    <main style={{ backgroundColor: isDark ? '#0f172a' : '#f1f5f9' }} className="p-4 md:p-8 min-h-screen transition-colors duration-300">
       <div className="max-w-7xl mx-auto">
         <div style={{ backgroundColor: isDark ? '#1e293b' : '#ffffff', borderColor: isDark ? '#334155' : '#cbd5e1' }} className="rounded-[40px] shadow-2xl border overflow-hidden">
           
-          {/* HEADER SECTION */}
           <div style={{ borderColor: isDark ? '#334155' : '#e2e8f0' }} className="p-8 border-b">
-            
-            {/* TOP ROW: 3-Column Grid ensures title is always centered */}
             <div className="grid grid-cols-3 items-center mb-8">
-              
-              {/* Left Column */}
               <div className="flex items-center gap-2">
                 <div className={`w-2 h-2 rounded-full ${user ? 'bg-emerald-500' : 'bg-red-500'}`}></div>
-                <div style={{ color: isDark ? '#94a3b8' : '#64748b' }} className="text-[10px] font-black uppercase tracking-widest">
-                  {user ? <span className="flex flex-col"><span style={{ color: isDark ? '#f1f5f9' : '#1e293b' }}>Online</span><span className="opacity-50 lowercase">{user.email}</span></span> : "Offline"}
+                <div style={{ color: isDark ? '#94a3b8' : '#64748b' }} className="text-[10px] font-black uppercase">
+                  {user ? 'Online' : 'Offline'}
                 </div>
               </div>
 
-              {/* Center Column: Locked Center Title */}
-              <h1 style={{ color: isDark ? '#f1f5f9' : '#1e293b' }} className="text-3xl font-black uppercase tracking-tighter text-center whitespace-nowrap">
+              <h1 style={{ color: isDark ? '#f1f5f9' : '#1e293b' }} className="text-3xl font-black uppercase tracking-tighter text-center">
                 Booking Calendar
               </h1>
 
-              {/* Right Column */}
               <div className="flex items-center justify-end gap-3">
-                {canViewAdmin && <a href="/admin" style={{ backgroundColor: '#16a34a' }} className="text-white px-4 py-2 rounded-xl font-black text-[10px] uppercase tracking-widest shadow-lg">Admin</a>}
-                {user ? <button onClick={handleSignOut} style={{ backgroundColor: '#dc2626' }} className="text-white px-4 py-2 rounded-xl font-black text-[10px] uppercase tracking-widest shadow-lg">Sign Out</button> : <a href="/login" style={{ backgroundColor: '#2563eb' }} className="text-white px-4 py-2 rounded-xl font-black text-[10px] uppercase tracking-widest shadow-lg">Login</a>}
-                <ThemeToggle />
+                {canViewAdmin && (
+                  <a href="/admin" className="cursor-pointer bg-emerald-600 text-white px-4 py-2 rounded-xl font-black text-[10px] uppercase hover:opacity-80 transition-all">
+                    Admin
+                  </a>
+                )}
+                {user && (
+                  <button onClick={() => supabase.auth.signOut().then(() => window.location.href='/login')} className="cursor-pointer bg-red-600 text-white px-4 py-2 rounded-xl font-black text-[10px] uppercase hover:opacity-80 transition-all">
+                    Sign Out
+                  </button>
+                )}
+                <div className="cursor-pointer"><ThemeToggle /></div>
               </div>
             </div>
 
-            {/* NAVIGATION ROW */}
             <div className="flex flex-col md:flex-row justify-between items-center gap-6">
-              <select value={filterCourse} onChange={(e) => setFilterCourse(e.target.value)} style={{ backgroundColor: isDark ? '#0f172a' : '#f8fafc', color: isDark ? '#f1f5f9' : '#1e293b', borderColor: isDark ? '#334155' : '#cbd5e1' }} className="rounded-xl border px-4 py-2 text-[11px] font-bold uppercase outline-none">
+              <select 
+                value={filterCourse} 
+                onChange={(e) => setFilterCourse(e.target.value)}
+                style={{ backgroundColor: isDark ? '#0f172a' : '#f8fafc', color: isDark ? '#f1f5f9' : '#1e293b', borderColor: isDark ? '#334155' : '#cbd5e1' }}
+                className="cursor-pointer rounded-xl border px-4 py-2 text-[11px] font-bold uppercase outline-none"
+              >
                 <option value="all">All Courses</option>
                 {uniqueCourses.map(c => <option key={c} value={c}>{c}</option>)}
               </select>
 
               <div className="flex items-center gap-6">
-                <button onClick={() => setCurrentMonth(subMonths(currentMonth, 1))} className="text-2xl font-bold">←</button>
-                <h2 style={{ color: isDark ? '#f1f5f9' : '#1e293b' }} className="text-2xl font-black uppercase tracking-tighter min-w-[200px] text-center">{format(currentMonth, 'MMMM yyyy')}</h2>
-                <button onClick={() => setCurrentMonth(addMonths(currentMonth, 1))} className="text-2xl font-bold">→</button>
+                <button onClick={() => setCurrentMonth(subMonths(currentMonth, 1))} className="cursor-pointer text-2xl font-bold hover:scale-125 transition-transform">←</button>
+                <h2 style={{ color: isDark ? '#f1f5f9' : '#1e293b' }} className="text-2xl font-black uppercase min-w-[200px] text-center">{format(currentMonth, 'MMMM yyyy')}</h2>
+                <button onClick={() => setCurrentMonth(addMonths(currentMonth, 1))} className="cursor-pointer text-2xl font-bold hover:scale-125 transition-transform">→</button>
               </div>
 
               <div className="min-w-[140px] flex justify-end">
-                {canSchedule && <button onClick={() => setShowSchedule(true)} style={{ backgroundColor: '#2563eb' }} className="text-white px-6 py-3 rounded-2xl font-black text-[10px] uppercase tracking-widest shadow-xl">+ Schedule</button>}
+                {canSchedule && (
+                  <button onClick={() => setShowSchedule(true)} className="cursor-pointer bg-blue-600 text-white px-6 py-3 rounded-2xl font-black text-[10px] uppercase shadow-xl hover:bg-blue-700 transition-all">
+                    + Schedule
+                  </button>
+                )}
               </div>
             </div>
           </div>
 
-          {/* CALENDAR GRID */}
           <div style={{ borderColor: isDark ? '#334155' : '#e2e8f0', backgroundColor: isDark ? '#1a2332' : '#f8fafc' }} className="grid grid-cols-7 border-b">
             {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(day => (
               <div key={day} style={{ color: isDark ? '#94a3b8' : '#64748b' }} className="p-4 text-center text-[10px] font-black uppercase tracking-widest">{day}</div>
@@ -148,28 +152,50 @@ export default function CalendarPage() {
           </div>
 
           <div className="grid grid-cols-7 gap-0" style={{ minHeight: '700px' }}>
-            {calendarDays.map((day, idx) => { 
-              const dayEvents = filteredEvents.filter(e => isSameDay(new Date(e.event_date), day)); 
+            {calendarDays.map((day, idx) => {
+              const dayEvents = filteredEvents.filter(e => isSameDay(new Date(e.event_date), day));
+              const isCurrentMonth = isSameMonth(day, currentMonth);
+              
               return (
-                <div key={idx} style={{ backgroundColor: isSameMonth(day, currentMonth) ? (isDark ? '#0f172a' : '#ffffff') : (isDark ? '#1a2332' : '#f8fafc'), borderColor: isDark ? '#334155' : '#e2e8f0', opacity: isSameMonth(day, currentMonth) ? 1 : 0.5 }} className="border p-3 min-h-[140px] flex flex-col">
-                  <span style={{ color: isSameDay(day, new Date()) ? '#60a5fa' : isDark ? '#94a3b8' : '#64748b' }} className="text-sm font-black mb-2">{format(day, 'd')}</span>
-                  <div className="flex-1 space-y-1 overflow-y-auto">
-                    {dayEvents.map(event => { 
+                <div key={idx} 
+                  style={{ 
+                    backgroundColor: isCurrentMonth ? (isDark ? '#0f172a' : '#ffffff') : (isDark ? '#1a2332' : '#f8fafc'),
+                    borderColor: isDark ? '#334155' : '#e2e8f0'
+                  }} 
+                  className={`border p-3 min-h-[140px] flex flex-col ${!isCurrentMonth ? 'opacity-40' : ''}`}
+                >
+                  <span style={{ color: isSameDay(day, new Date()) ? '#3b82f6' : (isDark ? '#94a3b8' : '#64748b') }} className="text-sm font-black mb-2">
+                    {format(day, 'd')}
+                  </span>
+                  <div className="flex-1 space-y-1">
+                    {dayEvents.map(event => {
                       const colors = getCourseColor(event.courses?.name || 'Unknown');
+                      const participantCount = event.bookings?.length || 0;
                       return (
-                        <button key={event.id} onClick={() => setSelectedEvent(event)} style={{ backgroundColor: colors.bg, color: colors.text }} className="w-full text-left p-2 rounded-lg text-xs transition-all border border-black/10">
-                          <p className="font-black truncate uppercase text-[9px]">{event.courses?.name}</p>
-                          <p className="opacity-70 font-bold text-[8px]">{event.bookings?.length || 0}/10</p>
+                        <button 
+                          key={event.id} 
+                          onClick={() => setSelectedEvent(event)}
+                          style={{ backgroundColor: colors.bg, color: colors.text }}
+                          className="cursor-pointer w-full text-left p-2 rounded-lg transition-all border border-black/10 shadow-sm hover:brightness-110"
+                        >
+                          <p className="font-black truncate uppercase text-[9px]">
+                            {event.courses?.name}
+                          </p>
+                          <div className="flex justify-between items-center mt-1 opacity-80 font-bold text-[8px]">
+                            <span>{event.start_time?.slice(0, 5) || '09:00'}</span>
+                            <span>{participantCount}/10</span>
+                          </div>
                         </button>
-                      ); 
+                      );
                     })}
                   </div>
                 </div>
-              ); 
+              );
             })}
           </div>
         </div>
       </div>
+
       {showSchedule && <ScheduleModal onClose={() => setShowSchedule(false)} onRefresh={fetchEvents} />}
       {selectedEvent && <BookingModal event={selectedEvent} onClose={() => setSelectedEvent(null)} onRefresh={fetchEvents} />}
     </main>
