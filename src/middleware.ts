@@ -8,15 +8,19 @@ export async function middleware(req: NextRequest) {
 
   const { data: { session } } = await supabase.auth.getSession()
 
-  // If NO session and NOT already on the login page, redirect to login
+  // If there is no session and the user is NOT on the login page, redirect to login
   if (!session && req.nextUrl.pathname !== '/login') {
     return NextResponse.redirect(new URL('/login', req.url))
+  }
+
+  // If there IS a session and they try to go to login, send them to the calendar
+  if (session && req.nextUrl.pathname === '/login') {
+    return NextResponse.redirect(new URL('/', req.url))
   }
 
   return res
 }
 
-// Ensure the middleware checks every page except static assets
 export const config = {
-  matcher: ['/((?!api|_next/static|_next/image|favicon.ico).*)'],
+  matcher: ['/((?!api|_next/static|_next/image|favicon.ico|login).*)'],
 }
