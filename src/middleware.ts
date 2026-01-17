@@ -4,23 +4,32 @@ import type { NextRequest } from 'next/request'
 
 export async function middleware(req: NextRequest) {
   const res = NextResponse.next()
-  const supabase = createMiddlewareClient({ req, res })
+  
+  try {
+    const supabase = createMiddlewareClient({ req, res })
+    const { data: { session } } = await supabase.auth.getSession()
 
-  const { data: { session } } = await supabase.auth.getSession()
+    const isLoginPage = req.nextUrl.pathname === '/login'
 
-  // If there is no session and the user is NOT on the login page, redirect to login
-  if (!session && req.nextUrl.pathname !== '/login') {
-    return NextResponse.redirect(new URL('/login', req.url))
+    // Case 1: No session and trying to access app -> Redirect to /login
+    if (!session && !isLoginPage) {
+      return NextResponse.redirect(new URL('/login', req.url))
+    }
+
+    // Case 2: Has session and trying to access login -> Redirect to /
+    if (session && isLoginPage) {
+      return NextResponse.redirect(new URL('/', req.url))
+    }
+
+    return res
+  } catch (error) {
+    // If middleware fails, we don't want a 500 error, we want to let the request through 
+    // so the page can handle the auth check itself
+    console.error('Middleware error:', error)
+    return res
   }
-
-  // If there IS a session and they try to go to login, send them to the calendar
-  if (session && req.nextUrl.pathname === '/login') {
-    return NextResponse.redirect(new URL('/', req.url))
-  }
-
-  return res
 }
 
 export const config = {
-  matcher: ['/((?!api|_next/static|_next/image|favicon.ico|login).*)'],
+  matcher: ['/((?!api|_next/static|_next/image|favicon.ico).*)'],
 }
