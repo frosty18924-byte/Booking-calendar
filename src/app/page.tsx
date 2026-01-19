@@ -115,7 +115,7 @@ export default function CalendarPage() {
               <div className="flex items-center gap-2">
                 <div className={`w-2 h-2 rounded-full ${user ? 'bg-emerald-500' : 'bg-red-500'}`}></div>
                 <div style={{ color: isDark ? '#94a3b8' : '#64748b' }} className="text-[10px] font-black uppercase">
-                  {user ? 'Online' : 'Offline'}
+                  {user ? `Logged in as: ${user.email}` : 'Offline'}
                 </div>
               </div>
 
