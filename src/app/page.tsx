@@ -196,13 +196,15 @@ export default function CalendarPage() {
                           key={event.id}
                           onClick={() => setSelectedEvent(event)}
                           style={{ backgroundColor: colors.bg, color: colors.text }}
-                          className="cursor-pointer w-full text-left p-2 rounded-lg transition-all border border-black/10 shadow-sm hover:brightness-110"
+                          className="cursor-pointer w-full text-left p-3 rounded-lg transition-all border border-black/10 shadow-sm hover:brightness-110"
                         >
-                          <p className="font-black truncate uppercase text-[9px]">
+                          <p className="font-black truncate uppercase text-xs">
                             {event.courses?.name}
                           </p>
-                          <div className="flex justify-between items-center mt-1 opacity-80 font-bold text-[8px]">
-                            <span>{event.start_time?.slice(0, 5) || '09:00'}</span>
+                          <div className="flex justify-between items-center mt-1 opacity-80 font-bold text-[10px]">
+                            <span>
+                              {event.start_time?.slice(0, 5) || '09:00'} - {event.end_time?.slice(0, 5) || '17:00'}
+                            </span>
                             <span>{participantCount}/10</span>
                           </div>
                         </button>
