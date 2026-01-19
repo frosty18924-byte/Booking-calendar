@@ -40,21 +40,41 @@ export default function CalendarPage() {
 
   useEffect(() => {
     const checkTheme = () => {
-      const theme = localStorage.getItem('theme');
-      setIsDark(theme !== 'light');
+      // Check for .dark class on document, which is the source of truth
+      const isDarkMode = document.documentElement.classList.contains('dark');
+      setIsDark(isDarkMode);
     };
+
+    // Initial check
     checkTheme();
+
+    // Listen for custom event from ThemeToggle
+    const handleThemeChange = (e: Event) => {
+      const customEvent = e as CustomEvent;
+      if (customEvent.detail && typeof customEvent.detail.isDark === 'boolean') {
+        setIsDark(customEvent.detail.isDark);
+      } else {
+        checkTheme();
+      }
+    };
+
+    window.addEventListener('themeChange', handleThemeChange);
+
+    // Also listen to storage for multi-tab sync
     window.addEventListener('storage', checkTheme);
-    return () => window.removeEventListener('storage', checkTheme);
+
+    return () => {
+      window.removeEventListener('themeChange', handleThemeChange);
+      window.removeEventListener('storage', checkTheme);
+    };
   }, []);
 
-  useEffect(() => {
-    document.documentElement.classList.toggle('dark', isDark);
-  }, [isDark]);
+  // Removed the useEffect that toggles the class on document, 
+  // because ThemeToggle.tsx manages that now. We just react to it.
 
   useEffect(() => {
     fetchUser();
-    fetchEvents(); 
+    fetchEvents();
   }, [currentMonth]);
 
   async function fetchUser() {
@@ -75,9 +95,9 @@ export default function CalendarPage() {
     setLoading(false);
   }
 
-  const calendarDays = eachDayOfInterval({ 
-    start: startOfWeek(startOfMonth(currentMonth)), 
-    end: endOfWeek(endOfMonth(currentMonth)) 
+  const calendarDays = eachDayOfInterval({
+    start: startOfWeek(startOfMonth(currentMonth)),
+    end: endOfWeek(endOfMonth(currentMonth))
   });
 
   const uniqueCourses = Array.from(new Set(events.map(e => e.courses?.name).filter(Boolean)));
@@ -89,7 +109,7 @@ export default function CalendarPage() {
     <main style={{ backgroundColor: isDark ? '#0f172a' : '#f1f5f9' }} className="p-4 md:p-8 min-h-screen transition-colors duration-300">
       <div className="max-w-7xl mx-auto">
         <div style={{ backgroundColor: isDark ? '#1e293b' : '#ffffff', borderColor: isDark ? '#334155' : '#cbd5e1' }} className="rounded-[40px] shadow-2xl border overflow-hidden">
-          
+
           <div style={{ borderColor: isDark ? '#334155' : '#e2e8f0' }} className="p-8 border-b">
             <div className="grid grid-cols-3 items-center mb-8">
               <div className="flex items-center gap-2">
@@ -110,7 +130,7 @@ export default function CalendarPage() {
                   </a>
                 )}
                 {user && (
-                  <button onClick={() => supabase.auth.signOut().then(() => window.location.href='/login')} className="cursor-pointer bg-red-600 text-white px-4 py-2 rounded-xl font-black text-[10px] uppercase hover:opacity-80 transition-all">
+                  <button onClick={() => supabase.auth.signOut().then(() => window.location.href = '/login')} className="cursor-pointer bg-red-600 text-white px-4 py-2 rounded-xl font-black text-[10px] uppercase hover:opacity-80 transition-all">
                     Sign Out
                   </button>
                 )}
@@ -119,8 +139,8 @@ export default function CalendarPage() {
             </div>
 
             <div className="flex flex-col md:flex-row justify-between items-center gap-6">
-              <select 
-                value={filterCourse} 
+              <select
+                value={filterCourse}
                 onChange={(e) => setFilterCourse(e.target.value)}
                 style={{ backgroundColor: isDark ? '#0f172a' : '#f8fafc', color: isDark ? '#f1f5f9' : '#1e293b', borderColor: isDark ? '#334155' : '#cbd5e1' }}
                 className="cursor-pointer rounded-xl border px-4 py-2 text-[11px] font-bold uppercase outline-none"
@@ -155,13 +175,13 @@ export default function CalendarPage() {
             {calendarDays.map((day, idx) => {
               const dayEvents = filteredEvents.filter(e => isSameDay(new Date(e.event_date), day));
               const isCurrentMonth = isSameMonth(day, currentMonth);
-              
+
               return (
-                <div key={idx} 
-                  style={{ 
+                <div key={idx}
+                  style={{
                     backgroundColor: isCurrentMonth ? (isDark ? '#0f172a' : '#ffffff') : (isDark ? '#1a2332' : '#f8fafc'),
                     borderColor: isDark ? '#334155' : '#e2e8f0'
-                  }} 
+                  }}
                   className={`border p-3 min-h-[140px] flex flex-col ${!isCurrentMonth ? 'opacity-40' : ''}`}
                 >
                   <span style={{ color: isSameDay(day, new Date()) ? '#3b82f6' : (isDark ? '#94a3b8' : '#64748b') }} className="text-sm font-black mb-2">
@@ -172,8 +192,8 @@ export default function CalendarPage() {
                       const colors = getCourseColor(event.courses?.name || 'Unknown');
                       const participantCount = event.bookings?.length || 0;
                       return (
-                        <button 
-                          key={event.id} 
+                        <button
+                          key={event.id}
                           onClick={() => setSelectedEvent(event)}
                           style={{ backgroundColor: colors.bg, color: colors.text }}
                           className="cursor-pointer w-full text-left p-2 rounded-lg transition-all border border-black/10 shadow-sm hover:brightness-110"
