@@ -1,0 +1,541 @@
+'use client';
+
+import { useState, useEffect } from 'react';
+import { supabase } from '@/lib/supabase';
+import { hasPermission } from '@/lib/permissions';
+
+export default function AddStaffModal({ onClose, onRefresh }: { onClose: () => void; onRefresh: () => void }) {
+  const [locations, setLocations] = useState<any[]>([]);
+  const [allStaff, setAllStaff] = useState<any[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [isDark, setIsDark] = useState(true);
+  const [userRole, setUserRole] = useState<string | null>(null);
+  const [roleLoading, setRoleLoading] = useState(true);
+  const [showBulkUpload, setShowBulkUpload] = useState(false);
+  const [bulkLoading, setBulkLoading] = useState(false);
+  const [bulkMessage, setBulkMessage] = useState('');
+  
+  const [formData, setFormData] = useState({ 
+    full_name: '', 
+    email: '', 
+    home_house: '', 
+    role_tier: 'staff' as 'staff' | 'manager' | 'scheduler' | 'admin',
+    managed_houses: [] as string[]
+  });
+
+  useEffect(() => { 
+    checkTheme();
+    fetchUserRole();
+    fetchInitialData(); 
+  }, []);
+
+  useEffect(() => {
+    const handleThemeChange = (event: any) => {
+      setIsDark(event.detail.isDark);
+    };
+    
+    window.addEventListener('themeChange', handleThemeChange);
+    return () => window.removeEventListener('themeChange', handleThemeChange);
+  }, []);
+
+  function checkTheme() {
+    if (typeof window !== 'undefined') {
+      const theme = localStorage.getItem('theme');
+      const isDarkMode = theme === 'dark' || (!theme && window.matchMedia('(prefers-color-scheme: dark)').matches);
+      setIsDark(isDarkMode);
+    }
+  }
+
+  async function fetchUserRole() {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        const { data: profile, error } = await supabase
+          .from('profiles')
+          .select('role_tier')
+          .eq('id', user.id)
+          .single();
+        
+        if (error) {
+          console.error('Error fetching role:', error);
+          setRoleLoading(false);
+          return;
+        }
+        
+        console.log('👤 User role loaded:', profile?.role_tier);
+        setUserRole(profile?.role_tier || null);
+      }
+      setRoleLoading(false);
+    } catch (err) {
+      console.error('Error fetching user role:', err);
+      setRoleLoading(false);
+    }
+  }
+
+  async function fetchInitialData() {
+    const { data: locData } = await supabase.from('locations').select('*').order('name');
+    setLocations(locData || []);
+    const { data: staffData } = await supabase.from('profiles').select('*').order('full_name');
+    setAllStaff(staffData || []);
+  }
+
+  const handleSave = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!hasPermission(userRole, 'STAFF_MANAGEMENT', 'canEdit')) {
+      alert('You do not have permission to manage staff');
+      return;
+    }
+
+    setLoading(true);
+    
+    if (formData.role_tier === 'staff' && !formData.home_house) {
+      alert('Staff members must be assigned a home location');
+      setLoading(false);
+      return;
+    }
+    
+    if ((formData.role_tier === 'manager' || formData.role_tier === 'scheduler') && formData.managed_houses.length === 0) {
+      alert('Managers and Schedulers must manage at least one location');
+      setLoading(false);
+      return;
+    }
+
+    try {
+      if (editingId) {
+        const { error } = await supabase.from('profiles').update(formData).eq('id', editingId);
+        if (error) throw error;
+        setEditingId(null);
+      } else {
+        const { error } = await supabase.from('profiles').insert([formData]);
+        if (error) throw error;
+      }
+      
+      setFormData({ full_name: '', email: '', home_house: '', role_tier: 'staff', managed_houses: [] });
+      fetchInitialData();
+      onRefresh();
+    } catch (error: any) {
+      alert(error.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleBulkUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!hasPermission(userRole, 'STAFF_MANAGEMENT', 'canEdit')) {
+      alert('You do not have permission to manage staff');
+      return;
+    }
+
+    setBulkLoading(true);
+    setBulkMessage('');
+
+    try {
+      const text = await file.text();
+      const lines = text.split('\n').filter(line => line.trim());
+      
+      if (lines.length < 2) {
+        setBulkMessage('❌ CSV must have a header row and at least one data row');
+        setBulkLoading(false);
+        return;
+      }
+
+      const headers = lines[0].toLowerCase().split(',').map(h => h.trim());
+      const expectedHeaders = ['full_name', 'email', 'home_house', 'role_tier'];
+      
+      const missingHeaders = expectedHeaders.filter(h => !headers.includes(h));
+      if (missingHeaders.length > 0) {
+        setBulkMessage(`❌ Missing required columns: ${missingHeaders.join(', ')}`);
+        setBulkLoading(false);
+        return;
+      }
+
+      const staffData = [];
+      let errorCount = 0;
+
+      for (let i = 1; i < lines.length; i++) {
+        const values = lines[i].split(',').map(v => v.trim());
+        const row: any = {};
+        
+        headers.forEach((header, idx) => {
+          row[header] = values[idx] || '';
+        });
+
+        // Validation
+        if (!row.full_name || !row.email) {
+          errorCount++;
+          continue;
+        }
+
+        if (row.role_tier === 'staff' && !row.home_house) {
+          errorCount++;
+          continue;
+        }
+
+        staffData.push({
+          full_name: row.full_name,
+          email: row.email,
+          home_house: row.home_house || null,
+          role_tier: row.role_tier || 'staff',
+          managed_houses: []
+        });
+      }
+
+      if (staffData.length === 0) {
+        setBulkMessage('❌ No valid staff records to upload');
+        setBulkLoading(false);
+        return;
+      }
+
+      const { error } = await supabase.from('profiles').insert(staffData);
+      
+      if (error) {
+        setBulkMessage(`❌ Upload failed: ${error.message}`);
+      } else {
+        setBulkMessage(`✅ Successfully uploaded ${staffData.length} staff members${errorCount > 0 ? ` (${errorCount} rows skipped due to errors)` : ''}`);
+        await fetchInitialData();
+        onRefresh();
+        
+        setTimeout(() => {
+          setShowBulkUpload(false);
+          setBulkMessage('');
+        }, 2000);
+      }
+    } catch (error: any) {
+      setBulkMessage(`❌ Error: ${error.message}`);
+    } finally {
+      setBulkLoading(false);
+      e.target.value = '';
+    }
+  };
+
+  const downloadTemplate = () => {
+    const template = 'full_name,email,home_house,role_tier\nJohn Smith,john@example.com,House 1,staff\nJane Doe,jane@example.com,House 2,staff';
+    const blob = new Blob([template], { type: 'text/csv' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'staff_template.csv';
+    a.click();
+  };
+
+  const handleDeleteStaff = async (id: string) => {
+    if (!hasPermission(userRole, 'STAFF_MANAGEMENT', 'canDelete')) {
+      alert('You do not have permission to delete staff');
+      return;
+    }
+
+    if (!confirm('Delete this staff member?')) return;
+    try {
+      const { error } = await supabase.from('profiles').delete().eq('id', id);
+      if (error) throw error;
+      fetchInitialData();
+    } catch (error: any) {
+      alert(error.message);
+    }
+  };
+
+  const handleEdit = (staff: any) => {
+    setEditingId(staff.id);
+    setFormData({
+      full_name: staff.full_name,
+      email: staff.email,
+      home_house: staff.home_house || '',
+      role_tier: staff.role_tier || 'staff',
+      managed_houses: staff.managed_houses || []
+    });
+  };
+
+  const toggleManagedHouse = (houseName: string) => {
+    setFormData(prev => ({
+      ...prev,
+      managed_houses: prev.managed_houses.includes(houseName)
+        ? prev.managed_houses.filter(h => h !== houseName)
+        : [...prev.managed_houses, houseName]
+    }));
+  };
+
+  const getRoleColor = (role: string) => {
+    switch(role) {
+      case 'admin': return { bg: '#dc2626', text: '#ffffff' };
+      case 'manager': return { bg: '#9333ea', text: '#ffffff' };
+      case 'scheduler': return { bg: '#2563eb', text: '#ffffff' };
+      case 'staff': return { bg: '#10b981', text: '#ffffff' };
+      default: return { bg: '#6b7280', text: '#ffffff' };
+    }
+  };
+
+  const canManageStaff = hasPermission(userRole, 'STAFF_MANAGEMENT', 'canView');
+
+  if (roleLoading) {
+    return (
+      <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-md flex items-center justify-center p-4 z-50">
+        <div style={{ backgroundColor: isDark ? '#1e293b' : '#ffffff' }} className="rounded-3xl p-8 w-full max-w-md text-center shadow-2xl">
+          <p style={{ color: isDark ? '#94a3b8' : '#64748b' }} className="text-sm font-semibold">Loading...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!canManageStaff) {
+    return (
+      <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-md flex items-center justify-center p-4 z-50">
+        <div style={{ backgroundColor: isDark ? '#1e293b' : '#ffffff' }} className="rounded-3xl p-8 w-full max-w-md text-center shadow-2xl">
+          <h2 style={{ color: isDark ? '#f1f5f9' : '#1e293b' }} className="text-2xl font-black uppercase tracking-tight mb-4">Access Denied</h2>
+          <p style={{ color: isDark ? '#94a3b8' : '#64748b' }} className="mb-2">Your Role: <span style={{ color: '#2563eb' }} className="font-bold">{userRole || 'Unknown'}</span></p>
+          <p style={{ color: isDark ? '#94a3b8' : '#64748b' }} className="mb-6">You do not have permission to manage staff members.</p>
+          <button 
+            onClick={onClose} 
+            style={{ backgroundColor: '#dc2626' }}
+            className="w-full py-3 text-white font-bold rounded-xl"
+          >
+            Close
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  if (showBulkUpload) {
+    return (
+      <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-md flex items-center justify-center p-4 z-50">
+        <div style={{ backgroundColor: isDark ? '#1e293b' : '#ffffff', borderColor: isDark ? '#334155' : '#cbd5e1' }} className="rounded-3xl p-8 w-full max-w-md shadow-2xl border transition-colors duration-300">
+          
+          <div className="flex justify-between items-center mb-6">
+            <h2 style={{ color: isDark ? '#f1f5f9' : '#1e293b' }} className="text-2xl font-black uppercase tracking-tight">
+              Bulk Upload Staff
+            </h2>
+            <button onClick={() => setShowBulkUpload(false)} style={{ color: isDark ? '#94a3b8' : '#64748b' }} className="hover:text-red-500 text-2xl transition-colors">&times;</button>
+          </div>
+
+          <div className="space-y-4">
+            <div style={{ backgroundColor: isDark ? '#0f172a' : '#f1f5f9', borderColor: isDark ? '#334155' : '#e2e8f0' }} className="border-2 border-dashed rounded-xl p-6 text-center">
+              <input 
+                type="file" 
+                accept=".csv" 
+                onChange={handleBulkUpload}
+                disabled={bulkLoading}
+                className="hidden"
+                id="csv-upload"
+              />
+              <label htmlFor="csv-upload" className="cursor-pointer block">
+                <p style={{ color: isDark ? '#f1f5f9' : '#1e293b' }} className="font-black text-sm mb-2">📁 Click to upload CSV</p>
+                <p style={{ color: isDark ? '#94a3b8' : '#64748b' }} className="text-xs">or drag and drop</p>
+              </label>
+            </div>
+
+            {bulkMessage && (
+              <div style={{ backgroundColor: bulkMessage.includes('✅') ? '#10b98122' : '#dc262622', borderColor: bulkMessage.includes('✅') ? '#10b981' : '#dc2626' }} className="border rounded-lg p-3">
+                <p style={{ color: bulkMessage.includes('✅') ? '#10b981' : '#dc2626' }} className="text-sm font-bold">
+                  {bulkMessage}
+                </p>
+              </div>
+            )}
+
+            <div>
+              <p style={{ color: isDark ? '#94a3b8' : '#64748b' }} className="text-[10px] font-black uppercase mb-2">Required columns:</p>
+              <ul style={{ color: isDark ? '#cbd5e1' : '#1e293b' }} className="text-xs space-y-1 mb-4">
+                <li>• <span className="font-bold">full_name</span> - Staff member name</li>
+                <li>• <span className="font-bold">email</span> - Email address</li>
+                <li>• <span className="font-bold">home_house</span> - Location (required for staff)</li>
+                <li>• <span className="font-bold">role_tier</span> - staff, manager, scheduler, or admin</li>
+              </ul>
+            </div>
+
+            <button 
+              onClick={downloadTemplate}
+              style={{ backgroundColor: '#6366f1' }}
+              onMouseEnter={(e) => e.currentTarget.style.opacity = '0.9'}
+              onMouseLeave={(e) => e.currentTarget.style.opacity = '1'}
+              className="w-full py-3 text-white font-bold rounded-xl transition-all"
+            >
+              📥 Download Template
+            </button>
+
+            <button 
+              onClick={() => setShowBulkUpload(false)}
+              style={{ backgroundColor: isDark ? '#334155' : '#cbd5e1', color: isDark ? '#f1f5f9' : '#1e293b' }}
+              className="w-full py-3 font-bold rounded-xl transition-all"
+            >
+              Close
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-md flex items-center justify-center p-4 z-50">
+      <div style={{ backgroundColor: isDark ? '#1e293b' : '#ffffff', borderColor: isDark ? '#334155' : '#cbd5e1' }} className="rounded-3xl p-8 w-full max-w-5xl max-h-[90vh] overflow-hidden flex flex-col shadow-2xl border transition-colors duration-300">
+        
+        <div className="flex justify-between items-center mb-6">
+          <h2 style={{ color: isDark ? '#f1f5f9' : '#1e293b' }} className="text-2xl font-black uppercase tracking-tight">
+            {editingId ? 'Edit Staff Member' : 'Add Staff Member'}
+          </h2>
+          <div className="flex gap-2">
+            <button 
+              onClick={() => setShowBulkUpload(true)}
+              style={{ backgroundColor: '#f59e0b' }}
+              onMouseEnter={(e) => e.currentTarget.style.opacity = '0.9'}
+              onMouseLeave={(e) => e.currentTarget.style.opacity = '1'}
+              className="text-white px-4 py-2 rounded-lg font-bold text-xs uppercase transition-all"
+            >
+              📤 Bulk Upload
+            </button>
+            <button onClick={onClose} style={{ color: isDark ? '#94a3b8' : '#64748b' }} className="hover:text-red-500 text-2xl transition-colors">&times;</button>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 overflow-hidden">
+          {/* FORM SECTION */}
+          <div className="space-y-6 overflow-y-auto pr-4 custom-scrollbar">
+            <form onSubmit={handleSave} className="space-y-4">
+              <div>
+                <label style={{ color: isDark ? '#94a3b8' : '#64748b' }} className="text-[10px] font-black uppercase mb-1 block">Full Name</label>
+                <input 
+                  type="text" 
+                  required 
+                  placeholder="e.g. John Smith"
+                  style={{ backgroundColor: isDark ? '#0f172a' : '#f1f5f9', color: isDark ? '#f1f5f9' : '#1e293b', borderColor: isDark ? '#334155' : '#cbd5e1' }}
+                  className="w-full p-3 border rounded-xl outline-none focus:ring-2 focus:ring-emerald-500" 
+                  value={formData.full_name} 
+                  onChange={e => setFormData({...formData, full_name: e.target.value})} 
+                />
+              </div>
+
+              <div>
+                <label style={{ color: isDark ? '#94a3b8' : '#64748b' }} className="text-[10px] font-black uppercase mb-1 block">Email Address</label>
+                <input 
+                  type="email" 
+                  required 
+                  placeholder="e.g. john@example.com"
+                  style={{ backgroundColor: isDark ? '#0f172a' : '#f1f5f9', color: isDark ? '#f1f5f9' : '#1e293b', borderColor: isDark ? '#334155' : '#cbd5e1' }}
+                  className="w-full p-3 border rounded-xl outline-none focus:ring-2 focus:ring-emerald-500" 
+                  value={formData.email} 
+                  onChange={e => setFormData({...formData, email: e.target.value})} 
+                />
+              </div>
+
+              <div>
+                <label style={{ color: isDark ? '#94a3b8' : '#64748b' }} className="text-[10px] font-black uppercase mb-1 block">Role</label>
+                <select 
+                  required 
+                  style={{ backgroundColor: isDark ? '#0f172a' : '#f1f5f9', color: isDark ? '#f1f5f9' : '#1e293b', borderColor: isDark ? '#334155' : '#cbd5e1' }}
+                  className="w-full p-3 border rounded-xl outline-none focus:ring-2 focus:ring-emerald-500" 
+                  value={formData.role_tier} 
+                  onChange={e => {
+                    setFormData({...formData, role_tier: e.target.value as any, managed_houses: [], home_house: ''});
+                  }}
+                >
+                  <option value="staff">Staff Member</option>
+                  <option value="scheduler">Scheduler</option>
+                  <option value="manager">Manager</option>
+                  <option value="admin">Admin</option>
+                </select>
+              </div>
+
+              {formData.role_tier === 'staff' && (
+                <div>
+                  <label style={{ color: isDark ? '#94a3b8' : '#64748b' }} className="text-[10px] font-black uppercase mb-1 block">Assigned Location *</label>
+                  <select 
+                    required 
+                    style={{ backgroundColor: isDark ? '#0f172a' : '#f1f5f9', color: isDark ? '#f1f5f9' : '#1e293b', borderColor: isDark ? '#334155' : '#cbd5e1' }}
+                    className="w-full p-3 border rounded-xl outline-none focus:ring-2 focus:ring-emerald-500" 
+                    value={formData.home_house} 
+                    onChange={e => setFormData({...formData, home_house: e.target.value})}
+                  >
+                    <option value="">Select Location...</option>
+                    {locations.map(loc => <option key={loc.id} value={loc.name}>{loc.name}</option>)}
+                  </select>
+                </div>
+              )}
+
+              {(formData.role_tier === 'manager' || formData.role_tier === 'scheduler') && (
+                <div>
+                  <label style={{ color: isDark ? '#94a3b8' : '#64748b' }} className="text-[10px] font-black uppercase mb-2 block">Managed Locations *</label>
+                  <div className="space-y-2">
+                    {locations.map(loc => (
+                      <label key={loc.id} className="flex items-center gap-3 cursor-pointer">
+                        <input 
+                          type="checkbox" 
+                          checked={formData.managed_houses.includes(loc.name)}
+                          onChange={() => toggleManagedHouse(loc.name)}
+                          className="w-4 h-4 rounded"
+                        />
+                        <span style={{ color: isDark ? '#cbd5e1' : '#1e293b' }} className="text-sm font-bold">{loc.name}</span>
+                      </label>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              <button 
+                type="submit"
+                disabled={loading}
+                style={{ backgroundColor: editingId ? '#2563eb' : '#10b981' }} 
+                onMouseEnter={(e) => e.currentTarget.style.opacity = '0.9'} 
+                onMouseLeave={(e) => e.currentTarget.style.opacity = '1'} 
+                className="w-full py-3 text-white font-bold rounded-xl shadow-lg transition-all disabled:opacity-50"
+              >
+                {loading ? 'Processing...' : editingId ? 'Save Changes' : 'Create Staff Member'}
+              </button>
+            </form>
+          </div>
+
+          {/* STAFF LIST SECTION */}
+          <div style={{ borderColor: isDark ? '#334155' : '#e2e8f0' }} className="border-l pl-6 flex flex-col h-full overflow-hidden">
+            <p style={{ color: isDark ? '#94a3b8' : '#64748b' }} className="text-[10px] font-black uppercase mb-4 tracking-widest">Staff Directory</p>
+            <div className="space-y-2 overflow-y-auto pr-2 custom-scrollbar">
+              {allStaff.map(staff => {
+                const roleColor = getRoleColor(staff.role_tier);
+                return (
+                  <div key={staff.id} style={{ backgroundColor: isDark ? '#0f172a' : '#f1f5f9', borderColor: isDark ? '#334155' : '#e2e8f0' }} className="p-3 border rounded-xl group transition-all">
+                    <div className="flex justify-between items-start mb-2">
+                      <div className="overflow-hidden flex-1">
+                        <p style={{ color: isDark ? '#f1f5f9' : '#1e293b' }} className="text-sm font-bold truncate">{staff.full_name}</p>
+                        <p style={{ color: '#60a5fa' }} className="text-[9px] font-bold uppercase">{staff.email}</p>
+                      </div>
+                      <div style={{ backgroundColor: roleColor.bg, color: roleColor.text }} className="px-2 py-1 rounded text-[9px] font-black uppercase whitespace-nowrap ml-2">
+                        {staff.role_tier}
+                      </div>
+                    </div>
+                    
+                    <div className="mb-2">
+                      {staff.role_tier === 'staff' ? (
+                        <p style={{ color: isDark ? '#94a3b8' : '#64748b' }} className="text-[9px] font-bold">📍 {staff.home_house || 'No location'}</p>
+                      ) : staff.role_tier === 'admin' ? (
+                        <p style={{ color: '#10b981' }} className="text-[9px] font-bold">✓ All Locations</p>
+                      ) : (
+                        <p style={{ color: isDark ? '#94a3b8' : '#64748b' }} className="text-[9px] font-bold">📍 {staff.managed_houses?.join(', ') || 'No locations'}</p>
+                      )}
+                    </div>
+
+                    <div className="flex gap-2">
+                      <button 
+                        onClick={() => handleEdit(staff)} 
+                        className="flex-1 p-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-[9px] font-bold transition-all"
+                      >
+                        ✏️ Edit
+                      </button>
+                      <button 
+                        onClick={() => handleDeleteStaff(staff.id)} 
+                        className="flex-1 p-2 bg-red-600 hover:bg-red-700 text-white rounded-lg text-[9px] font-bold transition-all"
+                      >
+                        🗑️ Delete
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}

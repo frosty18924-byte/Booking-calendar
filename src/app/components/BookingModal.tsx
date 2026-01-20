@@ -1,0 +1,238 @@
+'use client';
+
+import { useState, useEffect } from 'react';
+import { supabase } from '@/lib/supabase';
+import { hasPermission } from '@/lib/permissions';
+
+interface BookingModalProps {
+  event: any;
+  onClose: () => void;
+  onRefresh: () => void;
+}
+
+export default function BookingModal({ event, onClose, onRefresh }: BookingModalProps) {
+  const [activeTab, setActiveTab] = useState<'booking' | 'roster'>('booking');
+  const [staff, setStaff] = useState<any[]>([]);
+  const [roster, setRoster] = useState<any[]>([]);
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [isDark, setIsDark] = useState(true);
+  const [userRole, setUserRole] = useState<string | null>(null);
+
+  const ABSENCE_REASONS = ["Appointment", "Needed in home", "Rostering", "Transport issues", "Not started yet", "Childcare", "Sickness", "Holiday"];
+  const LATE_REASONS = ["Traffic", "Handover delayed", "Public Transport", "Personal", "Other"];
+
+  useEffect(() => {
+    checkTheme();
+    fetchUserRole();
+    fetchInitialData();
+  }, [event.id]);
+
+  useEffect(() => {
+    const handleThemeChange = (event: any) => {
+      setIsDark(event.detail.isDark);
+    };
+    
+    window.addEventListener('themeChange', handleThemeChange);
+    return () => window.removeEventListener('themeChange', handleThemeChange);
+  }, []);
+
+  function checkTheme() {
+    if (typeof window !== 'undefined') {
+      const theme = localStorage.getItem('theme');
+      const isDarkMode = theme === 'dark' || (!theme && window.matchMedia('(prefers-color-scheme: dark)').matches);
+      setIsDark(isDarkMode);
+    }
+  }
+
+  async function fetchUserRole() {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (user) {
+      const { data: profile } = await supabase.from('profiles').select('role_tier').eq('id', user.id).single();
+      setUserRole(profile?.role_tier || null);
+    }
+  }
+
+  async function fetchInitialData() {
+    const { data: staffData } = await supabase.from('profiles').select('*').order('full_name');
+    const { data: bookings } = await supabase.from('bookings').select('profile_id').eq('event_id', event.id);
+    const bookedIds = bookings?.map(b => b.profile_id) || [];
+    setStaff(staffData?.filter(s => !bookedIds.includes(s.id)) || []);
+    await fetchRoster();
+  }
+
+  async function fetchRoster() {
+    const { data, error } = await supabase
+      .from('bookings')
+      .select('id, profile_id, event_id, attended_at, minutes_late, late_reason, absence_reason')
+      .eq('event_id', event.id);
+    
+    if (data && data.length > 0) {
+      const profileIds = data.map((b: any) => b.profile_id);
+      const { data: profilesData } = await supabase.from('profiles').select('id, full_name, home_house').in('id', profileIds);
+      const rosterWithProfiles = data.map((booking: any) => ({
+        ...booking,
+        profiles: profilesData?.find(p => p.id === booking.profile_id)
+      }));
+      setRoster(rosterWithProfiles);
+    } else {
+      setRoster([]);
+    }
+  }
+
+  const updateBooking = async (id: string, updates: any) => {
+    if (!hasPermission(userRole, 'ATTENDANCE', 'canMark')) {
+      alert('Permission denied');
+      return;
+    }
+
+    const { error } = await supabase.from('bookings').update(updates).eq('id', id);
+    if (!error) {
+      await fetchRoster();
+      onRefresh();
+    }
+  };
+
+  const handleBooking = async () => {
+    if (!hasPermission(userRole, 'BOOKINGS', 'canCreate')) return;
+    setLoading(true);
+    const bookingData = selectedIds.map(id => ({ event_id: event.id, profile_id: id }));
+    const { error } = await supabase.from('bookings').insert(bookingData);
+    if (!error) {
+      setSelectedIds([]);
+      await fetchInitialData();
+      setActiveTab('roster');
+      onRefresh();
+    }
+    setLoading(false);
+  };
+
+  const handleRemoveStaff = async (bookingId: string) => {
+    if (!confirm('Remove staff member?')) return;
+    await supabase.from('bookings').delete().eq('id', bookingId);
+    await fetchRoster();
+    await fetchInitialData();
+    onRefresh();
+  };
+
+  const canViewRoster = hasPermission(userRole, 'ROSTER', 'canView');
+  const canEditRoster = hasPermission(userRole, 'ROSTER', 'canEdit');
+
+  return (
+    <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-md flex items-center justify-center p-4 z-50">
+      <div style={{ backgroundColor: isDark ? '#1e293b' : '#ffffff', borderColor: isDark ? '#334155' : '#cbd5e1' }} className="rounded-[40px] w-full max-w-2xl max-h-[90vh] shadow-2xl border overflow-hidden flex flex-col">
+        
+        {/* Header */}
+        <div style={{ backgroundColor: isDark ? '#0f172a' : '#f1f5f9' }} className="p-6 border-b text-center relative">
+          <h2 style={{ color: isDark ? '#f1f5f9' : '#1e293b' }} className="text-xl font-black uppercase">{event.courses?.name}</h2>
+          <p className="text-[10px] font-bold opacity-50 uppercase">{event.event_date}</p>
+          <button onClick={onClose} className="absolute right-8 top-6 text-2xl font-light">&times;</button>
+        </div>
+
+        {/* Tabs */}
+        <div className="flex p-1.5 m-6 bg-slate-100 dark:bg-slate-800 rounded-2xl gap-1.5">
+          <button onClick={() => setActiveTab('booking')} className={`flex-1 py-2 text-xs font-black uppercase rounded-xl transition-all ${activeTab === 'booking' ? 'bg-white dark:bg-slate-700 text-blue-600 shadow-sm' : 'text-slate-500'}`}>
+            Add Staff ({staff.length})
+          </button>
+          <button onClick={() => setActiveTab('roster')} className={`flex-1 py-2 text-xs font-black uppercase rounded-xl transition-all ${activeTab === 'roster' ? 'bg-white dark:bg-slate-700 text-blue-600 shadow-sm' : 'text-slate-500'}`}>
+            Roster ({roster.length})
+          </button>
+        </div>
+
+        <div className="px-8 pb-8 flex-1 overflow-y-auto">
+          {activeTab === 'booking' ? (
+            <>
+              <input 
+                type="text" placeholder="Search staff..." 
+                className="w-full p-3 mb-4 rounded-xl text-xs bg-slate-100 dark:bg-slate-800 outline-none text-black dark:text-white"
+                value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} 
+              />
+              <div className="space-y-2">
+                {staff.filter(s => s.full_name?.toLowerCase().includes(searchQuery.toLowerCase())).map(person => (
+                  <label key={person.id} className="flex items-center gap-3 p-3 rounded-xl cursor-pointer border dark:border-slate-700 hover:border-blue-500 transition-all">
+                    <input type="checkbox" checked={selectedIds.includes(person.id)} onChange={(e) => e.target.checked ? setSelectedIds([...selectedIds, person.id]) : setSelectedIds(selectedIds.filter(id => id !== person.id))} className="w-4 h-4 rounded" />
+                    <div className="flex-1">
+                      <span className="text-xs font-bold block text-black dark:text-white">{person.full_name}</span>
+                      <span className="text-[9px] uppercase font-black opacity-50">📍 {person.home_house}</span>
+                    </div>
+                  </label>
+                ))}
+              </div>
+              <button onClick={handleBooking} disabled={selectedIds.length === 0} className="w-full mt-6 py-4 bg-blue-600 text-white font-black text-xs uppercase rounded-2xl disabled:opacity-50">
+                Confirm Booking ({selectedIds.length})
+              </button>
+            </>
+          ) : (
+            <div className="space-y-4">
+              {roster.map((row) => (
+                <div key={row.id} className="p-4 bg-slate-50 dark:bg-slate-800/50 rounded-[24px] border dark:border-slate-700">
+                  <div className="flex justify-between items-start mb-4">
+                    <div>
+                      <p className={`text-sm font-black ${row.attended_at ? 'text-emerald-500' : 'text-black dark:text-white'}`}>{row.profiles?.full_name}</p>
+                      <p className="text-[9px] font-bold opacity-50 uppercase">📍 {row.profiles?.home_house}</p>
+                    </div>
+                    <div className="flex gap-2">
+                      <button 
+                        onClick={() => updateBooking(row.id, { 
+                          attended_at: row.attended_at ? null : new Date().toISOString(),
+                          absence_reason: null,
+                          minutes_late: null,
+                          late_reason: null
+                        })} 
+                        className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase transition-all ${row.attended_at ? 'bg-emerald-500 text-white' : 'bg-slate-200 dark:bg-slate-700 text-black dark:text-white'}`}
+                      >
+                        {row.attended_at ? 'Present' : 'Mark Present'}
+                      </button>
+                      <button onClick={() => handleRemoveStaff(row.id)} className="p-2 bg-red-600 text-white rounded-lg text-[10px]">🗑️</button>
+                    </div>
+                  </div>
+
+                  {/* Lateness Section - Only visible if Present */}
+                  {row.attended_at ? (
+                    <div className="grid grid-cols-2 gap-3 mt-2 animate-in slide-in-from-top-2 duration-200">
+                      <div className="flex flex-col gap-1">
+                        <label className="text-[9px] font-black uppercase opacity-50 ml-1">Mins Late</label>
+                        <input 
+                          type="number"
+                          placeholder="0"
+                          className="w-full bg-white dark:bg-slate-700 p-2 rounded-lg text-xs font-bold outline-none border dark:border-slate-600 text-black dark:text-white"
+                          value={row.minutes_late || ''}
+                          onChange={(e) => updateBooking(row.id, { minutes_late: e.target.value })}
+                        />
+                      </div>
+                      <div className="flex flex-col gap-1">
+                        <label className="text-[9px] font-black uppercase opacity-50 ml-1">Late Reason</label>
+                        <select 
+                          className="w-full bg-white dark:bg-slate-700 p-2 rounded-lg text-xs font-bold outline-none border dark:border-slate-600 text-black dark:text-white"
+                          value={row.late_reason || ''}
+                          onChange={(e) => updateBooking(row.id, { late_reason: e.target.value })}
+                        >
+                          <option value="">Reason...</option>
+                          {LATE_REASONS.map(r => <option key={r} value={r}>{r}</option>)}
+                        </select>
+                      </div>
+                    </div>
+                  ) : (
+                    /* Absence Reason - Only visible if Not Present */
+                    <div className="mt-2">
+                      <select 
+                        className="w-full bg-red-50 dark:bg-red-900/20 p-2 rounded-lg text-xs font-bold outline-none border border-red-200 dark:border-red-900/50 text-red-600"
+                        value={row.absence_reason || ''}
+                        onChange={(e) => updateBooking(row.id, { absence_reason: e.target.value })}
+                      >
+                        <option value="">Select Absence Reason...</option>
+                        {ABSENCE_REASONS.map(r => <option key={r} value={r}>{r}</option>)}
+                      </select>
+                    </div>
+                  )}
+                </div>
+              ))}
+              <button onClick={onClose} className="w-full mt-6 py-4 bg-slate-200 dark:bg-slate-700 text-black dark:text-white font-black text-[10px] uppercase rounded-2xl">Close</button>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
