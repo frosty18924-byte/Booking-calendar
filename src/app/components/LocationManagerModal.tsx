@@ -43,10 +43,14 @@ export default function LocationManagerModal({ onClose }: { onClose: () => void 
   }
 
   async function fetchData() {
-    const { data: locData } = await supabase.from('locations').select('*').order('name');
+    const { data: locData, error: locError } = await supabase.from('locations').select('*').order('name');
+    if (locError) console.error('Error fetching locations:', locError);
+    console.log('Fetched locations:', locData);
     setLocations(locData || []);
     
-    const { data: venueData } = await supabase.from('venues').select('*').order('name');
+    const { data: venueData, error: venueError } = await supabase.from('venues').select('*').order('name');
+    if (venueError) console.error('Error fetching venues:', venueError);
+    console.log('Fetched venues:', venueData);
     setVenues(venueData || []);
   }
 
@@ -108,16 +112,21 @@ export default function LocationManagerModal({ onClose }: { onClose: () => void 
     e.preventDefault();
     if (!editingLocationId || !editingLocationName.trim()) return;
     setLoading(true);
+    console.log('Saving location:', { id: editingLocationId, name: editingLocationName, accessible: editingLocationAccessible });
     try {
       const { data, error } = await supabase.from('locations').update({
         name: editingLocationName,
         accessible_office_regions: editingLocationAccessible
       }).eq('id', editingLocationId).select();
-      if (error) throw error;
-      console.log('Location updated:', data);
+      if (error) {
+        console.error('Supabase error:', error);
+        throw error;
+      }
+      console.log('Location update response:', data);
       setEditingLocationId(null);
       setEditingLocationName('');
       setEditingLocationAccessible(['Hull']);
+      console.log('Fetching updated data...');
       await fetchData();
       alert('Location updated successfully!');
     } catch (error: any) {
@@ -149,16 +158,21 @@ export default function LocationManagerModal({ onClose }: { onClose: () => void 
     e.preventDefault();
     if (!editingVenueId || !editingVenueName.trim()) return;
     setLoading(true);
+    console.log('Saving venue:', { id: editingVenueId, name: editingVenueName, office: editingVenueOffice });
     try {
       const { data, error } = await supabase.from('venues').update({
         name: editingVenueName,
         office_region: editingVenueOffice
       }).eq('id', editingVenueId).select();
-      if (error) throw error;
-      console.log('Venue updated:', data);
+      if (error) {
+        console.error('Supabase error:', error);
+        throw error;
+      }
+      console.log('Venue update response:', data);
       setEditingVenueId(null);
       setEditingVenueName('');
       setEditingVenueOffice('Hull');
+      console.log('Fetching updated data...');
       await fetchData();
       alert('Venue updated successfully!');
     } catch (error: any) {
