@@ -34,6 +34,7 @@ export default function BookingChecklistModal({
 }) {
   const [checklist, setChecklist] = useState<any[]>([]);
   const [completions, setCompletions] = useState<any>({});
+  const [invoiceNumber, setInvoiceNumber] = useState('');
   const [loading, setLoading] = useState(false);
   const [isDark, setIsDark] = useState(true);
 
@@ -115,6 +116,15 @@ export default function BookingChecklistModal({
         completionMap[comp.checklist_item_id] = comp;
       });
       setCompletions(completionMap);
+
+      // Set invoice number if it exists
+      const invoiceItem = completionData?.find(comp => {
+        const item = existingItems?.find((i: any) => i.id === comp.checklist_item_id);
+        return item?.item_name === 'Invoice Number';
+      });
+      if (invoiceItem?.value) {
+        setInvoiceNumber(invoiceItem.value);
+      }
     } catch (error: any) {
       console.error('Error in fetchChecklist:', error);
     }
@@ -137,7 +147,8 @@ export default function BookingChecklistModal({
             checklist_item_id: itemId,
             completed_by: userId,
             completed_by_name: userName,
-            completed_at: new Date().toISOString()
+            completed_at: new Date().toISOString(),
+            value: itemName === 'Invoice Number' ? invoiceNumber : null
           }]);
 
         if (error) throw error;
@@ -157,6 +168,50 @@ export default function BookingChecklistModal({
       alert(error.message || 'Failed to update checklist');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleInvoiceNumberChange = async (e: React.FocusEvent<HTMLInputElement>) => {
+    const newValue = e.target.value.trim();
+    setInvoiceNumber(newValue);
+
+    if (!newValue) return;
+
+    try {
+      // Find the invoice number item
+      const invoiceItem = checklist.find(item => item.item_name === 'Invoice Number');
+      if (!invoiceItem) return;
+
+      const isCompleted = !!completions[invoiceItem.id];
+
+      if (isCompleted) {
+        // Update existing completion with new invoice number
+        const { error } = await supabase
+          .from('checklist_completions')
+          .update({ value: newValue })
+          .eq('booking_id', bookingId)
+          .eq('checklist_item_id', invoiceItem.id);
+
+        if (error) throw error;
+      } else {
+        // Create completion with invoice number
+        const { error } = await supabase
+          .from('checklist_completions')
+          .insert([{
+            booking_id: bookingId,
+            checklist_item_id: invoiceItem.id,
+            completed_by: userId,
+            completed_by_name: userName,
+            completed_at: new Date().toISOString(),
+            value: newValue
+          }]);
+
+        if (error) throw error;
+      }
+
+      await fetchChecklist();
+    } catch (error: any) {
+      alert(error.message || 'Failed to save invoice number');
     }
   };
 
@@ -188,6 +243,7 @@ export default function BookingChecklistModal({
           {checklist.map((item) => {
             const isCompleted = !!completions[item.id];
             const completion = completions[item.id];
+            const isInvoiceNumber = item.item_name === 'Invoice Number';
 
             return (
               <div
@@ -195,35 +251,50 @@ export default function BookingChecklistModal({
                 style={{ backgroundColor: isDark ? '#0f172a' : '#f1f5f9', borderColor: isDark ? '#334155' : '#e2e8f0' }}
                 className="p-4 border rounded-xl flex items-start gap-3 transition-all"
               >
-                <input
-                  type="checkbox"
-                  checked={isCompleted}
-                  onChange={(e) => handleToggleItem(item.id, item.item_name, e.target.checked)}
-                  disabled={loading || (userRole !== 'scheduler' && userRole !== 'admin')}
-                  className="w-5 h-5 rounded mt-0.5 cursor-pointer disabled:opacity-50"
-                />
+                {isInvoiceNumber ? (
+                  <input
+                    type="text"
+                    placeholder="Enter invoice number"
+                    value={invoiceNumber}
+                    onChange={(e) => setInvoiceNumber(e.target.value)}
+                    onBlur={handleInvoiceNumberChange}
+                    disabled={loading || (userRole !== 'scheduler' && userRole !== 'admin')}
+                    style={{ backgroundColor: isDark ? '#1e293b' : '#ffffff', color: isDark ? '#f1f5f9' : '#1e293b', borderColor: isDark ? '#334155' : '#e2e8f0' }}
+                    className="flex-1 p-2 border rounded-lg outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50"
+                  />
+                ) : (
+                  <>
+                    <input
+                      type="checkbox"
+                      checked={isCompleted}
+                      onChange={(e) => handleToggleItem(item.id, item.item_name, e.target.checked)}
+                      disabled={loading || (userRole !== 'scheduler' && userRole !== 'admin')}
+                      className="w-5 h-5 rounded mt-0.5 cursor-pointer disabled:opacity-50"
+                    />
 
-                <div className="flex-1">
-                  <p 
-                    style={{ 
-                      color: isDark ? '#f1f5f9' : '#1e293b',
-                      textDecoration: isCompleted ? 'line-through' : 'none'
-                    }} 
-                    className="font-bold"
-                  >
-                    {item.item_name}
-                  </p>
+                    <div className="flex-1">
+                      <p 
+                        style={{ 
+                          color: isDark ? '#f1f5f9' : '#1e293b',
+                          textDecoration: isCompleted ? 'line-through' : 'none'
+                        }} 
+                        className="font-bold"
+                      >
+                        {item.item_name}
+                      </p>
 
-                  {completion && (
-                    <div style={{ color: isDark ? '#94a3b8' : '#64748b' }} className="text-[9px] mt-2 space-y-1">
-                      <p><span className="font-bold">Completed by:</span> {completion.completed_by_name}</p>
-                      <p><span className="font-bold">Time:</span> {new Date(completion.completed_at).toLocaleString()}</p>
+                      {completion && (
+                        <div style={{ color: isDark ? '#94a3b8' : '#64748b' }} className="text-[9px] mt-2 space-y-1">
+                          <p><span className="font-bold">Completed by:</span> {completion.completed_by_name}</p>
+                          <p><span className="font-bold">Time:</span> {new Date(completion.completed_at).toLocaleString()}</p>
+                        </div>
+                      )}
                     </div>
-                  )}
-                </div>
 
-                {isCompleted && (
-                  <div className="text-green-500 text-xl mt-0.5">✓</div>
+                    {isCompleted && (
+                      <div className="text-green-500 text-xl mt-0.5">✓</div>
+                    )}
+                  </>
                 )}
               </div>
             );
