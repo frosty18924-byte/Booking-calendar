@@ -43,14 +43,10 @@ export default function LocationManagerModal({ onClose }: { onClose: () => void 
   }
 
   async function fetchData() {
-    const { data: locData, error: locError } = await supabase.from('locations').select('*').order('name');
-    if (locError) console.error('Error fetching locations:', locError);
-    console.log('Fetched locations:', locData);
+    const { data: locData } = await supabase.from('locations').select('*').order('name');
     setLocations(locData || []);
     
-    const { data: venueData, error: venueError } = await supabase.from('venues').select('*').order('name');
-    if (venueError) console.error('Error fetching venues:', venueError);
-    console.log('Fetched venues:', venueData);
+    const { data: venueData } = await supabase.from('venues').select('*').order('name');
     setVenues(venueData || []);
   }
 
@@ -112,29 +108,18 @@ export default function LocationManagerModal({ onClose }: { onClose: () => void 
     e.preventDefault();
     if (!editingLocationId || !editingLocationName.trim()) return;
     setLoading(true);
-    console.log('Saving location:', { id: editingLocationId, name: editingLocationName, accessible: editingLocationAccessible });
     try {
-      const updatePayload = {
+      const { error } = await supabase.from('locations').update({
         name: editingLocationName,
         accessible_office_regions: editingLocationAccessible
-      };
-      console.log('Update payload:', updatePayload);
-      console.log('Filter ID:', editingLocationId, 'Type:', typeof editingLocationId);
-      
-      const { error } = await supabase.from('locations').update(updatePayload).eq('id', editingLocationId);
-      if (error) {
-        console.error('Supabase error:', error);
-        throw error;
-      }
-      console.log('Update completed, fetching fresh data...');
+      }).eq('id', editingLocationId);
+      if (error) throw error;
       setEditingLocationId(null);
       setEditingLocationName('');
       setEditingLocationAccessible(['Hull']);
       await fetchData();
-      alert('Location updated successfully!');
     } catch (error: any) {
-      console.error('Error saving location:', error);
-      alert('Error: ' + (error.message || 'Failed to save location'));
+      alert(error.message || 'Failed to save location');
     } finally {
       setLoading(false);
     }
@@ -161,29 +146,18 @@ export default function LocationManagerModal({ onClose }: { onClose: () => void 
     e.preventDefault();
     if (!editingVenueId || !editingVenueName.trim()) return;
     setLoading(true);
-    console.log('Saving venue:', { id: editingVenueId, name: editingVenueName, office: editingVenueOffice });
     try {
-      const updatePayload = {
+      const { error } = await supabase.from('venues').update({
         name: editingVenueName,
         office_region: editingVenueOffice
-      };
-      console.log('Update payload:', updatePayload);
-      console.log('Filter ID:', editingVenueId, 'Type:', typeof editingVenueId);
-      
-      const { error } = await supabase.from('venues').update(updatePayload).eq('id', editingVenueId);
-      if (error) {
-        console.error('Supabase error:', error);
-        throw error;
-      }
-      console.log('Update completed, fetching fresh data...');
+      }).eq('id', editingVenueId);
+      if (error) throw error;
       setEditingVenueId(null);
       setEditingVenueName('');
       setEditingVenueOffice('Hull');
       await fetchData();
-      alert('Venue updated successfully!');
     } catch (error: any) {
-      console.error('Error saving venue:', error);
-      alert('Error: ' + (error.message || 'Failed to save venue'));
+      alert(error.message || 'Failed to save venue');
     } finally {
       setLoading(false);
     }
