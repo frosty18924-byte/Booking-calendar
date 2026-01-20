@@ -83,6 +83,7 @@ export default function AddStaffModal({ onClose, onRefresh }: { onClose: () => v
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
+    console.log('handleSave called, editingId:', editingId, 'formData:', formData);
     
     if (!hasPermission(userRole, 'STAFF_MANAGEMENT', 'canEdit')) {
       alert('You do not have permission to manage staff');
@@ -108,8 +109,11 @@ export default function AddStaffModal({ onClose, onRefresh }: { onClose: () => v
           role_tier: formData.role_tier,
           managed_houses: formData.managed_houses
         };
-        const { error } = await supabase.from('profiles').update(updateData).eq('id', editingId);
+        console.log('Updating staff with ID:', editingId, 'data:', updateData);
+        const { error, data } = await supabase.from('profiles').update(updateData).eq('id', editingId).select();
+        console.log('Update result:', { error, data });
         if (error) throw error;
+        alert('✅ Staff member updated successfully');
         setEditingId(null);
       } else {
         // Map home_house to location for database insert
@@ -128,7 +132,8 @@ export default function AddStaffModal({ onClose, onRefresh }: { onClose: () => v
       fetchInitialData();
       onRefresh();
     } catch (error: any) {
-      alert(error.message);
+      console.error('Error in handleSave:', error);
+      alert('❌ Error: ' + error.message);
     } finally {
       setLoading(false);
     }
