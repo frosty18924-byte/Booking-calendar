@@ -7,7 +7,9 @@ export default function LocationManagerModal({ onClose }: { onClose: () => void 
   const [locations, setLocations] = useState<any[]>([]);
   const [venues, setVenues] = useState<any[]>([]);
   const [newLocationName, setNewLocationName] = useState('');
+  const [newLocationOffice, setNewLocationOffice] = useState('Hull');
   const [newVenueName, setNewVenueName] = useState('');
+  const [newVenueOffice, setNewVenueOffice] = useState('Hull');
   const [loading, setLoading] = useState(false);
   const [isDark, setIsDark] = useState(true);
   const [activeTab, setActiveTab] = useState<'locations' | 'venues'>('locations');
@@ -47,9 +49,10 @@ export default function LocationManagerModal({ onClose }: { onClose: () => void 
     if (!newLocationName.trim()) return;
     setLoading(true);
     try {
-      const { error } = await supabase.from('locations').insert([{ name: newLocationName }]);
+      const { error } = await supabase.from('locations').insert([{ name: newLocationName, office_region: newLocationOffice }]);
       if (error) throw error;
       setNewLocationName('');
+      setNewLocationOffice('Hull');
       fetchData();
     } catch (error: any) {
       alert(error.message);
@@ -63,9 +66,10 @@ export default function LocationManagerModal({ onClose }: { onClose: () => void 
     if (!newVenueName.trim()) return;
     setLoading(true);
     try {
-      const { error } = await supabase.from('venues').insert([{ name: newVenueName }]);
+      const { error } = await supabase.from('venues').insert([{ name: newVenueName, office_region: newVenueOffice }]);
       if (error) throw error;
       setNewVenueName('');
+      setNewVenueOffice('Hull');
       fetchData();
     } catch (error: any) {
       alert(error.message);
@@ -142,6 +146,15 @@ export default function LocationManagerModal({ onClose }: { onClose: () => void 
                 value={newLocationName} 
                 onChange={(e) => setNewLocationName(e.target.value)}
               />
+              <select
+                value={newLocationOffice}
+                onChange={(e) => setNewLocationOffice(e.target.value)}
+                style={{ backgroundColor: isDark ? '#0f172a' : '#f1f5f9', color: isDark ? '#f1f5f9' : '#1e293b', borderColor: isDark ? '#334155' : '#cbd5e1' }}
+                className="p-3 border rounded-xl outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                <option value="Hull">Hull Office</option>
+                <option value="Norwich">Norwich Office</option>
+              </select>
               <button 
                 disabled={loading} 
                 style={{ backgroundColor: '#2563eb' }}
@@ -162,7 +175,7 @@ export default function LocationManagerModal({ onClose }: { onClose: () => void 
                   <div key={loc.id} style={{ backgroundColor: isDark ? '#0f172a' : '#f1f5f9', borderColor: isDark ? '#334155' : '#e2e8f0' }} className="p-4 border rounded-xl flex justify-between items-center group transition-all">
                     <div>
                       <p style={{ color: isDark ? '#f1f5f9' : '#1e293b' }} className="font-bold">{loc.name}</p>
-                      <p style={{ color: isDark ? '#94a3b8' : '#64748b' }} className="text-[9px] uppercase font-black">Staff Location</p>
+                      <p style={{ color: isDark ? '#94a3b8' : '#64748b' }} className="text-[9px] uppercase font-black">📍 {loc.office_region || 'Hull'} Office</p>
                     </div>
                     <button 
                       onClick={() => handleDeleteLocation(loc.id)}
@@ -191,6 +204,15 @@ export default function LocationManagerModal({ onClose }: { onClose: () => void 
                 value={newVenueName} 
                 onChange={(e) => setNewVenueName(e.target.value)}
               />
+              <select
+                value={newVenueOffice}
+                onChange={(e) => setNewVenueOffice(e.target.value)}
+                style={{ backgroundColor: isDark ? '#0f172a' : '#f1f5f9', color: isDark ? '#f1f5f9' : '#1e293b', borderColor: isDark ? '#334155' : '#cbd5e1' }}
+                className="p-3 border rounded-xl outline-none focus:ring-2 focus:ring-purple-500"
+              >
+                <option value="Hull">Hull Office</option>
+                <option value="Norwich">Norwich Office</option>
+              </select>
               <button 
                 disabled={loading} 
                 style={{ backgroundColor: '#a855f7' }}
@@ -211,7 +233,7 @@ export default function LocationManagerModal({ onClose }: { onClose: () => void 
                   <div key={venue.id} style={{ backgroundColor: isDark ? '#0f172a' : '#f1f5f9', borderColor: isDark ? '#334155' : '#e2e8f0' }} className="p-4 border rounded-xl flex justify-between items-center group transition-all">
                     <div>
                       <p style={{ color: isDark ? '#f1f5f9' : '#1e293b' }} className="font-bold">{venue.name}</p>
-                      <p style={{ color: isDark ? '#94a3b8' : '#64748b' }} className="text-[9px] uppercase font-black">Training Venue</p>
+                      <p style={{ color: isDark ? '#94a3b8' : '#64748b' }} className="text-[9px] uppercase font-black">🏢 {venue.office_region || 'Hull'} Office</p>
                     </div>
                     <button 
                       onClick={() => handleDeleteVenue(venue.id)}

@@ -17,6 +17,7 @@ export default function CalendarPage() {
   const [filterCourse, setFilterCourse] = useState<string>('all');
   const [user, setUser] = useState<any>(null);
   const [userRole, setUserRole] = useState<string | null>(null);
+  const [userOffice, setUserOffice] = useState<string | null>(null);
 
   // Helper for colors
   const courseColors: { [key: string]: { bg: string; text: string } } = {
@@ -81,8 +82,18 @@ export default function CalendarPage() {
     const { data: { user: currentUser } } = await supabase.auth.getUser();
     setUser(currentUser);
     if (currentUser) {
-      const { data: profile } = await supabase.from('profiles').select('role_tier').eq('id', currentUser.id).single();
-      if (profile) setUserRole(profile.role_tier);
+      const { data: profile } = await supabase.from('profiles').select('role_tier, home_house').eq('id', currentUser.id).single();
+      if (profile) {
+        setUserRole(profile.role_tier);
+        // Get the office region for this location
+        if (profile.home_house && profile.role_tier === 'manager') {
+          const { data: location } = await supabase.from('locations').select('office_region').eq('name', profile.home_house).single();
+          setUserOffice(location?.office_region || 'Hull');
+        } else {
+          // Admins and schedulers can see all offices
+          setUserOffice(null);
+        }
+      }
     }
   }
 
@@ -90,7 +101,14 @@ export default function CalendarPage() {
     setLoading(true);
     const startDate = format(startOfMonth(currentMonth), 'yyyy-MM-dd');
     const endDate = format(endOfMonth(currentMonth), 'yyyy-MM-dd');
-    const { data } = await supabase.from('training_events').select('*, courses(*), bookings(*)').gte('event_date', startDate).lte('event_date', endDate);
+    let query = supabase.from('training_events').select('*, courses(*), venues(*), bookings(*)').gte('event_date', startDate).lte('event_date', endDate);
+    
+    // Filter by office if user is a manager
+    if (userRole === 'manager' && userOffice) {
+      query = query.eq('venues.office_region', userOffice);
+    }
+    
+    const { data } = await query;
     setEvents(data || []);
     setLoading(false);
   }
