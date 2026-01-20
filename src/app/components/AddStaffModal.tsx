@@ -15,6 +15,7 @@ export default function AddStaffModal({ onClose, onRefresh }: { onClose: () => v
   const [showBulkUpload, setShowBulkUpload] = useState(false);
   const [bulkLoading, setBulkLoading] = useState(false);
   const [bulkMessage, setBulkMessage] = useState('');
+  const [expandedLocations, setExpandedLocations] = useState<Set<string>>(new Set());
   
   const [formData, setFormData] = useState({ 
     full_name: '', 
@@ -270,6 +271,35 @@ export default function AddStaffModal({ onClose, onRefresh }: { onClose: () => v
     }));
   };
 
+  const toggleLocationExpanded = (locationName: string) => {
+    const newExpanded = new Set(expandedLocations);
+    if (newExpanded.has(locationName)) {
+      newExpanded.delete(locationName);
+    } else {
+      newExpanded.add(locationName);
+    }
+    setExpandedLocations(newExpanded);
+  };
+
+  const getStaffByLocation = () => {
+    const grouped: { [key: string]: any[] } = {};
+    
+    allStaff.forEach(staff => {
+      const location = staff.home_house || 'Unassigned';
+      if (!grouped[location]) {
+        grouped[location] = [];
+      }
+      grouped[location].push(staff);
+    });
+
+    // Remove Unassigned if empty
+    if (grouped['Unassigned'] && grouped['Unassigned'].length === 0) {
+      delete grouped['Unassigned'];
+    }
+
+    return grouped;
+  };
+
   const getRoleColor = (role: string) => {
     switch(role) {
       case 'admin': return { bg: '#dc2626', text: '#ffffff' };
@@ -500,49 +530,75 @@ export default function AddStaffModal({ onClose, onRefresh }: { onClose: () => v
 
           {/* STAFF LIST SECTION */}
           <div style={{ borderColor: isDark ? '#334155' : '#e2e8f0' }} className="border-l pl-6 flex flex-col h-full overflow-hidden">
-            <p style={{ color: isDark ? '#94a3b8' : '#64748b' }} className="text-[10px] font-black uppercase mb-4 tracking-widest">Staff Directory</p>
+            <p style={{ color: isDark ? '#94a3b8' : '#64748b' }} className="text-[10px] font-black uppercase mb-4 tracking-widest">Staff Directory by Location</p>
             <div className="space-y-2 overflow-y-auto pr-2 custom-scrollbar">
-              {allStaff.map(staff => {
-                const roleColor = getRoleColor(staff.role_tier);
-                return (
-                  <div key={staff.id} style={{ backgroundColor: isDark ? '#0f172a' : '#f1f5f9', borderColor: isDark ? '#334155' : '#e2e8f0' }} className="p-3 border rounded-xl group transition-all">
-                    <div className="flex justify-between items-start mb-2">
-                      <div className="overflow-hidden flex-1">
-                        <p style={{ color: isDark ? '#f1f5f9' : '#1e293b' }} className="text-sm font-bold truncate">{staff.full_name}</p>
-                        <p style={{ color: '#60a5fa' }} className="text-[9px] font-bold uppercase">{staff.email}</p>
-                      </div>
-                      <div style={{ backgroundColor: roleColor.bg, color: roleColor.text }} className="px-2 py-1 rounded text-[9px] font-black uppercase whitespace-nowrap ml-2">
-                        {staff.role_tier}
-                      </div>
+              {Object.entries(getStaffByLocation()).map(([locationName, staffList]) => (
+                <div key={locationName}>
+                  <button
+                    onClick={() => toggleLocationExpanded(locationName)}
+                    style={{
+                      backgroundColor: isDark ? '#0f172a' : '#f1f5f9',
+                      borderColor: isDark ? '#334155' : '#e2e8f0',
+                      color: isDark ? '#f1f5f9' : '#1e293b'
+                    }}
+                    className="w-full p-3 border rounded-lg font-bold text-sm flex items-center justify-between hover:opacity-80 transition-all"
+                  >
+                    <div className="flex items-center gap-2">
+                      <span>{expandedLocations.has(locationName) ? '▼' : '▶'}</span>
+                      <span>{locationName}</span>
+                      <span style={{ backgroundColor: '#60a5fa' }} className="text-white text-[10px] font-bold px-2 py-0.5 rounded">
+                        {staffList.length}
+                      </span>
                     </div>
-                    
-                    <div className="mb-2">
-                      {staff.role_tier === 'staff' ? (
-                        <p style={{ color: isDark ? '#94a3b8' : '#64748b' }} className="text-[9px] font-bold">📍 {staff.home_house || 'No location'}</p>
-                      ) : staff.role_tier === 'admin' ? (
-                        <p style={{ color: '#10b981' }} className="text-[9px] font-bold">✓ All Locations</p>
-                      ) : (
-                        <p style={{ color: isDark ? '#94a3b8' : '#64748b' }} className="text-[9px] font-bold">📍 {staff.managed_houses?.join(', ') || 'No locations'}</p>
-                      )}
-                    </div>
+                  </button>
 
-                    <div className="flex gap-2">
-                      <button 
-                        onClick={() => handleEdit(staff)} 
-                        className="flex-1 p-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-[9px] font-bold transition-all"
-                      >
-                        ✏️ Edit
-                      </button>
-                      <button 
-                        onClick={() => handleDeleteStaff(staff.id)} 
-                        className="flex-1 p-2 bg-red-600 hover:bg-red-700 text-white rounded-lg text-[9px] font-bold transition-all"
-                      >
-                        🗑️ Delete
-                      </button>
+                  {expandedLocations.has(locationName) && (
+                    <div className="mt-2 ml-3 space-y-2 border-l-2 border-blue-500 pl-3">
+                      {staffList.map(staff => {
+                        const roleColor = getRoleColor(staff.role_tier);
+                        return (
+                          <div key={staff.id} style={{ backgroundColor: isDark ? '#0f172a' : '#f1f5f9', borderColor: isDark ? '#334155' : '#e2e8f0' }} className="p-3 border rounded-xl group transition-all">
+                            <div className="flex justify-between items-start mb-2">
+                              <div className="overflow-hidden flex-1">
+                                <p style={{ color: isDark ? '#f1f5f9' : '#1e293b' }} className="text-sm font-bold truncate">{staff.full_name}</p>
+                                <p style={{ color: '#60a5fa' }} className="text-[9px] font-bold uppercase">{staff.email}</p>
+                              </div>
+                              <div style={{ backgroundColor: roleColor.bg, color: roleColor.text }} className="px-2 py-1 rounded text-[9px] font-black uppercase whitespace-nowrap ml-2">
+                                {staff.role_tier}
+                              </div>
+                            </div>
+                            
+                            <div className="mb-2">
+                              {staff.role_tier === 'staff' ? (
+                                <p style={{ color: isDark ? '#94a3b8' : '#64748b' }} className="text-[9px] font-bold">📍 {staff.home_house || 'No location'}</p>
+                              ) : staff.role_tier === 'admin' ? (
+                                <p style={{ color: '#10b981' }} className="text-[9px] font-bold">✓ All Locations</p>
+                              ) : (
+                                <p style={{ color: isDark ? '#94a3b8' : '#64748b' }} className="text-[9px] font-bold">📍 {staff.managed_houses?.join(', ') || 'No locations'}</p>
+                              )}
+                            </div>
+
+                            <div className="flex gap-2">
+                              <button 
+                                onClick={() => handleEdit(staff)} 
+                                className="flex-1 p-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-[9px] font-bold transition-all"
+                              >
+                                ✏️ Edit
+                              </button>
+                              <button 
+                                onClick={() => handleDeleteStaff(staff.id)} 
+                                className="flex-1 p-2 bg-red-600 hover:bg-red-700 text-white rounded-lg text-[9px] font-bold transition-all"
+                              >
+                                🗑️ Delete
+                              </button>
+                            </div>
+                          </div>
+                        );
+                      })}
                     </div>
-                  </div>
-                );
-              })}
+                  )}
+                </div>
+              ))}
             </div>
           </div>
         </div>

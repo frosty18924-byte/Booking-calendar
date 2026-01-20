@@ -14,6 +14,7 @@ export default function AnalyticsDashboard() {
   const [groupBy, setGroupBy] = useState<'location' | 'course' | 'person'>('location');
   const [isDark, setIsDark] = useState(true);
   const [user, setUser] = useState<any>(null);
+  const [selectedReason, setSelectedReason] = useState<{ type: 'lateness' | 'absence'; reason: string } | null>(null);
 
   useEffect(() => {
     checkAuth();
@@ -259,6 +260,28 @@ export default function AnalyticsDashboard() {
     .map(([reason, count]) => ({ reason, count: count as number }))
     .sort((a, b) => b.count - a.count);
 
+  // Get detailed data for selected reason
+  const getDetailedData = (type: 'lateness' | 'absence', reason: string) => {
+    if (type === 'lateness') {
+      return data
+        .filter((item: any) => item?.minutes_late && item.minutes_late > 0 && (item?.late_reason || 'Not specified') === reason)
+        .map((item: any) => ({
+          name: item?.profiles?.full_name || 'Unknown',
+          minutes_late: item?.minutes_late,
+          event_date: item?.training_events?.event_date,
+          course: item?.training_events?.courses?.name || 'Unknown'
+        }));
+    } else {
+      return data
+        .filter((item: any) => !item?.attended_at && (item?.absence_reason || 'Not specified') === reason)
+        .map((item: any) => ({
+          name: item?.profiles?.full_name || 'Unknown',
+          event_date: item?.training_events?.event_date,
+          course: item?.training_events?.courses?.name || 'Unknown'
+        }));
+    }
+  };
+
   if (loading) {
     return (
       <main style={{ backgroundColor: isDark ? '#0f172a' : '#f1f5f9', minHeight: '100vh' }} className="p-8 transition-colors duration-300 flex items-center justify-center">
@@ -389,12 +412,17 @@ export default function AnalyticsDashboard() {
                   const maxLate = Math.max(...latenessReasonsList.map((r: any) => r.count), 1);
                   const percentage = (item.count / maxLate) * 100;
                   return (
-                    <div key={idx}>
+                    <div 
+                      key={idx}
+                      onClick={() => setSelectedReason({ type: 'lateness', reason: item.reason })}
+                      className="cursor-pointer hover:opacity-80 transition-opacity p-2 rounded-lg"
+                      style={{ backgroundColor: isDark ? '#0f172a' : '#f1f5f9' }}
+                    >
                       <div className="flex justify-between items-center mb-1">
                         <p style={{ color: isDark ? '#cbd5e1' : '#1e293b' }} className="text-sm font-bold truncate flex-1">{item.reason}</p>
                         <p style={{ color: '#f59e0b' }} className="text-sm font-black ml-2 whitespace-nowrap">{item.count}</p>
                       </div>
-                      <div style={{ backgroundColor: isDark ? '#0f172a' : '#f1f5f9' }} className="w-full h-6 rounded-lg overflow-hidden">
+                      <div style={{ backgroundColor: isDark ? '#1e293b' : '#ffffff' }} className="w-full h-6 rounded-lg overflow-hidden border border-gray-500 border-opacity-20">
                         <div 
                           style={{ width: `${percentage}%`, backgroundColor: '#f59e0b' }}
                           className="h-full transition-all duration-300"
@@ -418,12 +446,17 @@ export default function AnalyticsDashboard() {
                   const maxAbsences = Math.max(...absenceReasonsList.map((r: any) => r.count), 1);
                   const percentage = (item.count / maxAbsences) * 100;
                   return (
-                    <div key={idx}>
+                    <div 
+                      key={idx}
+                      onClick={() => setSelectedReason({ type: 'absence', reason: item.reason })}
+                      className="cursor-pointer hover:opacity-80 transition-opacity p-2 rounded-lg"
+                      style={{ backgroundColor: isDark ? '#0f172a' : '#f1f5f9' }}
+                    >
                       <div className="flex justify-between items-center mb-1">
                         <p style={{ color: isDark ? '#cbd5e1' : '#1e293b' }} className="text-sm font-bold truncate flex-1">{item.reason}</p>
                         <p style={{ color: '#ef4444' }} className="text-sm font-black ml-2 whitespace-nowrap">{item.count}</p>
                       </div>
-                      <div style={{ backgroundColor: isDark ? '#0f172a' : '#f1f5f9' }} className="w-full h-6 rounded-lg overflow-hidden">
+                      <div style={{ backgroundColor: isDark ? '#1e293b' : '#ffffff' }} className="w-full h-6 rounded-lg overflow-hidden border border-gray-500 border-opacity-20">
                         <div 
                           style={{ width: `${percentage}%`, backgroundColor: '#ef4444' }}
                           className="h-full transition-all duration-300"
@@ -472,7 +505,56 @@ export default function AnalyticsDashboard() {
             </tbody>
           </table>
         </div>
+
+        {/* DETAIL MODAL */}
+        {selectedReason && (
+          <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-md flex items-center justify-center p-4 z-50">
+            <div style={{ backgroundColor: isDark ? '#1e293b' : '#ffffff' }} className="rounded-3xl p-8 w-full max-w-2xl max-h-[80vh] overflow-y-auto shadow-2xl">
+              <div className="flex justify-between items-center mb-6">
+                <h2 style={{ color: isDark ? '#f1f5f9' : '#1e293b' }} className="text-2xl font-black uppercase">
+                  {selectedReason.type === 'lateness' ? 'Late Arrivals' : 'Absences'} - {selectedReason.reason}
+                </h2>
+                <button
+                  onClick={() => setSelectedReason(null)}
+                  style={{ color: isDark ? '#94a3b8' : '#64748b' }}
+                  className="text-3xl font-bold hover:opacity-60 transition-opacity"
+                >
+                  ✕
+                </button>
+              </div>
+
+              <div className="space-y-3">
+                {(() => {
+                  const detailedData = getDetailedData(selectedReason.type, selectedReason.reason);
+                  if (detailedData.length === 0) {
+                    return <p style={{ color: isDark ? '#94a3b8' : '#64748b' }} className="text-center py-8">No records found</p>;
+                  }
+                  return detailedData.map((record: any, idx: number) => (
+                    <div
+                      key={idx}
+                      style={{
+                        backgroundColor: isDark ? '#0f172a' : '#f1f5f9',
+                        borderColor: isDark ? '#334155' : '#e2e8f0'
+                      }}
+                      className="border rounded-lg p-4"
+                    >
+                      <div className="flex justify-between items-start mb-2">
+                        <p style={{ color: isDark ? '#f1f5f9' : '#1e293b' }} className="font-bold text-sm">{record.name}</p>
+                        {selectedReason.type === 'lateness' && (
+                          <p style={{ color: '#f59e0b' }} className="text-sm font-black">{record.minutes_late} mins late</p>
+                        )}
+                      </div>
+                      <p style={{ color: isDark ? '#94a3b8' : '#64748b' }} className="text-xs mb-1">📚 {record.course}</p>
+                      <p style={{ color: isDark ? '#94a3b8' : '#64748b' }} className="text-xs">📅 {record.event_date}</p>
+                    </div>
+                  ));
+                })()}
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </main>
   );
+
 }

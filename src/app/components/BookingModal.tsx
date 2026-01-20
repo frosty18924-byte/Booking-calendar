@@ -19,6 +19,8 @@ export default function BookingModal({ event, onClose, onRefresh }: BookingModal
   const [loading, setLoading] = useState(false);
   const [isDark, setIsDark] = useState(true);
   const [userRole, setUserRole] = useState<string | null>(null);
+  const [userLocation, setUserLocation] = useState<string | null>(null);
+  const [expandedLocations, setExpandedLocations] = useState<Set<string>>(new Set());
 
   const ABSENCE_REASONS = ["Appointment", "Needed in home", "Rostering", "Transport issues", "Not started yet", "Childcare", "Sickness", "Holiday"];
   const LATE_REASONS = ["Traffic", "Handover delayed", "Public Transport", "Personal", "Other"];
@@ -26,8 +28,13 @@ export default function BookingModal({ event, onClose, onRefresh }: BookingModal
   useEffect(() => {
     checkTheme();
     fetchUserRole();
-    fetchInitialData();
   }, [event.id]);
+
+  useEffect(() => {
+    if (userRole && userLocation !== undefined) {
+      fetchInitialData();
+    }
+  }, [userRole, userLocation, event.id]);
 
   useEffect(() => {
     const handleThemeChange = (event: any) => {
@@ -49,16 +56,28 @@ export default function BookingModal({ event, onClose, onRefresh }: BookingModal
   async function fetchUserRole() {
     const { data: { user } } = await supabase.auth.getUser();
     if (user) {
-      const { data: profile } = await supabase.from('profiles').select('role_tier').eq('id', user.id).single();
+      const { data: profile } = await supabase.from('profiles').select('role_tier, home_house').eq('id', user.id).single();
       setUserRole(profile?.role_tier || null);
+      setUserLocation(profile?.home_house || null);
     }
   }
 
   async function fetchInitialData() {
-    const { data: staffData } = await supabase.from('profiles').select('*').order('full_name');
+    let staffData: any[] = [];
+    
+    if (userRole === 'manager' && userLocation) {
+      // Managers only see staff from their location
+      const { data } = await supabase.from('profiles').select('*').eq('home_house', userLocation).order('full_name');
+      staffData = data || [];
+    } else if (userRole === 'admin' || userRole === 'scheduler') {
+      // Admins and schedulers see all staff
+      const { data } = await supabase.from('profiles').select('*').order('full_name');
+      staffData = data || [];
+    }
+    
     const { data: bookings } = await supabase.from('bookings').select('profile_id').eq('event_id', event.id);
     const bookedIds = bookings?.map(b => b.profile_id) || [];
-    setStaff(staffData?.filter(s => !bookedIds.includes(s.id)) || []);
+    setStaff(staffData.filter(s => !bookedIds.includes(s.id)) || []);
     await fetchRoster();
   }
 
@@ -80,6 +99,31 @@ export default function BookingModal({ event, onClose, onRefresh }: BookingModal
       setRoster([]);
     }
   }
+
+  const toggleLocationExpanded = (locationName: string) => {
+    const newExpanded = new Set(expandedLocations);
+    if (newExpanded.has(locationName)) {
+      newExpanded.delete(locationName);
+    } else {
+      newExpanded.add(locationName);
+    }
+    setExpandedLocations(newExpanded);
+  };
+
+  const getStaffByLocation = () => {
+    const grouped: { [key: string]: any[] } = {};
+    const filteredStaff = staff.filter(s => s.full_name?.toLowerCase().includes(searchQuery.toLowerCase()));
+    
+    filteredStaff.forEach(person => {
+      const location = person.home_house || 'Unassigned';
+      if (!grouped[location]) {
+        grouped[location] = [];
+      }
+      grouped[location].push(person);
+    });
+
+    return grouped;
+  };
 
   const updateBooking = async (id: string, updates: any) => {
     if (!hasPermission(userRole, 'ATTENDANCE', 'canMark')) {
@@ -149,14 +193,40 @@ export default function BookingModal({ event, onClose, onRefresh }: BookingModal
                 value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} 
               />
               <div className="space-y-2">
-                {staff.filter(s => s.full_name?.toLowerCase().includes(searchQuery.toLowerCase())).map(person => (
-                  <label key={person.id} className="flex items-center gap-3 p-3 rounded-xl cursor-pointer border dark:border-slate-700 hover:border-blue-500 transition-all">
-                    <input type="checkbox" checked={selectedIds.includes(person.id)} onChange={(e) => e.target.checked ? setSelectedIds([...selectedIds, person.id]) : setSelectedIds(selectedIds.filter(id => id !== person.id))} className="w-4 h-4 rounded" />
-                    <div className="flex-1">
-                      <span className="text-xs font-bold block text-black dark:text-white">{person.full_name}</span>
-                      <span className="text-[9px] uppercase font-black opacity-50">📍 {person.home_house}</span>
-                    </div>
-                  </label>
+                {Object.entries(getStaffByLocation()).map(([locationName, staffList]) => (
+                  <div key={locationName}>
+                    <button
+                      onClick={() => toggleLocationExpanded(locationName)}
+                      style={{
+                        backgroundColor: isDark ? '#1e293b' : '#f1f5f9',
+                        borderColor: isDark ? '#334155' : '#e2e8f0',
+                        color: isDark ? '#f1f5f9' : '#1e293b'
+                      }}
+                      className="w-full p-3 border rounded-lg font-bold text-sm flex items-center justify-between hover:opacity-80 transition-all"
+                    >
+                      <div className="flex items-center gap-2">
+                        <span>{expandedLocations.has(locationName) ? '▼' : '▶'}</span>
+                        <span>{locationName}</span>
+                        <span style={{ backgroundColor: '#60a5fa' }} className="text-white text-[10px] font-bold px-2 py-0.5 rounded">
+                          {staffList.length}
+                        </span>
+                      </div>
+                    </button>
+
+                    {expandedLocations.has(locationName) && (
+                      <div className="mt-2 ml-3 space-y-2 border-l-2 border-blue-500 pl-3">
+                        {staffList.map(person => (
+                          <label key={person.id} className="flex items-center gap-3 p-3 rounded-xl cursor-pointer border dark:border-slate-700 hover:border-blue-500 transition-all">
+                            <input type="checkbox" checked={selectedIds.includes(person.id)} onChange={(e) => e.target.checked ? setSelectedIds([...selectedIds, person.id]) : setSelectedIds(selectedIds.filter(id => id !== person.id))} className="w-4 h-4 rounded" />
+                            <div className="flex-1">
+                              <span className="text-xs font-bold block text-black dark:text-white">{person.full_name}</span>
+                              <span className="text-[9px] uppercase font-black opacity-50">📍 {person.home_house}</span>
+                            </div>
+                          </label>
+                        ))}
+                      </div>
+                    )}
+                  </div>
                 ))}
               </div>
               <button onClick={handleBooking} disabled={selectedIds.length === 0} className="w-full mt-6 py-4 bg-blue-600 text-white font-black text-xs uppercase rounded-2xl disabled:opacity-50">
