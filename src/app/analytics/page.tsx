@@ -233,6 +233,32 @@ export default function AnalyticsDashboard() {
   const totalLate = data.filter((d: any) => d?.minutes_late && d.minutes_late > 0).length;
   const attendanceRate = totalBooked > 0 ? Math.round((totalAttended / totalBooked) * 100) : 0;
 
+  // Calculate lateness reasons breakdown
+  const latenessReasons = data.reduce((acc: any, item: any) => {
+    if (item?.minutes_late && item.minutes_late > 0) {
+      const reason = item?.late_reason || 'Not specified';
+      acc[reason] = (acc[reason] || 0) + 1;
+    }
+    return acc;
+  }, {});
+
+  const latenessReasonsList = Object.entries(latenessReasons)
+    .map(([reason, count]) => ({ reason, count: count as number }))
+    .sort((a, b) => b.count - a.count);
+
+  // Calculate absence reasons breakdown
+  const absenceReasons = data.reduce((acc: any, item: any) => {
+    if (!item?.attended_at) {
+      const reason = item?.absence_reason || 'Not specified';
+      acc[reason] = (acc[reason] || 0) + 1;
+    }
+    return acc;
+  }, {});
+
+  const absenceReasonsList = Object.entries(absenceReasons)
+    .map(([reason, count]) => ({ reason, count: count as number }))
+    .sort((a, b) => b.count - a.count);
+
   if (loading) {
     return (
       <main style={{ backgroundColor: isDark ? '#0f172a' : '#f1f5f9', minHeight: '100vh' }} className="p-8 transition-colors duration-300 flex items-center justify-center">
@@ -352,29 +378,27 @@ export default function AnalyticsDashboard() {
 
         {/* CHARTS SECTION */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-10">
-          {/* LATENESS CHART */}
+          {/* LATENESS REASONS CHART */}
           <div style={{ backgroundColor: isDark ? '#1e293b' : '#ffffff', borderColor: isDark ? '#334155' : '#e2e8f0' }} className="rounded-2xl border p-6 shadow-xl">
-            <h3 style={{ color: isDark ? '#f1f5f9' : '#1e293b' }} className="text-lg font-black uppercase mb-6">Late Arrivals Breakdown</h3>
+            <h3 style={{ color: isDark ? '#f1f5f9' : '#1e293b' }} className="text-lg font-black uppercase mb-6">Late Arrivals by Reason</h3>
             <div className="space-y-3">
-              {dashboardStats.length === 0 ? (
-                <p style={{ color: isDark ? '#94a3b8' : '#64748b' }} className="text-sm text-center py-8">No data available</p>
+              {latenessReasonsList.length === 0 ? (
+                <p style={{ color: isDark ? '#94a3b8' : '#64748b' }} className="text-sm text-center py-8">No late arrivals recorded</p>
               ) : (
-                dashboardStats.map((row: any) => {
-                  const maxLate = Math.max(...dashboardStats.map((r: any) => r.late), 1);
-                  const latePercentage = (row.late / maxLate) * 100;
+                latenessReasonsList.map((item: any, idx: number) => {
+                  const maxLate = Math.max(...latenessReasonsList.map((r: any) => r.count), 1);
+                  const percentage = (item.count / maxLate) * 100;
                   return (
-                    <div key={`late-${row.key}`}>
+                    <div key={idx}>
                       <div className="flex justify-between items-center mb-1">
-                        <p style={{ color: isDark ? '#cbd5e1' : '#1e293b' }} className="text-sm font-bold truncate">{row.key}</p>
-                        <p style={{ color: '#f59e0b' }} className="text-sm font-black">{row.late}</p>
+                        <p style={{ color: isDark ? '#cbd5e1' : '#1e293b' }} className="text-sm font-bold truncate flex-1">{item.reason}</p>
+                        <p style={{ color: '#f59e0b' }} className="text-sm font-black ml-2 whitespace-nowrap">{item.count}</p>
                       </div>
                       <div style={{ backgroundColor: isDark ? '#0f172a' : '#f1f5f9' }} className="w-full h-6 rounded-lg overflow-hidden">
                         <div 
-                          style={{ width: `${latePercentage}%`, backgroundColor: '#f59e0b' }}
-                          className="h-full transition-all duration-300 flex items-center justify-end pr-2"
-                        >
-                          {row.late > 0 && <span style={{ color: isDark ? '#1e293b' : '#ffffff' }} className="text-[10px] font-black">{row.late}</span>}
-                        </div>
+                          style={{ width: `${percentage}%`, backgroundColor: '#f59e0b' }}
+                          className="h-full transition-all duration-300"
+                        />
                       </div>
                     </div>
                   );
@@ -383,29 +407,27 @@ export default function AnalyticsDashboard() {
             </div>
           </div>
 
-          {/* ABSENCES CHART */}
+          {/* ABSENCE REASONS CHART */}
           <div style={{ backgroundColor: isDark ? '#1e293b' : '#ffffff', borderColor: isDark ? '#334155' : '#e2e8f0' }} className="rounded-2xl border p-6 shadow-xl">
-            <h3 style={{ color: isDark ? '#f1f5f9' : '#1e293b' }} className="text-lg font-black uppercase mb-6">Absences Breakdown</h3>
+            <h3 style={{ color: isDark ? '#f1f5f9' : '#1e293b' }} className="text-lg font-black uppercase mb-6">Absences by Reason</h3>
             <div className="space-y-3">
-              {dashboardStats.length === 0 ? (
-                <p style={{ color: isDark ? '#94a3b8' : '#64748b' }} className="text-sm text-center py-8">No data available</p>
+              {absenceReasonsList.length === 0 ? (
+                <p style={{ color: isDark ? '#94a3b8' : '#64748b' }} className="text-sm text-center py-8">No absences recorded</p>
               ) : (
-                dashboardStats.map((row: any) => {
-                  const maxAbsences = Math.max(...dashboardStats.map((r: any) => r.absences), 1);
-                  const absencesPercentage = (row.absences / maxAbsences) * 100;
+                absenceReasonsList.map((item: any, idx: number) => {
+                  const maxAbsences = Math.max(...absenceReasonsList.map((r: any) => r.count), 1);
+                  const percentage = (item.count / maxAbsences) * 100;
                   return (
-                    <div key={`absences-${row.key}`}>
+                    <div key={idx}>
                       <div className="flex justify-between items-center mb-1">
-                        <p style={{ color: isDark ? '#cbd5e1' : '#1e293b' }} className="text-sm font-bold truncate">{row.key}</p>
-                        <p style={{ color: '#ef4444' }} className="text-sm font-black">{row.absences}</p>
+                        <p style={{ color: isDark ? '#cbd5e1' : '#1e293b' }} className="text-sm font-bold truncate flex-1">{item.reason}</p>
+                        <p style={{ color: '#ef4444' }} className="text-sm font-black ml-2 whitespace-nowrap">{item.count}</p>
                       </div>
                       <div style={{ backgroundColor: isDark ? '#0f172a' : '#f1f5f9' }} className="w-full h-6 rounded-lg overflow-hidden">
                         <div 
-                          style={{ width: `${absencesPercentage}%`, backgroundColor: '#ef4444' }}
-                          className="h-full transition-all duration-300 flex items-center justify-end pr-2"
-                        >
-                          {row.absences > 0 && <span style={{ color: '#ffffff' }} className="text-[10px] font-black">{row.absences}</span>}
-                        </div>
+                          style={{ width: `${percentage}%`, backgroundColor: '#ef4444' }}
+                          className="h-full transition-all duration-300"
+                        />
                       </div>
                     </div>
                   );
