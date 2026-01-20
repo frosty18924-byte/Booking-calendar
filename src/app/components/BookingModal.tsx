@@ -8,9 +8,10 @@ interface BookingModalProps {
   event: any;
   onClose: () => void;
   onRefresh: () => void;
+  onOpenChecklist?: () => void;
 }
 
-export default function BookingModal({ event, onClose, onRefresh }: BookingModalProps) {
+export default function BookingModal({ event, onClose, onRefresh, onOpenChecklist }: BookingModalProps) {
   const [activeTab, setActiveTab] = useState<'booking' | 'roster'>('booking');
   const [staff, setStaff] = useState<any[]>([]);
   const [roster, setRoster] = useState<any[]>([]);
@@ -174,10 +175,19 @@ export default function BookingModal({ event, onClose, onRefresh }: BookingModal
       <div style={{ backgroundColor: isDark ? '#1e293b' : '#ffffff', borderColor: isDark ? '#334155' : '#cbd5e1' }} className="rounded-[40px] w-full max-w-2xl max-h-[90vh] shadow-2xl border overflow-hidden flex flex-col">
         
         {/* Header */}
-        <div style={{ backgroundColor: isDark ? '#0f172a' : '#f1f5f9' }} className="p-6 border-b text-center relative">
-          <h2 style={{ color: isDark ? '#f1f5f9' : '#1e293b' }} className="text-xl font-black uppercase">{event.courses?.name}</h2>
-          <p className="text-[10px] font-bold opacity-50 uppercase">{event.event_date}</p>
-          <button onClick={onClose} className="absolute right-8 top-6 text-2xl font-light">&times;</button>
+        <div style={{ backgroundColor: isDark ? '#0f172a' : '#f1f5f9' }} className="p-6 border-b text-center relative flex items-center justify-between">
+          <button 
+            onClick={onOpenChecklist}
+            style={{ backgroundColor: '#8b5cf6' }}
+            className="text-white px-4 py-2 rounded-lg font-bold text-sm hover:opacity-90 transition-all"
+          >
+            📋 Checklist
+          </button>
+          <div className="flex-1 text-center">
+            <h2 style={{ color: isDark ? '#f1f5f9' : '#1e293b' }} className="text-xl font-black uppercase">{event.courses?.name}</h2>
+            <p className="text-[10px] font-bold opacity-50 uppercase">{event.event_date}</p>
+          </div>
+          <button onClick={onClose} className="text-2xl font-light" style={{ color: isDark ? '#94a3b8' : '#64748b' }}>&times;</button>
         </div>
 
         {/* Tabs */}

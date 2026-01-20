@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react';
 import { format, startOfMonth, endOfMonth, startOfWeek, endOfWeek, eachDayOfInterval, isSameDay, isSameMonth, subMonths, addMonths } from 'date-fns';
 import ScheduleModal from '@/app/components/ScheduleModal';
 import BookingModal from '@/app/components/BookingModal';
+import BookingChecklistModal from '@/app/components/BookingChecklistModal';
 import ThemeToggle from '@/app/components/ThemeToggle';
 import { supabase } from '@/lib/supabase';
 import { hasPermission } from '@/lib/permissions';
@@ -12,6 +13,8 @@ export default function CalendarPage() {
   const [events, setEvents] = useState<any[]>([]);
   const [showSchedule, setShowSchedule] = useState(false);
   const [selectedEvent, setSelectedEvent] = useState<any>(null);
+  const [showChecklist, setShowChecklist] = useState(false);
+  const [checklistEventId, setChecklistEventId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [isDark, setIsDark] = useState(true);
   const [filterCourse, setFilterCourse] = useState<string>('all');
@@ -239,7 +242,19 @@ export default function CalendarPage() {
       </div>
 
       {showSchedule && <ScheduleModal onClose={() => setShowSchedule(false)} onRefresh={fetchEvents} />}
-      {selectedEvent && <BookingModal event={selectedEvent} onClose={() => setSelectedEvent(null)} onRefresh={fetchEvents} />}
+      {selectedEvent && <BookingModal event={selectedEvent} onClose={() => setSelectedEvent(null)} onRefresh={fetchEvents} onOpenChecklist={() => {
+        setChecklistEventId(selectedEvent.id);
+        setShowChecklist(true);
+      }} />}
+      {showChecklist && checklistEventId && (
+        <BookingChecklistModal 
+          bookingId={checklistEventId} 
+          onClose={() => setShowChecklist(false)}
+          userRole={userRole || ''}
+          userName={user?.user_metadata?.full_name || 'Unknown'}
+          userId={user?.id || ''}
+        />
+      )}
     </main>
   );
 }
