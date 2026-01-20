@@ -165,6 +165,13 @@ export default function AddStaffModal({ onClose, onRefresh }: { onClose: () => v
       let errorCount = 0;
       let errors: string[] = [];
 
+      // First, fetch all existing emails to check for duplicates
+      const { data: existingProfiles } = await supabase
+        .from('profiles')
+        .select('email');
+
+      const existingEmails = new Set(existingProfiles?.map((p: any) => p.email.toLowerCase()) || []);
+
       for (let i = 1; i < lines.length; i++) {
         const values = lines[i].split(',').map(v => v.trim());
         const row: any = {};
@@ -187,22 +194,18 @@ export default function AddStaffModal({ onClose, onRefresh }: { onClose: () => v
         }
 
         // Check if email already exists
-        const { data: existingEmail } = await supabase
-          .from('profiles')
-          .select('id')
-          .eq('email', row.email.toLowerCase())
-          .single();
-
-        if (existingEmail) {
+        if (existingEmails.has(row.email.toLowerCase())) {
           errorCount++;
           errors.push(`Row ${i + 1}: ${row.full_name} - Email ${row.email} already exists`);
           continue;
         }
 
+        console.log(`Row ${i + 1}: ${row.full_name}, email: ${row.email}, location: ${row.home_house}, role: ${row.role_tier}`);
+
         staffData.push({
           full_name: row.full_name,
           email: row.email.toLowerCase(),
-          location: row.home_house || null,
+          location: row.home_house,
           role_tier: row.role_tier || 'staff',
           managed_houses: []
         });
