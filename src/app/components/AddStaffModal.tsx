@@ -297,7 +297,13 @@ export default function AddStaffModal({ onClose, onRefresh }: { onClose: () => v
       delete grouped['Unassigned'];
     }
 
-    return grouped;
+    // Sort locations alphabetically
+    const sorted: { [key: string]: any[] } = {};
+    Object.keys(grouped).sort().forEach(key => {
+      sorted[key] = grouped[key];
+    });
+
+    return sorted;
   };
 
   const getRoleColor = (role: string) => {
