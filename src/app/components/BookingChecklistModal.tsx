@@ -61,14 +61,22 @@ export default function BookingChecklistModal({
 
   async function fetchChecklist() {
     try {
+      console.log('Fetching checklist for booking:', bookingId);
+      
       // Fetch or create checklist items
-      const { data: existingItems } = await supabase
+      const { data: existingItems, error: fetchError } = await supabase
         .from('booking_checklists')
         .select('*')
         .eq('booking_id', bookingId)
         .order('item_order');
 
+      if (fetchError) {
+        console.error('Error fetching existing items:', fetchError);
+      }
+      console.log('Existing items:', existingItems);
+
       if (!existingItems || existingItems.length === 0) {
+        console.log('Creating new checklist items...');
         // Create checklist items for this booking
         const itemsToInsert = CHECKLIST_ITEMS.map((item, index) => ({
           booking_id: bookingId,
@@ -76,21 +84,31 @@ export default function BookingChecklistModal({
           item_order: index + 1
         }));
 
-        const { data: newItems } = await supabase
+        const { data: newItems, error: insertError } = await supabase
           .from('booking_checklists')
           .insert(itemsToInsert)
           .select();
 
+        if (insertError) {
+          console.error('Error inserting items:', insertError);
+        }
+        console.log('New items created:', newItems);
         setChecklist(newItems || []);
       } else {
+        console.log('Using existing items:', existingItems);
         setChecklist(existingItems);
       }
 
       // Fetch completions
-      const { data: completionData } = await supabase
+      const { data: completionData, error: completionError } = await supabase
         .from('checklist_completions')
         .select('*')
         .eq('booking_id', bookingId);
+
+      if (completionError) {
+        console.error('Error fetching completions:', completionError);
+      }
+      console.log('Completions data:', completionData);
 
       const completionMap: any = {};
       completionData?.forEach(comp => {
@@ -98,7 +116,7 @@ export default function BookingChecklistModal({
       });
       setCompletions(completionMap);
     } catch (error: any) {
-      console.error('Error fetching checklist:', error);
+      console.error('Error in fetchChecklist:', error);
     }
   }
 
