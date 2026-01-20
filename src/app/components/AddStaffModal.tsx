@@ -202,11 +202,14 @@ export default function AddStaffModal({ onClose, onRefresh }: { onClose: () => v
         return;
       }
 
-      const { error } = await supabase.from('profiles').insert(staffData);
+      console.log('Bulk upload data:', staffData);
+      const { data, error } = await supabase.from('profiles').insert(staffData);
       
       if (error) {
+        console.error('Supabase error details:', error);
         setBulkMessage(`❌ Upload failed: ${error.message}${errors.length > 0 ? '\n\nSkipped: ' + errors.length + ' invalid rows' : ''}`);
       } else {
+        console.log('Upload success:', data);
         setBulkMessage(`✅ Successfully uploaded ${staffData.length} staff members${errorCount > 0 ? ` (${errorCount} rows skipped due to errors)` : ''}`);
         await fetchInitialData();
         onRefresh();
