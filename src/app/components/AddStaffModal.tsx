@@ -163,6 +163,7 @@ export default function AddStaffModal({ onClose, onRefresh }: { onClose: () => v
 
       const staffData = [];
       let errorCount = 0;
+      let errors: string[] = [];
 
       for (let i = 1; i < lines.length; i++) {
         const values = lines[i].split(',').map(v => v.trim());
@@ -175,16 +176,13 @@ export default function AddStaffModal({ onClose, onRefresh }: { onClose: () => v
         // Validation
         if (!row.full_name || !row.email) {
           errorCount++;
+          errors.push(`Row ${i + 1}: Missing full_name or email`);
           continue;
         }
 
-        if (row.role_tier === 'staff' && !row.home_house) {
+        if ((row.role_tier === 'staff' || row.role_tier === 'admin') && !row.home_house) {
           errorCount++;
-          continue;
-        }
-
-        if (row.role_tier === 'admin' && !row.home_house) {
-          errorCount++;
+          errors.push(`Row ${i + 1}: ${row.full_name} (${row.role_tier}) - Missing home_house location`);
           continue;
         }
 
@@ -198,7 +196,8 @@ export default function AddStaffModal({ onClose, onRefresh }: { onClose: () => v
       }
 
       if (staffData.length === 0) {
-        setBulkMessage('❌ No valid staff records to upload');
+        const errorMsg = errors.length > 0 ? errors.slice(0, 3).join('\n') : '';
+        setBulkMessage(`❌ No valid staff records to upload${errorMsg ? '\n\n' + errorMsg : ''}`);
         setBulkLoading(false);
         return;
       }
@@ -206,7 +205,7 @@ export default function AddStaffModal({ onClose, onRefresh }: { onClose: () => v
       const { error } = await supabase.from('profiles').insert(staffData);
       
       if (error) {
-        setBulkMessage(`❌ Upload failed: ${error.message}`);
+        setBulkMessage(`❌ Upload failed: ${error.message}${errors.length > 0 ? '\n\nSkipped: ' + errors.length + ' invalid rows' : ''}`);
       } else {
         setBulkMessage(`✅ Successfully uploaded ${staffData.length} staff members${errorCount > 0 ? ` (${errorCount} rows skipped due to errors)` : ''}`);
         await fetchInitialData();
@@ -226,7 +225,12 @@ export default function AddStaffModal({ onClose, onRefresh }: { onClose: () => v
   };
 
   const downloadTemplate = () => {
-    const template = 'full_name,email,home_house,role_tier\nJohn Smith,john@example.com,House 1,staff\nJane Doe,jane@example.com,House 2,staff';
+    const template = `full_name,email,home_house,role_tier
+John Smith,john@example.com,Felix House,staff
+Jane Doe,jane@example.com,Banks House,staff
+Bob Manager,bob@example.com,Armfield House,admin
+Alice Scheduler,alice@example.com,Felix House,scheduler
+Charlie Scheduler,charlie@example.com,Banks House,manager`;
     const blob = new Blob([template], { type: 'text/csv' });
     const url = window.URL.createObjectURL(blob);
     const a = document.createElement('a');
