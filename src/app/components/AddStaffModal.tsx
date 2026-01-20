@@ -154,6 +154,9 @@ export default function AddStaffModal({ onClose, onRefresh }: { onClose: () => v
       const headers = lines[0].toLowerCase().split(',').map(h => h.trim());
       const expectedHeaders = ['full_name', 'email', 'home_house', 'role_tier'];
       
+      console.log('CSV Headers:', headers);
+      console.log('Expected Headers:', expectedHeaders);
+      
       const missingHeaders = expectedHeaders.filter(h => !headers.includes(h));
       if (missingHeaders.length > 0) {
         setBulkMessage(`❌ Missing required columns: ${missingHeaders.join(', ')}`);
@@ -179,6 +182,9 @@ export default function AddStaffModal({ onClose, onRefresh }: { onClose: () => v
         headers.forEach((header, idx) => {
           row[header] = values[idx] || '';
         });
+
+        console.log(`Row ${i} raw values:`, values);
+        console.log(`Row ${i} parsed:`, row);
 
         // Validation
         if (!row.full_name || !row.email) {
