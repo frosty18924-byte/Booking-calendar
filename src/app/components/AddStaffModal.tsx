@@ -100,11 +100,27 @@ export default function AddStaffModal({ onClose, onRefresh }: { onClose: () => v
 
     try {
       if (editingId) {
-        const { error } = await supabase.from('profiles').update(formData).eq('id', editingId);
+        // Map home_house to location for database update
+        const updateData = {
+          full_name: formData.full_name,
+          email: formData.email,
+          location: formData.home_house,
+          role_tier: formData.role_tier,
+          managed_houses: formData.managed_houses
+        };
+        const { error } = await supabase.from('profiles').update(updateData).eq('id', editingId);
         if (error) throw error;
         setEditingId(null);
       } else {
-        const { error } = await supabase.from('profiles').insert([formData]);
+        // Map home_house to location for database insert
+        const insertData = {
+          full_name: formData.full_name,
+          email: formData.email,
+          location: formData.home_house,
+          role_tier: formData.role_tier,
+          managed_houses: formData.managed_houses
+        };
+        const { error } = await supabase.from('profiles').insert([insertData]);
         if (error) throw error;
       }
       
