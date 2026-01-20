@@ -189,7 +189,7 @@ export default function AddStaffModal({ onClose, onRefresh }: { onClose: () => v
         staffData.push({
           full_name: row.full_name,
           email: row.email,
-          home_house: row.home_house || null,
+          location: row.home_house || null,
           role_tier: row.role_tier || 'staff',
           managed_houses: []
         });
