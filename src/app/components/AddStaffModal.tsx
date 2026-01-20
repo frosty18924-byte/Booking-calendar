@@ -234,9 +234,13 @@ export default function AddStaffModal({ onClose, onRefresh }: { onClose: () => v
         console.log('Upload success:', data);
         // Check if locations were actually inserted
         if (data && data.length > 0) {
+          console.log('📍 Checking inserted records:');
+          data.forEach((record, idx) => {
+            console.log(`  Record ${idx + 1}: ${record.full_name} - location: ${record.location}`);
+          });
           const locationsPresent = data.some(record => record.location);
           if (!locationsPresent) {
-            console.warn('⚠️ WARNING: Location values are NULL in inserted records. This may be an RLS policy issue.');
+            console.warn('⚠️ WARNING: All location values are NULL in inserted records. This is likely an RLS policy issue.');
           }
         }
         setBulkMessage(`✅ Successfully uploaded ${staffData.length} staff members${errorCount > 0 ? ` (${errorCount} rows skipped)` : ''}`);
@@ -292,7 +296,7 @@ Charlie Scheduler,charlie@example.com,Banks House,manager`;
     setFormData({
       full_name: staff.full_name,
       email: staff.email,
-      home_house: staff.home_house || '',
+      home_house: staff.location || '',
       role_tier: staff.role_tier || 'staff',
       managed_houses: staff.managed_houses || []
     });
@@ -321,7 +325,7 @@ Charlie Scheduler,charlie@example.com,Banks House,manager`;
     const grouped: { [key: string]: any[] } = {};
     
     allStaff.forEach(staff => {
-      const location = staff.home_house || 'Unassigned';
+      const location = staff.location || 'Unassigned';
       if (!grouped[location]) {
         grouped[location] = [];
       }
@@ -612,7 +616,7 @@ Charlie Scheduler,charlie@example.com,Banks House,manager`;
                             
                             <div className="mb-2">
                               {staff.role_tier === 'staff' ? (
-                                <p style={{ color: isDark ? '#94a3b8' : '#64748b' }} className="text-[9px] font-bold">📍 {staff.home_house || 'No location'}</p>
+                                <p style={{ color: isDark ? '#94a3b8' : '#64748b' }} className="text-[9px] font-bold">📍 {staff.location || 'No location'}</p>
                               ) : staff.role_tier === 'admin' ? (
                                 <p style={{ color: '#10b981' }} className="text-[9px] font-bold">✓ All Locations</p>
                               ) : (
