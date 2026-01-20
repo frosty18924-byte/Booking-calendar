@@ -37,8 +37,8 @@ export async function middleware(request: NextRequest) {
 
   const isLoginPage = request.nextUrl.pathname === '/login'
 
-  // 1. If NOT logged in and NOT on login page -> FORCE to /login
-  if (!user && !isLoginPage) {
+  // 1. If NOT logged in and NOT on login page and NOT on auth callback -> FORCE to /login
+  if (!user && !isLoginPage && !request.nextUrl.pathname.startsWith('/auth')) {
     const url = request.nextUrl.clone()
     url.pathname = '/login'
     return NextResponse.redirect(url)
