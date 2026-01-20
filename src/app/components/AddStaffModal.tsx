@@ -91,20 +91,9 @@ export default function AddStaffModal({ onClose, onRefresh }: { onClose: () => v
 
     setLoading(true);
     
-    if (formData.role_tier === 'staff' && !formData.home_house) {
-      alert('Staff members must be assigned a home location');
-      setLoading(false);
-      return;
-    }
-
-    if (formData.role_tier === 'admin' && !formData.home_house) {
-      alert('Admin users must be assigned a home location');
-      setLoading(false);
-      return;
-    }
-    
-    if ((formData.role_tier === 'manager' || formData.role_tier === 'scheduler') && formData.managed_houses.length === 0) {
-      alert('Managers and Schedulers must manage at least one location');
+    // All roles must have an assigned location
+    if (!formData.home_house) {
+      alert('All users must be assigned a location');
       setLoading(false);
       return;
     }
@@ -193,9 +182,10 @@ export default function AddStaffModal({ onClose, onRefresh }: { onClose: () => v
           continue;
         }
 
-        if ((row.role_tier === 'staff' || row.role_tier === 'admin') && !row.home_house) {
+        // All roles require a location
+        if (!row.home_house) {
           errorCount++;
-          errors.push(`Row ${i + 1}: ${row.full_name} (${row.role_tier}) - Missing home_house location`);
+          errors.push(`Row ${i + 1}: ${row.full_name} - Missing home_house location`);
           continue;
         }
 
@@ -208,13 +198,20 @@ export default function AddStaffModal({ onClose, onRefresh }: { onClose: () => v
 
         console.log(`Row ${i + 1}: ${row.full_name}, email: ${row.email}, location: ${row.home_house}, role: ${row.role_tier}`);
 
-        staffData.push({
+        const staffRecord: any = {
           full_name: row.full_name,
           email: row.email.toLowerCase(),
           location: row.home_house,
           role_tier: row.role_tier || 'staff',
           managed_houses: []
-        });
+        };
+
+        // For schedulers and managers, set their primary location as a managed location by default
+        if (row.role_tier === 'scheduler' || row.role_tier === 'manager') {
+          staffRecord.managed_houses = [row.home_house];
+        }
+
+        staffData.push(staffRecord);
       }
 
       if (staffData.length === 0) {
@@ -526,7 +523,7 @@ Charlie Scheduler,charlie@example.com,Banks House,manager`;
                 </select>
               </div>
 
-              {(formData.role_tier === 'staff' || formData.role_tier === 'admin') && (
+              {(formData.role_tier === 'staff' || formData.role_tier === 'admin' || formData.role_tier === 'scheduler' || formData.role_tier === 'manager') && (
                 <div>
                   <label style={{ color: isDark ? '#94a3b8' : '#64748b' }} className="text-[10px] font-black uppercase mb-1 block">Assigned Location *</label>
                   <select 
@@ -615,12 +612,12 @@ Charlie Scheduler,charlie@example.com,Banks House,manager`;
                             </div>
                             
                             <div className="mb-2">
-                              {staff.role_tier === 'staff' ? (
-                                <p style={{ color: isDark ? '#94a3b8' : '#64748b' }} className="text-[9px] font-bold">📍 {staff.location || 'No location'}</p>
-                              ) : staff.role_tier === 'admin' ? (
-                                <p style={{ color: '#10b981' }} className="text-[9px] font-bold">✓ All Locations</p>
-                              ) : (
-                                <p style={{ color: isDark ? '#94a3b8' : '#64748b' }} className="text-[9px] font-bold">📍 {staff.managed_houses?.join(', ') || 'No locations'}</p>
+                              <p style={{ color: isDark ? '#94a3b8' : '#64748b' }} className="text-[9px] font-bold">📍 Primary: {staff.location || 'No location'}</p>
+                              {staff.role_tier === 'admin' && (
+                                <p style={{ color: '#10b981' }} className="text-[9px] font-bold">✓ Manages all locations</p>
+                              )}
+                              {(staff.role_tier === 'scheduler' || staff.role_tier === 'manager') && staff.managed_houses && staff.managed_houses.length > 0 && (
+                                <p style={{ color: isDark ? '#94a3b8' : '#64748b' }} className="text-[9px] font-bold">📋 Manages: {staff.managed_houses.join(', ')}</p>
                               )}
                             </div>
 
