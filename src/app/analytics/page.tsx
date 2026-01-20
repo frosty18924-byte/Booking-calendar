@@ -350,6 +350,71 @@ export default function AnalyticsDashboard() {
           </div>
         </div>
 
+        {/* CHARTS SECTION */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-10">
+          {/* LATENESS CHART */}
+          <div style={{ backgroundColor: isDark ? '#1e293b' : '#ffffff', borderColor: isDark ? '#334155' : '#e2e8f0' }} className="rounded-2xl border p-6 shadow-xl">
+            <h3 style={{ color: isDark ? '#f1f5f9' : '#1e293b' }} className="text-lg font-black uppercase mb-6">Late Arrivals Breakdown</h3>
+            <div className="space-y-3">
+              {dashboardStats.length === 0 ? (
+                <p style={{ color: isDark ? '#94a3b8' : '#64748b' }} className="text-sm text-center py-8">No data available</p>
+              ) : (
+                dashboardStats.map((row: any) => {
+                  const maxLate = Math.max(...dashboardStats.map((r: any) => r.late), 1);
+                  const latePercentage = (row.late / maxLate) * 100;
+                  return (
+                    <div key={`late-${row.key}`}>
+                      <div className="flex justify-between items-center mb-1">
+                        <p style={{ color: isDark ? '#cbd5e1' : '#1e293b' }} className="text-sm font-bold truncate">{row.key}</p>
+                        <p style={{ color: '#f59e0b' }} className="text-sm font-black">{row.late}</p>
+                      </div>
+                      <div style={{ backgroundColor: isDark ? '#0f172a' : '#f1f5f9' }} className="w-full h-6 rounded-lg overflow-hidden">
+                        <div 
+                          style={{ width: `${latePercentage}%`, backgroundColor: '#f59e0b' }}
+                          className="h-full transition-all duration-300 flex items-center justify-end pr-2"
+                        >
+                          {row.late > 0 && <span style={{ color: isDark ? '#1e293b' : '#ffffff' }} className="text-[10px] font-black">{row.late}</span>}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })
+              )}
+            </div>
+          </div>
+
+          {/* ABSENCES CHART */}
+          <div style={{ backgroundColor: isDark ? '#1e293b' : '#ffffff', borderColor: isDark ? '#334155' : '#e2e8f0' }} className="rounded-2xl border p-6 shadow-xl">
+            <h3 style={{ color: isDark ? '#f1f5f9' : '#1e293b' }} className="text-lg font-black uppercase mb-6">Absences Breakdown</h3>
+            <div className="space-y-3">
+              {dashboardStats.length === 0 ? (
+                <p style={{ color: isDark ? '#94a3b8' : '#64748b' }} className="text-sm text-center py-8">No data available</p>
+              ) : (
+                dashboardStats.map((row: any) => {
+                  const maxAbsences = Math.max(...dashboardStats.map((r: any) => r.absences), 1);
+                  const absencesPercentage = (row.absences / maxAbsences) * 100;
+                  return (
+                    <div key={`absences-${row.key}`}>
+                      <div className="flex justify-between items-center mb-1">
+                        <p style={{ color: isDark ? '#cbd5e1' : '#1e293b' }} className="text-sm font-bold truncate">{row.key}</p>
+                        <p style={{ color: '#ef4444' }} className="text-sm font-black">{row.absences}</p>
+                      </div>
+                      <div style={{ backgroundColor: isDark ? '#0f172a' : '#f1f5f9' }} className="w-full h-6 rounded-lg overflow-hidden">
+                        <div 
+                          style={{ width: `${absencesPercentage}%`, backgroundColor: '#ef4444' }}
+                          className="h-full transition-all duration-300 flex items-center justify-end pr-2"
+                        >
+                          {row.absences > 0 && <span style={{ color: '#ffffff' }} className="text-[10px] font-black">{row.absences}</span>}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })
+              )}
+            </div>
+          </div>
+        </div>
+
         {/* DATA TABLE */}
         <div style={{ backgroundColor: isDark ? '#1e293b' : '#ffffff', borderColor: isDark ? '#334155' : '#e2e8f0' }} className="rounded-2xl border overflow-hidden shadow-xl">
           <table className="w-full text-left">
