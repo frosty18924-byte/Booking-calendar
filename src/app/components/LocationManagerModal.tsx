@@ -114,19 +114,22 @@ export default function LocationManagerModal({ onClose }: { onClose: () => void 
     setLoading(true);
     console.log('Saving location:', { id: editingLocationId, name: editingLocationName, accessible: editingLocationAccessible });
     try {
-      const { data, error } = await supabase.from('locations').update({
+      const updatePayload = {
         name: editingLocationName,
         accessible_office_regions: editingLocationAccessible
-      }).eq('id', editingLocationId).select();
+      };
+      console.log('Update payload:', updatePayload);
+      console.log('Filter ID:', editingLocationId, 'Type:', typeof editingLocationId);
+      
+      const { error } = await supabase.from('locations').update(updatePayload).eq('id', editingLocationId);
       if (error) {
         console.error('Supabase error:', error);
         throw error;
       }
-      console.log('Location update response:', data);
+      console.log('Update completed, fetching fresh data...');
       setEditingLocationId(null);
       setEditingLocationName('');
       setEditingLocationAccessible(['Hull']);
-      console.log('Fetching updated data...');
       await fetchData();
       alert('Location updated successfully!');
     } catch (error: any) {
@@ -160,19 +163,22 @@ export default function LocationManagerModal({ onClose }: { onClose: () => void 
     setLoading(true);
     console.log('Saving venue:', { id: editingVenueId, name: editingVenueName, office: editingVenueOffice });
     try {
-      const { data, error } = await supabase.from('venues').update({
+      const updatePayload = {
         name: editingVenueName,
         office_region: editingVenueOffice
-      }).eq('id', editingVenueId).select();
+      };
+      console.log('Update payload:', updatePayload);
+      console.log('Filter ID:', editingVenueId, 'Type:', typeof editingVenueId);
+      
+      const { error } = await supabase.from('venues').update(updatePayload).eq('id', editingVenueId);
       if (error) {
         console.error('Supabase error:', error);
         throw error;
       }
-      console.log('Venue update response:', data);
+      console.log('Update completed, fetching fresh data...');
       setEditingVenueId(null);
       setEditingVenueName('');
       setEditingVenueOffice('Hull');
-      console.log('Fetching updated data...');
       await fetchData();
       alert('Venue updated successfully!');
     } catch (error: any) {
