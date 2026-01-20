@@ -103,8 +103,8 @@ export default function BookingChecklistModal({
   }
 
   const handleToggleItem = async (itemId: string, itemName: string, isCompleting: boolean) => {
-    if (userRole !== 'scheduler') {
-      alert('Only Schedulers can update the checklist');
+    if (userRole !== 'scheduler' && userRole !== 'admin') {
+      alert('Only Schedulers and Admins can update the checklist');
       return;
     }
 
@@ -181,7 +181,7 @@ export default function BookingChecklistModal({
                   type="checkbox"
                   checked={isCompleted}
                   onChange={(e) => handleToggleItem(item.id, item.item_name, e.target.checked)}
-                  disabled={loading || userRole !== 'scheduler'}
+                  disabled={loading || (userRole !== 'scheduler' && userRole !== 'admin')}
                   className="w-5 h-5 rounded mt-0.5 cursor-pointer disabled:opacity-50"
                 />
 
@@ -212,9 +212,9 @@ export default function BookingChecklistModal({
           })}
         </div>
 
-        {userRole !== 'scheduler' && (
+        {userRole !== 'scheduler' && userRole !== 'admin' && (
           <div style={{ backgroundColor: isDark ? '#0f172a' : '#f1f5f9', borderColor: isDark ? '#334155' : '#e2e8f0', color: isDark ? '#94a3b8' : '#64748b' }} className="mt-6 p-4 border rounded-xl text-center text-sm">
-            Only Schedulers can update this checklist
+            Only Schedulers and Admins can update this checklist
           </div>
         )}
       </div>
