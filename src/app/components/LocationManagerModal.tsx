@@ -109,16 +109,20 @@ export default function LocationManagerModal({ onClose }: { onClose: () => void 
     if (!editingLocationId || !editingLocationName.trim()) return;
     setLoading(true);
     try {
-      const { error } = await supabase.from('locations').update({
+      const { data, error } = await supabase.from('locations').update({
         name: editingLocationName,
         accessible_office_regions: editingLocationAccessible
-      }).eq('id', editingLocationId);
+      }).eq('id', editingLocationId).select();
       if (error) throw error;
+      console.log('Location updated:', data);
       setEditingLocationId(null);
       setEditingLocationName('');
-      fetchData();
+      setEditingLocationAccessible(['Hull']);
+      await fetchData();
+      alert('Location updated successfully!');
     } catch (error: any) {
-      alert(error.message);
+      console.error('Error saving location:', error);
+      alert('Error: ' + (error.message || 'Failed to save location'));
     } finally {
       setLoading(false);
     }
@@ -146,16 +150,20 @@ export default function LocationManagerModal({ onClose }: { onClose: () => void 
     if (!editingVenueId || !editingVenueName.trim()) return;
     setLoading(true);
     try {
-      const { error } = await supabase.from('venues').update({
+      const { data, error } = await supabase.from('venues').update({
         name: editingVenueName,
         office_region: editingVenueOffice
-      }).eq('id', editingVenueId);
+      }).eq('id', editingVenueId).select();
       if (error) throw error;
+      console.log('Venue updated:', data);
       setEditingVenueId(null);
       setEditingVenueName('');
-      fetchData();
+      setEditingVenueOffice('Hull');
+      await fetchData();
+      alert('Venue updated successfully!');
     } catch (error: any) {
-      alert(error.message);
+      console.error('Error saving venue:', error);
+      alert('Error: ' + (error.message || 'Failed to save venue'));
     } finally {
       setLoading(false);
     }
