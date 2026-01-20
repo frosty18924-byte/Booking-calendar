@@ -1,6 +1,4 @@
 # Docker Compose file for local development and testing
-version: '3.8'
-
 services:
   app:
     build:
