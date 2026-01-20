@@ -225,13 +225,20 @@ export default function AddStaffModal({ onClose, onRefresh }: { onClose: () => v
       }
 
       console.log('Bulk upload data:', staffData);
-      const { data, error } = await supabase.from('profiles').insert(staffData);
+      const { data, error } = await supabase.from('profiles').insert(staffData).select();
       
       if (error) {
         console.error('Supabase error details:', error);
         setBulkMessage(`❌ Upload failed: ${error.message}${errors.length > 0 ? '\n\nSkipped: ' + errors.length + ' rows (duplicates/invalid)' : ''}`);
       } else {
         console.log('Upload success:', data);
+        // Check if locations were actually inserted
+        if (data && data.length > 0) {
+          const locationsPresent = data.some(record => record.location);
+          if (!locationsPresent) {
+            console.warn('⚠️ WARNING: Location values are NULL in inserted records. This may be an RLS policy issue.');
+          }
+        }
         setBulkMessage(`✅ Successfully uploaded ${staffData.length} staff members${errorCount > 0 ? ` (${errorCount} rows skipped)` : ''}`);
         await fetchInitialData();
         onRefresh();
