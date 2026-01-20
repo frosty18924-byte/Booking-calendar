@@ -87,36 +87,84 @@ export default function AnalyticsDashboard() {
     }
 
     try {
-      const { data: bookings, error } = await supabase
+      // First fetch all bookings with basic fields
+      const { data: bookings, error: bookingsError } = await supabase
         .from('bookings')
-        .select(`
-          id,
-          profile_id,
-          event_id,
-          attended_at,
-          minutes_late,
-          late_reason,
-          absence_reason,
-          created_at,
-          training_events:event_id(
-            id,
-            event_date,
-            venue_id,
-            course_id,
-            courses(id, name),
-            venues(id, name)
-          ),
-          profiles:profile_id(id, full_name, home_house)
-        `);
+        .select('id, profile_id, event_id, attended_at, minutes_late, late_reason, absence_reason, created_at');
       
-      if (error) throw error;
+      if (bookingsError) {
+        console.error('Error fetching bookings:', bookingsError);
+        setData([]);
+        setLoading(false);
+        return;
+      }
       
-      // Filter by date range on the client side
-      const filtered = (bookings || []).filter(booking => {
-        const eventDate = booking.training_events?.event_date;
+      if (!bookings || bookings.length === 0) {
+        console.warn('No bookings found');
+        setData([]);
+        setLoading(false);
+        return;
+      }
+
+      console.log('Total bookings:', bookings.length);
+
+      // Get all unique event IDs and profile IDs
+      const eventIds = Array.from(new Set(bookings.map((b: any) => b.event_id).filter(Boolean)));
+      const profileIds = Array.from(new Set(bookings.map((b: any) => b.profile_id).filter(Boolean)));
+
+      console.log('Unique event IDs:', eventIds.length, eventIds);
+      console.log('Unique profile IDs:', profileIds.length);
+
+      let events: any[] = [];
+      let profiles: any[] = [];
+
+      // Fetch training events if we have event IDs
+      if (eventIds.length > 0) {
+        const { data: eventsData, error: eventsError } = await supabase
+          .from('training_events')
+          .select('id, event_date, course_id, courses(id, name)')
+          .in('id', eventIds);
+
+        if (eventsError) {
+          console.error('Error fetching events:', eventsError);
+        } else {
+          events = eventsData || [];
+          console.log('Fetched events:', events.length);
+        }
+      }
+
+      // Fetch profiles if we have profile IDs
+      if (profileIds.length > 0) {
+        const { data: profilesData, error: profilesError } = await supabase
+          .from('profiles')
+          .select('id, full_name, home_house')
+          .in('id', profileIds);
+
+        if (profilesError) {
+          console.error('Error fetching profiles:', profilesError);
+        } else {
+          profiles = profilesData || [];
+          console.log('Fetched profiles:', profiles.length);
+        }
+      }
+
+      // Merge data
+      const eventMap = new Map(events.map((e: any) => [e.id, e]));
+      const profileMap = new Map(profiles.map((p: any) => [p.id, p]));
+
+      const mergedData = bookings.map((booking: any) => ({
+        ...booking,
+        training_events: eventMap.get(booking.event_id),
+        profiles: profileMap.get(booking.profile_id),
+      }));
+
+      // Filter by date range
+      const filtered = mergedData.filter((booking: any) => {
+        const eventDate = booking?.training_events?.event_date;
         return eventDate && eventDate >= startDate && eventDate <= endDate;
       });
-      
+
+      console.log('Filtered bookings:', filtered.length);
       setData(filtered);
     } catch (err) {
       console.error("Error fetching analytics:", err);
@@ -138,42 +186,51 @@ export default function AnalyticsDashboard() {
   }
 
   const processStats = () => {
-    const stats: any = {};
-    
-    data.forEach(item => {
-      let key = '';
+    try {
+      const stats: any = {};
       
-      if (groupBy === 'location') {
-        key = item.profiles?.home_house || 'Unassigned Location';
-      } else if (groupBy === 'course') {
-        key = item.training_events?.courses?.name || 'Unknown Course';
-      } else if (groupBy === 'person') {
-        key = item.profiles?.full_name || 'Unknown Staff';
-      }
+      data.forEach((item: any) => {
+        try {
+          let key = '';
+          
+          if (groupBy === 'location') {
+            key = item?.profiles?.home_house || 'Unassigned Location';
+          } else if (groupBy === 'course') {
+            key = item?.training_events?.courses?.name || 'Unknown Course';
+          } else if (groupBy === 'person') {
+            key = item?.profiles?.full_name || 'Unknown Staff';
+          }
 
-      if (!stats[key]) {
-        stats[key] = { key, booked: 0, attended: 0, late: 0, absences: 0 };
-      }
+          if (!stats[key]) {
+            stats[key] = { key, booked: 0, attended: 0, late: 0, absences: 0 };
+          }
+          
+          stats[key].booked++;
+          if (item?.attended_at) {
+            stats[key].attended++;
+          } else {
+            stats[key].absences++;
+          }
+          if (item?.minutes_late && item.minutes_late > 0) {
+            stats[key].late++;
+          }
+        } catch (itemError) {
+          console.error('Error processing item:', item, itemError);
+        }
+      });
       
-      stats[key].booked++;
-      if (item.attended_at) {
-        stats[key].attended++;
-      } else {
-        stats[key].absences++;
-      }
-      if (item.minutes_late && item.minutes_late > 0) {
-        stats[key].late++;
-      }
-    });
-    
-    return Object.values(stats).sort((a: any, b: any) => b.booked - a.booked);
+      return Object.values(stats).sort((a: any, b: any) => b.booked - a.booked);
+    } catch (error) {
+      console.error('Error in processStats:', error);
+      return [];
+    }
   };
 
   const dashboardStats = processStats();
   const totalBooked = data.length;
-  const totalAttended = data.filter(d => d.attended_at).length;
+  const totalAttended = data.filter((d: any) => d?.attended_at).length;
   const totalAbsences = totalBooked - totalAttended;
-  const totalLate = data.filter(d => d.minutes_late && d.minutes_late > 0).length;
+  const totalLate = data.filter((d: any) => d?.minutes_late && d.minutes_late > 0).length;
   const attendanceRate = totalBooked > 0 ? Math.round((totalAttended / totalBooked) * 100) : 0;
 
   if (loading) {

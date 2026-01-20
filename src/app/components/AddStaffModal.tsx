@@ -95,6 +95,12 @@ export default function AddStaffModal({ onClose, onRefresh }: { onClose: () => v
       setLoading(false);
       return;
     }
+
+    if (formData.role_tier === 'admin' && !formData.home_house) {
+      alert('Admin users must be assigned a home location');
+      setLoading(false);
+      return;
+    }
     
     if ((formData.role_tier === 'manager' || formData.role_tier === 'scheduler') && formData.managed_houses.length === 0) {
       alert('Managers and Schedulers must manage at least one location');
@@ -172,6 +178,11 @@ export default function AddStaffModal({ onClose, onRefresh }: { onClose: () => v
         }
 
         if (row.role_tier === 'staff' && !row.home_house) {
+          errorCount++;
+          continue;
+        }
+
+        if (row.role_tier === 'admin' && !row.home_house) {
           errorCount++;
           continue;
         }
@@ -439,7 +450,7 @@ export default function AddStaffModal({ onClose, onRefresh }: { onClose: () => v
                 </select>
               </div>
 
-              {formData.role_tier === 'staff' && (
+              {(formData.role_tier === 'staff' || formData.role_tier === 'admin') && (
                 <div>
                   <label style={{ color: isDark ? '#94a3b8' : '#64748b' }} className="text-[10px] font-black uppercase mb-1 block">Assigned Location *</label>
                   <select 
