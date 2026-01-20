@@ -186,9 +186,22 @@ export default function AddStaffModal({ onClose, onRefresh }: { onClose: () => v
           continue;
         }
 
+        // Check if email already exists
+        const { data: existingEmail } = await supabase
+          .from('profiles')
+          .select('id')
+          .eq('email', row.email.toLowerCase())
+          .single();
+
+        if (existingEmail) {
+          errorCount++;
+          errors.push(`Row ${i + 1}: ${row.full_name} - Email ${row.email} already exists`);
+          continue;
+        }
+
         staffData.push({
           full_name: row.full_name,
-          email: row.email,
+          email: row.email.toLowerCase(),
           location: row.home_house || null,
           role_tier: row.role_tier || 'staff',
           managed_houses: []
@@ -207,10 +220,10 @@ export default function AddStaffModal({ onClose, onRefresh }: { onClose: () => v
       
       if (error) {
         console.error('Supabase error details:', error);
-        setBulkMessage(`❌ Upload failed: ${error.message}${errors.length > 0 ? '\n\nSkipped: ' + errors.length + ' invalid rows' : ''}`);
+        setBulkMessage(`❌ Upload failed: ${error.message}${errors.length > 0 ? '\n\nSkipped: ' + errors.length + ' rows (duplicates/invalid)' : ''}`);
       } else {
         console.log('Upload success:', data);
-        setBulkMessage(`✅ Successfully uploaded ${staffData.length} staff members${errorCount > 0 ? ` (${errorCount} rows skipped due to errors)` : ''}`);
+        setBulkMessage(`✅ Successfully uploaded ${staffData.length} staff members${errorCount > 0 ? ` (${errorCount} rows skipped)` : ''}`);
         await fetchInitialData();
         onRefresh();
         
