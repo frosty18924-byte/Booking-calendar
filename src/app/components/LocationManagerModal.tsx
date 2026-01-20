@@ -8,6 +8,7 @@ export default function LocationManagerModal({ onClose }: { onClose: () => void 
   const [venues, setVenues] = useState<any[]>([]);
   const [newLocationName, setNewLocationName] = useState('');
   const [newLocationOffice, setNewLocationOffice] = useState('Hull');
+  const [newLocationAccessible, setNewLocationAccessible] = useState<string[]>(['Hull']);
   const [newVenueName, setNewVenueName] = useState('');
   const [newVenueOffice, setNewVenueOffice] = useState('Hull');
   const [loading, setLoading] = useState(false);
@@ -49,10 +50,15 @@ export default function LocationManagerModal({ onClose }: { onClose: () => void 
     if (!newLocationName.trim()) return;
     setLoading(true);
     try {
-      const { error } = await supabase.from('locations').insert([{ name: newLocationName, office_region: newLocationOffice }]);
+      const { error } = await supabase.from('locations').insert([{ 
+        name: newLocationName, 
+        office_region: newLocationOffice,
+        accessible_office_regions: newLocationAccessible
+      }]);
       if (error) throw error;
       setNewLocationName('');
       setNewLocationOffice('Hull');
+      setNewLocationAccessible(['Hull']);
       fetchData();
     } catch (error: any) {
       alert(error.message);
@@ -136,33 +142,76 @@ export default function LocationManagerModal({ onClose }: { onClose: () => void 
         {activeTab === 'locations' && (
           <div>
             <p style={{ color: isDark ? '#94a3b8' : '#64748b' }} className="text-[10px] font-black uppercase mb-4">Add New Staff Location</p>
-            <form onSubmit={handleAddLocation} className="flex gap-2 mb-6">
+            <form onSubmit={handleAddLocation} className="space-y-3 mb-6">
               <input 
                 type="text" 
                 required 
                 placeholder="e.g. Felix House"
                 style={{ backgroundColor: isDark ? '#0f172a' : '#f1f5f9', color: isDark ? '#f1f5f9' : '#1e293b', borderColor: isDark ? '#334155' : '#cbd5e1' }}
-                className="flex-1 p-3 border rounded-xl outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full p-3 border rounded-xl outline-none focus:ring-2 focus:ring-blue-500"
                 value={newLocationName} 
                 onChange={(e) => setNewLocationName(e.target.value)}
               />
-              <select
-                value={newLocationOffice}
-                onChange={(e) => setNewLocationOffice(e.target.value)}
-                style={{ backgroundColor: isDark ? '#0f172a' : '#f1f5f9', color: isDark ? '#f1f5f9' : '#1e293b', borderColor: isDark ? '#334155' : '#cbd5e1' }}
-                className="p-3 border rounded-xl outline-none focus:ring-2 focus:ring-blue-500"
-              >
-                <option value="Hull">Hull Office</option>
-                <option value="Norwich">Norwich Office</option>
-              </select>
+              
+              <div className="flex gap-3">
+                <div className="flex-1">
+                  <label style={{ color: isDark ? '#94a3b8' : '#64748b' }} className="text-[9px] font-black uppercase block mb-2">Primary Office</label>
+                  <select
+                    value={newLocationOffice}
+                    onChange={(e) => setNewLocationOffice(e.target.value)}
+                    style={{ backgroundColor: isDark ? '#0f172a' : '#f1f5f9', color: isDark ? '#f1f5f9' : '#1e293b', borderColor: isDark ? '#334155' : '#cbd5e1' }}
+                    className="w-full p-3 border rounded-xl outline-none focus:ring-2 focus:ring-blue-500"
+                  >
+                    <option value="Hull">Hull Office</option>
+                    <option value="Norwich">Norwich Office</option>
+                  </select>
+                </div>
+              </div>
+
+              <div>
+                <label style={{ color: isDark ? '#94a3b8' : '#64748b' }} className="text-[9px] font-black uppercase block mb-2">Can Access</label>
+                <div className="flex gap-4">
+                  <label className="flex items-center gap-2">
+                    <input 
+                      type="checkbox" 
+                      checked={newLocationAccessible.includes('Hull')}
+                      onChange={(e) => {
+                        if (e.target.checked) {
+                          setNewLocationAccessible([...newLocationAccessible, 'Hull']);
+                        } else {
+                          setNewLocationAccessible(newLocationAccessible.filter(o => o !== 'Hull'));
+                        }
+                      }}
+                      className="w-4 h-4 rounded"
+                    />
+                    <span style={{ color: isDark ? '#cbd5e1' : '#1e293b' }} className="text-sm font-bold">Hull Courses</span>
+                  </label>
+                  <label className="flex items-center gap-2">
+                    <input 
+                      type="checkbox" 
+                      checked={newLocationAccessible.includes('Norwich')}
+                      onChange={(e) => {
+                        if (e.target.checked) {
+                          setNewLocationAccessible([...newLocationAccessible, 'Norwich']);
+                        } else {
+                          setNewLocationAccessible(newLocationAccessible.filter(o => o !== 'Norwich'));
+                        }
+                      }}
+                      className="w-4 h-4 rounded"
+                    />
+                    <span style={{ color: isDark ? '#cbd5e1' : '#1e293b' }} className="text-sm font-bold">Norwich Courses</span>
+                  </label>
+                </div>
+              </div>
+
               <button 
-                disabled={loading} 
+                disabled={loading || newLocationAccessible.length === 0} 
                 style={{ backgroundColor: '#2563eb' }}
                 onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#1d4ed8'}
                 onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#2563eb'}
-                className="text-white px-5 rounded-xl font-bold transition-all disabled:opacity-50"
+                className="w-full text-white p-3 rounded-xl font-bold transition-all disabled:opacity-50"
               >
-                +
+                {loading ? 'Adding...' : 'Add Location'}
               </button>
             </form>
 
@@ -176,6 +225,7 @@ export default function LocationManagerModal({ onClose }: { onClose: () => void 
                     <div>
                       <p style={{ color: isDark ? '#f1f5f9' : '#1e293b' }} className="font-bold">{loc.name}</p>
                       <p style={{ color: isDark ? '#94a3b8' : '#64748b' }} className="text-[9px] uppercase font-black">📍 {loc.office_region || 'Hull'} Office</p>
+                      <p style={{ color: isDark ? '#94a3b8' : '#64748b' }} className="text-[9px] font-bold mt-1">Can Access: {loc.accessible_office_regions?.join(', ') || 'Hull'}</p>
                     </div>
                     <button 
                       onClick={() => handleDeleteLocation(loc.id)}

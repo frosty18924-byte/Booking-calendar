@@ -85,10 +85,12 @@ export default function CalendarPage() {
       const { data: profile } = await supabase.from('profiles').select('role_tier, home_house').eq('id', currentUser.id).single();
       if (profile) {
         setUserRole(profile.role_tier);
-        // Get the office region for this location
+        // Get the accessible office regions for this location
         if (profile.home_house && profile.role_tier === 'manager') {
-          const { data: location } = await supabase.from('locations').select('office_region').eq('name', profile.home_house).single();
-          setUserOffice(location?.office_region || 'Hull');
+          const { data: location } = await supabase.from('locations').select('accessible_office_regions').eq('name', profile.home_house).single();
+          // If no accessible_office_regions set, default to their primary office
+          const offices = location?.accessible_office_regions || ['Hull'];
+          setUserOffice(offices[0]); // Store first office for reference, but we'll use the array in filtering
         } else {
           // Admins and schedulers can see all offices
           setUserOffice(null);
