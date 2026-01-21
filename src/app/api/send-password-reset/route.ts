@@ -16,52 +16,28 @@ export async function POST(request: NextRequest) {
       process.env.SUPABASE_SERVICE_ROLE_KEY!
     );
 
-    // Check if user exists
-    const { data: { users } } = await supabase.auth.admin.listUsers();
-    const userExists = users?.some(u => u.email?.toLowerCase() === email.toLowerCase());
-
-    let resetLink;
-
-    if (!userExists) {
-      // Invite new user - creates account and returns setup link
-      console.log('Inviting new user:', email);
-      const { data: inviteData, error: inviteError } = await supabase.auth.admin.inviteUserByEmail(email, {
+    // Generate recovery link - works for both new and existing users
+    // Supabase will handle account creation on first use
+    const { data, error } = await supabase.auth.admin.generateLink({
+      type: 'recovery',
+      email: email,
+      options: {
         redirectTo: `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/auth/callback?type=recovery`
-      });
-
-      if (inviteError) {
-        console.error('Invite error:', inviteError);
-        return NextResponse.json({ error: `Failed to invite user: ${inviteError.message}` }, { status: 500 });
       }
+    });
 
-      resetLink = inviteData?.properties?.action_link;
-      console.log('Invite link generated:', !!resetLink);
-    } else {
-      // User exists, generate recovery link
-      console.log('Generating recovery link for existing user:', email);
-      const { data: linkData, error: linkError } = await supabase.auth.admin.generateLink({
-        type: 'recovery',
-        email: email,
-        options: {
-          redirectTo: `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/auth/callback?type=recovery`
-        }
-      });
-
-      if (linkError) {
-        console.error('Recovery link error:', linkError);
-        return NextResponse.json({ error: `Failed to generate link: ${linkError.message}` }, { status: 500 });
-      }
-
-      resetLink = linkData?.properties?.action_link;
-      console.log('Recovery link generated:', !!resetLink);
+    if (error) {
+      console.error('Link generation error:', error);
+      return NextResponse.json({ error: error.message }, { status: 500 });
     }
+
+    const resetLink = data?.properties?.action_link;
 
     if (!resetLink) {
       return NextResponse.json({ error: 'Failed to generate link' }, { status: 500 });
     }
 
     // Send professional email with link
-    console.log('Sending email to:', email);
     const success = await sendPasswordResetEmail(
       email,
       staffName || 'Staff Member',
@@ -72,13 +48,12 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Failed to send email' }, { status: 500 });
     }
 
-    console.log('Successfully sent setup link to:', email);
     return NextResponse.json({ 
       success: true, 
       message: `Password setup link sent to ${email}` 
     });
-  } catch (error: any) {
+  } catch (error) {
     console.error('API error:', error);
-    return NextResponse.json({ error: `Internal error: ${error.message}` }, { status: 500 });
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }
