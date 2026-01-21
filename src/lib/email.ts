@@ -128,3 +128,55 @@ export async function sendBulkEmail(emails: string[], subject: string, htmlConte
 
   return response.ok;
 }
+
+export async function sendPasswordResetEmail(staffEmail: string, staffName: string, resetLink: string) {
+  const isTestMode = process.env.NEXT_PUBLIC_EMAIL_TEST_MODE === 'true';
+  const testRecipient = process.env.NEXT_PUBLIC_TEST_EMAIL_ADDRESS;
+  const recipient = isTestMode ? testRecipient : staffEmail;
+
+  const response = await fetch('https://api.resend.com/emails', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${process.env.RESEND_API_KEY}`,
+    },
+    body: JSON.stringify({
+      from: 'Training Team <onboarding@resend.dev>',
+      to: recipient,
+      subject: isTestMode ? `[TEST] Set Your Password - Training Portal` : `Set Your Password - Training Portal`,
+      html: `
+        <div style="font-family: sans-serif; padding: 20px; border: 1px solid #dbeafe; border-radius: 10px; background-color: #f0f9ff;">
+          <h2 style="color: #0284c7;">Welcome to the Training Portal</h2>
+          <p>Hi <strong>${staffName}</strong>,</p>
+          <p>You've been added to the Training Booking Portal. Click the link below to set your password and get started:</p>
+          
+          <div style="margin: 25px 0; text-align: center;">
+            <a href="${resetLink}" style="background-color: #0284c7; color: white; padding: 12px 30px; border-radius: 8px; text-decoration: none; font-weight: bold; display: inline-block;">
+              Set Your Password
+            </a>
+          </div>
+
+          <p style="font-size: 13px; color: #666;">Or copy and paste this link in your browser:</p>
+          <p style="font-size: 12px; word-break: break-all; background-color: #f3f4f6; padding: 10px; border-radius: 5px; color: #374151;">
+            ${resetLink}
+          </p>
+
+          <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 20px 0;">
+          
+          <p>Once you've set your password, you can log in and:</p>
+          <ul style="color: #374151;">
+            <li>View available training courses</li>
+            <li>Book courses and manage your schedule</li>
+            <li>Track your training progress</li>
+          </ul>
+
+          <p style="color: #666; font-size: 13px; margin-top: 20px;">This link will expire in 24 hours. If you have any questions, contact the training team.</p>
+          
+          ${isTestMode ? `<p style="color: red; margin-top: 15px;"><strong>Note:</strong> This was a test email intended for ${staffEmail}</p>` : ''}
+        </div>
+      `,
+    }),
+  });
+
+  return response.ok;
+}

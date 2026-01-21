@@ -105,3 +105,43 @@ export async function getEmailDeliveryStatus(emailId: string) {
   // TODO: Implement when adding email logs table
   console.log('Email delivery status tracking coming soon');
 }
+
+/**
+ * Send password reset email to a staff member
+ * Generates a magic link for them to set their password
+ */
+export async function sendPasswordReset(email: string, staffName: string) {
+  try {
+    const response = await fetch('/api/send-password-reset', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, staffName })
+    });
+    const data = await response.json();
+    return { success: response.ok, ...data };
+  } catch (error) {
+    console.error('Error sending password reset:', error);
+    return { success: false, error: 'Failed to send email' };
+  }
+}
+
+/**
+ * Send password reset emails to multiple staff members
+ * Useful for bulk invitations
+ */
+export async function sendBulkPasswordResets(staffList: Array<{ email: string; full_name: string }>) {
+  const promises = staffList.map(staff => 
+    sendPasswordReset(staff.email, staff.full_name)
+  );
+  const results = await Promise.all(promises);
+  
+  const successful = results.filter(r => r.success).length;
+  const failed = results.filter(r => !r.success).length;
+  
+  return {
+    total: staffList.length,
+    successful,
+    failed,
+    results
+  };
+}

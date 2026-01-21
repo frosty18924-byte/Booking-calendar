@@ -353,6 +353,32 @@ Charlie Scheduler,charlie@example.com,Banks House,manager`;
     }
   };
 
+  const handleSendPasswordReset = async (email: string, staffName: string) => {
+    if (!hasPermission(userRole, 'STAFF_MANAGEMENT', 'canCreate')) {
+      alert('You do not have permission to send password reset links');
+      return;
+    }
+
+    try {
+      const response = await fetch('/api/send-password-reset', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, staffName })
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        alert(`Error: ${data.error || 'Failed to send password reset link'}`);
+        return;
+      }
+
+      alert(`✓ Password reset link sent to ${email}`);
+    } catch (error: any) {
+      alert(`Error sending password reset link: ${error.message}`);
+    }
+  };
+
   const handleEdit = (staff: any) => {
     setEditingId(staff.id);
     setFormData({
@@ -692,6 +718,12 @@ Charlie Scheduler,charlie@example.com,Banks House,manager`;
                                 className="flex-1 p-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-[9px] font-bold transition-all"
                               >
                                 ✏️ Edit
+                              </button>
+                              <button 
+                                onClick={() => handleSendPasswordReset(staff.email, staff.full_name)} 
+                                className="flex-1 p-2 bg-green-600 hover:bg-green-700 text-white rounded-lg text-[9px] font-bold transition-all"
+                              >
+                                🔗 Send Link
                               </button>
                               <button 
                                 onClick={() => handleDeleteStaff(staff.id)} 
