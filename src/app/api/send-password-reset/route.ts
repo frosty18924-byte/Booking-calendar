@@ -16,58 +16,25 @@ export async function POST(request: NextRequest) {
       process.env.SUPABASE_SERVICE_ROLE_KEY!
     );
 
-    // Check if user exists in Auth
-    const { data: { users } } = await supabase.auth.admin.listUsers();
-    const existingUser = users?.find(u => u.email?.toLowerCase() === email.toLowerCase());
-
-    let resetLink;
-
-    if (!existingUser) {
-      // Create new user with temporary password, email auto-confirmed
-      const tempPassword = Math.random().toString(36).slice(-16);
-      
-      const { data: newUser, error: createError } = await supabase.auth.admin.createUser({
-        email: email,
-        password: tempPassword,
-        email_confirm: true
-      });
-
-      if (createError) {
-        console.error('User creation error:', createError);
-        return NextResponse.json({ error: `Failed to create user: ${createError.message}` }, { status: 500 });
+    // Generate recovery link - works for both new and existing users
+    // Supabase will handle account creation on first use
+    const { data, error } = await supabase.auth.admin.generateLink({
+      type: 'recovery',
+      email: email,
+      options: {
+        redirectTo: `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/auth/callback?type=recovery`
       }
+    });
 
-      // Generate recovery link for them to set their password
-      const { data: linkData, error: linkError } = await supabase.auth.admin.generateLink({
-        type: 'recovery',
-        email: email,
-        options: {
-          redirectTo: `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/auth/callback?type=recovery`
-        }
-      });
+    if (error) {
+      console.error('Link generation error:', error);
+      return NextResponse.json({ error: error.message }, { status: 500 });
+    }
 
-      if (linkError) {
-        console.error('Recovery link error:', linkError);
-        return NextResponse.json({ error: `Failed to generate reset link: ${linkError.message}` }, { status: 500 });
-      }
+    const resetLink = data?.properties?.action_link;
 
-      resetLink = linkData?.properties?.action_link;
-    } else {
-      // User exists, generate recovery link
-      const { data, error } = await supabase.auth.admin.generateLink({
-        type: 'recovery',
-        email: email,
-        options: {
-          redirectTo: `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/auth/callback?type=recovery`
-        }
-      });
-
-      if (error) {
-        console.error('Recovery link error:', error);
-        return NextResponse.json({ error: error.message }, { status: 500 });
-      }
-
-      resetLink = data?.properties?.action_link;
+    if (!resetLink) {
+      return NextResponse.json({ error: 'Failed to generate link' }, { status: 500 });
     }
 
     // Send professional email with link
