@@ -21,24 +21,25 @@ export async function POST(request: NextRequest) {
     const userExists = users?.some(u => u.email?.toLowerCase() === email.toLowerCase());
 
     let resetLink;
+    let linkType = 'recovery';
 
     if (!userExists) {
-      // For new users, generate a signup link
-      // This allows them to create their account when they click the link
+      // For new users, generate a magic link for signup
       const { data: linkData, error: linkError } = await supabase.auth.admin.generateLink({
-        type: 'signup',
+        type: 'magiclink',
         email: email,
         options: {
-          redirectTo: `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/auth/callback?type=signup`
+          redirectTo: `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/auth/callback?type=magiclink`
         }
       });
 
       if (linkError) {
-        console.error('Signup link generation error:', linkError);
-        return NextResponse.json({ error: `Failed to generate signup link: ${linkError.message}` }, { status: 500 });
+        console.error('Magic link generation error:', linkError);
+        return NextResponse.json({ error: `Failed to generate sign-up link: ${linkError.message}` }, { status: 500 });
       }
 
       resetLink = linkData?.properties?.action_link;
+      linkType = 'signup';
     } else {
       // User exists, generate a recovery/password reset link
       const { data, error } = await supabase.auth.admin.generateLink({
@@ -58,10 +59,10 @@ export async function POST(request: NextRequest) {
     }
 
     if (!resetLink) {
-      return NextResponse.json({ error: 'Failed to generate reset link' }, { status: 500 });
+      return NextResponse.json({ error: 'Failed to generate link' }, { status: 500 });
     }
 
-    // Send professional email with reset link
+    // Send professional email with link
     const success = await sendPasswordResetEmail(
       email,
       staffName || 'Staff Member',
@@ -74,7 +75,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ 
       success: true, 
-      message: `Password setup link sent to ${email}` 
+      message: `${linkType === 'signup' ? 'Sign-up' : 'Password reset'} link sent to ${email}` 
     });
   } catch (error) {
     console.error('API error:', error);
