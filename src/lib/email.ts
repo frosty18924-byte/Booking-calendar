@@ -49,6 +49,11 @@ export async function sendBookingCancellationEmail(staffEmail: string, staffName
   const testRecipient = process.env.NEXT_PUBLIC_TEST_EMAIL_ADDRESS;
   const recipient = isTestMode ? testRecipient : staffEmail;
 
+  if (!process.env.RESEND_API_KEY) {
+    console.error('RESEND_API_KEY is not set');
+    return false;
+  }
+
   const response = await fetch('https://api.resend.com/emails', {
     method: 'POST',
     headers: {
@@ -76,6 +81,11 @@ export async function sendBookingCancellationEmail(staffEmail: string, staffName
     }),
   });
 
+  if (!response.ok) {
+    const error = await response.text();
+    console.error('Resend API error:', error);
+  }
+
   return response.ok;
 }
 
@@ -83,6 +93,11 @@ export async function sendCourseScheduledEmail(staffEmail: string, staffName: st
   const isTestMode = process.env.NEXT_PUBLIC_EMAIL_TEST_MODE === 'true';
   const testRecipient = process.env.NEXT_PUBLIC_TEST_EMAIL_ADDRESS;
   const recipient = isTestMode ? testRecipient : staffEmail;
+
+  if (!process.env.RESEND_API_KEY) {
+    console.error('RESEND_API_KEY is not set');
+    return false;
+  }
 
   const response = await fetch('https://api.resend.com/emails', {
     method: 'POST',
@@ -112,12 +127,22 @@ export async function sendCourseScheduledEmail(staffEmail: string, staffName: st
     }),
   });
 
+  if (!response.ok) {
+    const error = await response.text();
+    console.error('Resend API error:', error);
+  }
+
   return response.ok;
 }
 
 export async function sendBulkEmail(emails: string[], subject: string, htmlContent: string) {
   const isTestMode = process.env.NEXT_PUBLIC_EMAIL_TEST_MODE === 'true';
   const testRecipient = process.env.NEXT_PUBLIC_TEST_EMAIL_ADDRESS;
+
+  if (!process.env.RESEND_API_KEY) {
+    console.error('RESEND_API_KEY is not set');
+    return false;
+  }
 
   // If test mode, send to test email only
   const recipients = isTestMode ? [testRecipient] : emails;
@@ -136,6 +161,11 @@ export async function sendBulkEmail(emails: string[], subject: string, htmlConte
     }),
   });
 
+  if (!response.ok) {
+    const error = await response.text();
+    console.error('Resend API error:', error);
+  }
+
   return response.ok;
 }
 
@@ -143,6 +173,11 @@ export async function sendPasswordResetEmail(staffEmail: string, staffName: stri
   const isTestMode = process.env.NEXT_PUBLIC_EMAIL_TEST_MODE === 'true';
   const testRecipient = process.env.NEXT_PUBLIC_TEST_EMAIL_ADDRESS;
   const recipient = isTestMode ? testRecipient : staffEmail;
+
+  if (!process.env.RESEND_API_KEY) {
+    console.error('RESEND_API_KEY is not set');
+    return false;
+  }
 
   const response = await fetch('https://api.resend.com/emails', {
     method: 'POST',
@@ -188,5 +223,11 @@ export async function sendPasswordResetEmail(staffEmail: string, staffName: stri
     }),
   });
 
+  if (!response.ok) {
+    const error = await response.text();
+    console.error('Resend API error:', error);
+  }
+
   return response.ok;
+}  return response.ok;
 }
