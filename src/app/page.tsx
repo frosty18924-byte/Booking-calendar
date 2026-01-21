@@ -3,7 +3,6 @@ import { useState, useEffect } from 'react';
 import { format, startOfMonth, endOfMonth, startOfWeek, endOfWeek, eachDayOfInterval, isSameDay, isSameMonth, subMonths, addMonths } from 'date-fns';
 import ScheduleModal from '@/app/components/ScheduleModal';
 import BookingModal from '@/app/components/BookingModal';
-import BookingChecklistModal from '@/app/components/BookingChecklistModal';
 import ThemeToggle from '@/app/components/ThemeToggle';
 import { supabase } from '@/lib/supabase';
 import { hasPermission } from '@/lib/permissions';
@@ -13,14 +12,11 @@ export default function CalendarPage() {
   const [events, setEvents] = useState<any[]>([]);
   const [showSchedule, setShowSchedule] = useState(false);
   const [selectedEvent, setSelectedEvent] = useState<any>(null);
-  const [showChecklist, setShowChecklist] = useState(false);
-  const [checklistEventId, setChecklistEventId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [isDark, setIsDark] = useState(true);
   const [filterCourse, setFilterCourse] = useState<string>('all');
   const [user, setUser] = useState<any>(null);
   const [userRole, setUserRole] = useState<string | null>(null);
-  const [userOffice, setUserOffice] = useState<string | null>(null);
 
   // Helper for colors
   const courseColors: { [key: string]: { bg: string; text: string } } = {
@@ -85,20 +81,8 @@ export default function CalendarPage() {
     const { data: { user: currentUser } } = await supabase.auth.getUser();
     setUser(currentUser);
     if (currentUser) {
-      const { data: profile } = await supabase.from('profiles').select('role_tier, home_house').eq('id', currentUser.id).single();
-      if (profile) {
-        setUserRole(profile.role_tier);
-        // Get the accessible office regions for this location
-        if (profile.home_house && profile.role_tier === 'manager') {
-          const { data: location } = await supabase.from('locations').select('accessible_office_regions').eq('name', profile.home_house).single();
-          // If no accessible_office_regions set, default to their primary office
-          const offices = location?.accessible_office_regions || ['Hull'];
-          setUserOffice(offices[0]); // Store first office for reference, but we'll use the array in filtering
-        } else {
-          // Admins and schedulers can see all offices
-          setUserOffice(null);
-        }
-      }
+      const { data: profile } = await supabase.from('profiles').select('role_tier').eq('id', currentUser.id).single();
+      if (profile) setUserRole(profile.role_tier);
     }
   }
 
@@ -106,14 +90,7 @@ export default function CalendarPage() {
     setLoading(true);
     const startDate = format(startOfMonth(currentMonth), 'yyyy-MM-dd');
     const endDate = format(endOfMonth(currentMonth), 'yyyy-MM-dd');
-    let query = supabase.from('training_events').select('*, courses(*), venues(*), bookings(*)').gte('event_date', startDate).lte('event_date', endDate);
-    
-    // Filter by office if user is a manager
-    if (userRole === 'manager' && userOffice) {
-      query = query.eq('venues.office_region', userOffice);
-    }
-    
-    const { data } = await query;
+    const { data } = await supabase.from('training_events').select('*, courses(*), bookings(*)').gte('event_date', startDate).lte('event_date', endDate);
     setEvents(data || []);
     setLoading(false);
   }
@@ -129,12 +106,12 @@ export default function CalendarPage() {
   const canSchedule = hasPermission(userRole, 'COURSE_SCHEDULING', 'canCreate');
 
   return (
-    <main style={{ backgroundColor: isDark ? '#0f172a' : '#f1f5f9' }} className="p-3 sm:p-4 md:p-8 min-h-screen transition-colors duration-300">
+    <main style={{ backgroundColor: isDark ? '#0f172a' : '#f1f5f9' }} className="p-4 md:p-8 min-h-screen transition-colors duration-300">
       <div className="max-w-7xl mx-auto">
-        <div style={{ backgroundColor: isDark ? '#1e293b' : '#ffffff', borderColor: isDark ? '#334155' : '#cbd5e1' }} className="rounded-[20px] sm:rounded-[40px] shadow-2xl border overflow-hidden">
+        <div style={{ backgroundColor: isDark ? '#1e293b' : '#ffffff', borderColor: isDark ? '#334155' : '#cbd5e1' }} className="rounded-[40px] shadow-2xl border overflow-hidden">
 
-          <div style={{ borderColor: isDark ? '#334155' : '#e2e8f0' }} className="p-3 sm:p-8 border-b">
-            <div className="grid grid-cols-2 sm:grid-cols-3 items-center gap-2 sm:gap-0 mb-4 sm:mb-8">
+          <div style={{ borderColor: isDark ? '#334155' : '#e2e8f0' }} className="p-8 border-b">
+            <div className="grid grid-cols-3 items-center mb-8">
               <div className="flex items-center gap-2">
                 <div className={`w-2 h-2 rounded-full ${user ? 'bg-emerald-500' : 'bg-red-500'}`}></div>
                 <div style={{ color: isDark ? '#94a3b8' : '#64748b' }} className="text-[10px] font-black uppercase">
@@ -146,14 +123,14 @@ export default function CalendarPage() {
                 Booking Calendar
               </h1>
 
-              <div className="flex items-center gap-2 sm:gap-3">
+              <div className="flex items-center justify-end gap-3">
                 {canViewAdmin && (
-                  <a href="/admin" className="cursor-pointer bg-emerald-600 text-white px-3 sm:px-4 py-2 rounded-xl font-black text-[9px] sm:text-[10px] uppercase hover:opacity-80 transition-all">
+                  <a href="/admin" className="cursor-pointer bg-emerald-600 text-white px-4 py-2 rounded-xl font-black text-[10px] uppercase hover:opacity-80 transition-all">
                     Admin
                   </a>
                 )}
                 {user && (
-                  <button onClick={() => supabase.auth.signOut().then(() => window.location.href = '/login')} className="cursor-pointer bg-red-600 text-white px-3 sm:px-4 py-2 rounded-xl font-black text-[9px] sm:text-[10px] uppercase hover:opacity-80 transition-all">
+                  <button onClick={() => supabase.auth.signOut().then(() => window.location.href = '/login')} className="cursor-pointer bg-red-600 text-white px-4 py-2 rounded-xl font-black text-[10px] uppercase hover:opacity-80 transition-all">
                     Sign Out
                   </button>
                 )}
@@ -161,28 +138,26 @@ export default function CalendarPage() {
               </div>
             </div>
 
-            <div className="flex flex-col gap-4">
-              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-                <select
-                  value={filterCourse}
-                  onChange={(e) => setFilterCourse(e.target.value)}
-                  style={{ backgroundColor: isDark ? '#0f172a' : '#f8fafc', color: isDark ? '#f1f5f9' : '#1e293b', borderColor: isDark ? '#334155' : '#cbd5e1' }}
-                  className="cursor-pointer rounded-xl border px-3 py-2 text-[10px] sm:text-[11px] font-bold uppercase outline-none w-full sm:w-auto"
-                >
-                  <option value="all">All Courses</option>
-                  {uniqueCourses.map(c => <option key={c} value={c}>{c}</option>)}
-                </select>
+            <div className="flex flex-col md:flex-row justify-between items-center gap-6">
+              <select
+                value={filterCourse}
+                onChange={(e) => setFilterCourse(e.target.value)}
+                style={{ backgroundColor: isDark ? '#0f172a' : '#f8fafc', color: isDark ? '#f1f5f9' : '#1e293b', borderColor: isDark ? '#334155' : '#cbd5e1' }}
+                className="cursor-pointer rounded-xl border px-4 py-2 text-[11px] font-bold uppercase outline-none"
+              >
+                <option value="all">All Courses</option>
+                {uniqueCourses.map(c => <option key={c} value={c}>{c}</option>)}
+              </select>
 
-                <div className="w-full sm:w-auto flex items-center justify-between sm:gap-6">
-                  <button onClick={() => setCurrentMonth(subMonths(currentMonth, 1))} className="cursor-pointer text-lg sm:text-2xl font-bold hover:scale-125 transition-transform">←</button>
-                  <h2 style={{ color: isDark ? '#f1f5f9' : '#1e293b' }} className="text-base sm:text-2xl font-black uppercase text-center flex-1 sm:flex-none sm:min-w-[200px]">{format(currentMonth, 'MMM yyyy')}</h2>
-                  <button onClick={() => setCurrentMonth(addMonths(currentMonth, 1))} className="cursor-pointer text-lg sm:text-2xl font-bold hover:scale-125 transition-transform">→</button>
-                </div>
+              <div className="flex items-center gap-6">
+                <button onClick={() => setCurrentMonth(subMonths(currentMonth, 1))} className="cursor-pointer text-2xl font-bold hover:scale-125 transition-transform">←</button>
+                <h2 style={{ color: isDark ? '#f1f5f9' : '#1e293b' }} className="text-2xl font-black uppercase min-w-[200px] text-center">{format(currentMonth, 'MMMM yyyy')}</h2>
+                <button onClick={() => setCurrentMonth(addMonths(currentMonth, 1))} className="cursor-pointer text-2xl font-bold hover:scale-125 transition-transform">→</button>
               </div>
 
-              <div className="flex justify-end">
+              <div className="min-w-[140px] flex justify-end">
                 {canSchedule && (
-                  <button onClick={() => setShowSchedule(true)} className="cursor-pointer bg-blue-600 text-white px-4 py-2 sm:px-6 sm:py-3 rounded-2xl font-black text-[9px] sm:text-[10px] uppercase shadow-xl hover:bg-blue-700 transition-all whitespace-nowrap">
+                  <button onClick={() => setShowSchedule(true)} className="cursor-pointer bg-blue-600 text-white px-6 py-3 rounded-2xl font-black text-[10px] uppercase shadow-xl hover:bg-blue-700 transition-all">
                     + Schedule
                   </button>
                 )}
@@ -192,11 +167,11 @@ export default function CalendarPage() {
 
           <div style={{ borderColor: isDark ? '#334155' : '#e2e8f0', backgroundColor: isDark ? '#1a2332' : '#f8fafc' }} className="grid grid-cols-7 border-b">
             {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(day => (
-              <div key={day} style={{ color: isDark ? '#94a3b8' : '#64748b' }} className="p-2 sm:p-4 text-center text-[8px] sm:text-[10px] font-black uppercase tracking-widest">{day}</div>
+              <div key={day} style={{ color: isDark ? '#94a3b8' : '#64748b' }} className="p-4 text-center text-[10px] font-black uppercase tracking-widest">{day}</div>
             ))}
           </div>
 
-          <div className="grid grid-cols-7 gap-0" style={{ minHeight: 'auto' }}>
+          <div className="grid grid-cols-7 gap-0" style={{ minHeight: '700px' }}>
             {calendarDays.map((day, idx) => {
               const dayEvents = filteredEvents.filter(e => isSameDay(new Date(e.event_date), day));
               const isCurrentMonth = isSameMonth(day, currentMonth);
@@ -207,13 +182,13 @@ export default function CalendarPage() {
                     backgroundColor: isCurrentMonth ? (isDark ? '#0f172a' : '#ffffff') : (isDark ? '#1a2332' : '#f8fafc'),
                     borderColor: isDark ? '#334155' : '#e2e8f0'
                   }}
-                  className={`border p-1.5 sm:p-3 min-h-[80px] sm:min-h-[140px] flex flex-col ${!isCurrentMonth ? 'opacity-40' : ''}`}
+                  className={`border p-3 min-h-[140px] flex flex-col ${!isCurrentMonth ? 'opacity-40' : ''}`}
                 >
-                  <span style={{ color: isSameDay(day, new Date()) ? '#3b82f6' : (isDark ? '#94a3b8' : '#64748b') }} className="text-[10px] sm:text-sm font-black mb-1 sm:mb-2">
+                  <span style={{ color: isSameDay(day, new Date()) ? '#3b82f6' : (isDark ? '#94a3b8' : '#64748b') }} className="text-sm font-black mb-2">
                     {format(day, 'd')}
                   </span>
-                  <div className="flex-1 space-y-0.5 sm:space-y-1 overflow-y-auto">
-                    {dayEvents.slice(0, 3).map(event => {
+                  <div className="flex-1 space-y-1">
+                    {dayEvents.map(event => {
                       const colors = getCourseColor(event.courses?.name || 'Unknown');
                       const participantCount = event.bookings?.length || 0;
                       return (
@@ -221,12 +196,12 @@ export default function CalendarPage() {
                           key={event.id}
                           onClick={() => setSelectedEvent(event)}
                           style={{ backgroundColor: colors.bg, color: colors.text }}
-                          className="cursor-pointer w-full text-left p-1.5 sm:p-3 rounded-lg transition-all border border-black/10 shadow-sm hover:brightness-110 text-[7px] sm:text-xs"
+                          className="cursor-pointer w-full text-left p-3 rounded-lg transition-all border border-black/10 shadow-sm hover:brightness-110"
                         >
-                          <p className="font-black truncate uppercase text-[7px] sm:text-xs">
+                          <p className="font-black truncate uppercase text-xs">
                             {event.courses?.name}
                           </p>
-                          <div className="hidden sm:flex justify-between items-center mt-1 opacity-80 font-bold text-[10px]">
+                          <div className="flex justify-between items-center mt-1 opacity-80 font-bold text-[10px]">
                             <span>
                               {event.start_time?.slice(0, 5) || '09:00'} - {event.end_time?.slice(0, 5) || '17:00'}
                             </span>
@@ -235,11 +210,6 @@ export default function CalendarPage() {
                         </button>
                       );
                     })}
-                    {dayEvents.length > 3 && (
-                      <div className="text-[7px] sm:text-xs text-center opacity-60 font-bold py-0.5">
-                        +{dayEvents.length - 3} more
-                      </div>
-                    )}
                   </div>
                 </div>
               );
@@ -249,19 +219,7 @@ export default function CalendarPage() {
       </div>
 
       {showSchedule && <ScheduleModal onClose={() => setShowSchedule(false)} onRefresh={fetchEvents} />}
-      {selectedEvent && <BookingModal event={selectedEvent} onClose={() => setSelectedEvent(null)} onRefresh={fetchEvents} onOpenChecklist={() => {
-        setChecklistEventId(selectedEvent.id);
-        setShowChecklist(true);
-      }} />}
-      {showChecklist && checklistEventId && (
-        <BookingChecklistModal 
-          bookingId={checklistEventId} 
-          onClose={() => setShowChecklist(false)}
-          userRole={userRole || ''}
-          userName={user?.user_metadata?.full_name || 'Unknown'}
-          userId={user?.id || ''}
-        />
-      )}
+      {selectedEvent && <BookingModal event={selectedEvent} onClose={() => setSelectedEvent(null)} onRefresh={fetchEvents} />}
     </main>
   );
 }
