@@ -134,7 +134,7 @@ export default function CalendarPage() {
         <div style={{ backgroundColor: isDark ? '#1e293b' : '#ffffff', borderColor: isDark ? '#334155' : '#cbd5e1' }} className="rounded-[20px] sm:rounded-[40px] shadow-2xl border overflow-hidden">
 
           <div style={{ borderColor: isDark ? '#334155' : '#e2e8f0' }} className="p-3 sm:p-8 border-b">
-            <div className="grid grid-cols-2 sm:grid-cols-3 items-center gap-2 sm:gap-0 mb-4 sm:mb-8">
+            <div className="flex flex-col sm:grid sm:grid-cols-3 items-start sm:items-center gap-4 sm:gap-0 mb-4 sm:mb-8">
               <div className="flex items-center gap-2">
                 <div className={`w-2 h-2 rounded-full ${user ? 'bg-emerald-500' : 'bg-red-500'}`}></div>
                 <div style={{ color: isDark ? '#94a3b8' : '#64748b' }} className="text-[10px] font-black uppercase">
@@ -142,11 +142,11 @@ export default function CalendarPage() {
                 </div>
               </div>
 
-              <h1 style={{ color: isDark ? '#f1f5f9' : '#1e293b' }} className="text-3xl font-black uppercase tracking-tighter text-center">
+              <h1 style={{ color: isDark ? '#f1f5f9' : '#1e293b' }} className="text-3xl font-black uppercase tracking-tighter text-center w-full sm:w-auto">
                 Booking Calendar
               </h1>
 
-              <div className="flex items-center gap-2 sm:gap-3">
+              <div className="flex items-center gap-2 sm:gap-3 justify-end w-full sm:w-auto">
                 {canViewAdmin && (
                   <a href="/admin" className="cursor-pointer bg-emerald-600 text-white px-3 sm:px-4 py-2 rounded-xl font-black text-[9px] sm:text-[10px] uppercase hover:opacity-80 transition-all">
                     Admin
