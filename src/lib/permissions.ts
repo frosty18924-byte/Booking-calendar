@@ -24,6 +24,7 @@ export const PERMISSIONS = {
   },
   STAFF_MANAGEMENT: {
     canView: ['admin'],
+    canCreate: ['admin'],
     canEdit: ['admin'],
     canDelete: ['admin'],
   },
