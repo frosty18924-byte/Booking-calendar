@@ -16,28 +16,24 @@ export async function POST(request: NextRequest) {
       process.env.SUPABASE_SERVICE_ROLE_KEY!
     );
 
-    // Try magic link first - this works without pre-creating users
-    const { data, error } = await supabase.auth.signInWithOtp({
+    // Use admin API to generate a signup link
+    // This allows users to sign up via a link without pre-existing Auth account
+    const { data, error } = await supabase.auth.admin.generateLink({
+      type: 'signup',
       email: email,
       options: {
-        shouldCreateUser: true,
-        emailRedirectTo: `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/auth/callback`
+        redirectTo: `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/auth/callback`
       }
     });
 
     if (error) {
-      console.error('Sign in with OTP error:', JSON.stringify(error, null, 2));
+      console.error('Signup link generation error:', JSON.stringify(error, null, 2));
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
 
-    console.log('OTP sent successfully:', {
-      email: data?.user?.email,
-      userId: data?.user?.id
-    });
+    console.log('Signup link generated successfully for:', email);
 
-    const resetLink = data?.session?.access_token ? 
-      `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/auth/callback?token=${data.session.access_token}` :
-      `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/auth/callback?email=${email}`;
+    const resetLink = data?.properties?.action_link;
 
     if (!resetLink) {
       return NextResponse.json({ error: 'Failed to generate link' }, { status: 500 });
