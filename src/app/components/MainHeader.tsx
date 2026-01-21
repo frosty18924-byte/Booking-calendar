@@ -33,12 +33,10 @@ export default function MainHeader({ title, backPath }: { title: string, backPat
             ← Back
           </button>
         )}
-        <div className="flex items-center gap-2">
-          <h1 className="text-lg sm:text-xl font-black uppercase text-slate-800 dark:text-white tracking-tight">{title}</h1>
-          {process.env.NEXT_PUBLIC_ENV === 'dev' && (
-            <span className="px-2 py-1 bg-yellow-400 text-black text-[8px] sm:text-[9px] font-black rounded-full">DEV</span>
-          )}
-        </div>
+        <h1 className="text-lg sm:text-xl font-black uppercase text-slate-800 dark:text-white tracking-tight">{title}</h1>
+        {process.env.NEXT_PUBLIC_ENV === 'dev' && (
+          <span className="px-2 py-1 bg-yellow-400 text-black text-[8px] sm:text-[9px] font-black rounded-full ml-2">DEV</span>
+        )}
       </div>
 
       <div className="flex items-center gap-2 sm:gap-3 w-full sm:w-auto justify-end">
