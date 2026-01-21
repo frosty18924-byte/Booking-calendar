@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react';
 import { format, startOfMonth, endOfMonth, startOfWeek, endOfWeek, eachDayOfInterval, isSameDay, isSameMonth, subMonths, addMonths } from 'date-fns';
 import ScheduleModal from '@/app/components/ScheduleModal';
 import BookingModal from '@/app/components/BookingModal';
+import BookingChecklistModal from '@/app/components/BookingChecklistModal';
 import ThemeToggle from '@/app/components/ThemeToggle';
 import { supabase } from '@/lib/supabase';
 import { hasPermission } from '@/lib/permissions';
@@ -12,6 +13,8 @@ export default function CalendarPage() {
   const [events, setEvents] = useState<any[]>([]);
   const [showSchedule, setShowSchedule] = useState(false);
   const [selectedEvent, setSelectedEvent] = useState<any>(null);
+  const [showChecklist, setShowChecklist] = useState(false);
+  const [selectedChecklistEventId, setSelectedChecklistEventId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [isDark, setIsDark] = useState(true);
   const [filterCourse, setFilterCourse] = useState<string>('all');
@@ -153,6 +156,9 @@ export default function CalendarPage() {
                 <button onClick={() => setCurrentMonth(subMonths(currentMonth, 1))} className="cursor-pointer text-2xl font-bold hover:scale-125 transition-transform">←</button>
                 <h2 style={{ color: isDark ? '#f1f5f9' : '#1e293b' }} className="text-2xl font-black uppercase min-w-[200px] text-center">{format(currentMonth, 'MMMM yyyy')}</h2>
                 <button onClick={() => setCurrentMonth(addMonths(currentMonth, 1))} className="cursor-pointer text-2xl font-bold hover:scale-125 transition-transform">→</button>
+                <button onClick={() => setCurrentMonth(new Date())} className="cursor-pointer bg-slate-500 hover:bg-slate-600 text-white px-3 py-2 rounded-lg font-bold text-[10px] uppercase transition-all" title="Go back to today">
+                  Today
+                </button>
               </div>
 
               <div className="min-w-[140px] flex justify-end">
@@ -219,7 +225,29 @@ export default function CalendarPage() {
       </div>
 
       {showSchedule && <ScheduleModal onClose={() => setShowSchedule(false)} onRefresh={fetchEvents} />}
-      {selectedEvent && <BookingModal event={selectedEvent} onClose={() => setSelectedEvent(null)} onRefresh={fetchEvents} />}
+      {selectedEvent && (
+        <BookingModal 
+          event={selectedEvent} 
+          onClose={() => setSelectedEvent(null)} 
+          onRefresh={fetchEvents}
+          onOpenChecklist={() => {
+            setShowChecklist(true);
+            setSelectedChecklistEventId(selectedEvent.id);
+          }}
+        />
+      )}
+      {showChecklist && selectedChecklistEventId && (
+        <BookingChecklistModal 
+          bookingId={selectedChecklistEventId}
+          onClose={() => {
+            setShowChecklist(false);
+            setSelectedChecklistEventId(null);
+          }}
+          userRole={userRole || ''}
+          userName={user?.email || ''}
+          userId={user?.id || ''}
+        />
+      )}
     </main>
   );
 }

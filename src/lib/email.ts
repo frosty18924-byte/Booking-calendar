@@ -5,6 +5,11 @@ export async function sendBookingEmail(staffEmail: string, staffName: string, co
   // LOGIC: If test mode is on, overwrite the recipient
   const recipient = isTestMode ? testRecipient : staffEmail;
 
+  if (!process.env.RESEND_API_KEY) {
+    console.error('RESEND_API_KEY is not set');
+    return false;
+  }
+
   const response = await fetch('https://api.resend.com/emails', {
     method: 'POST',
     headers: {
@@ -30,6 +35,11 @@ export async function sendBookingEmail(staffEmail: string, staffName: string, co
       `,
     }),
   });
+
+  if (!response.ok) {
+    const error = await response.text();
+    console.error('Resend API error:', error);
+  }
 
   return response.ok;
 }

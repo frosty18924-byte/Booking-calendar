@@ -138,7 +138,7 @@ export default function AnalyticsDashboard() {
       if (profileIds.length > 0) {
         const { data: profilesData, error: profilesError } = await supabase
           .from('profiles')
-          .select('id, full_name, home_house')
+          .select('id, full_name, location')
           .in('id', profileIds);
 
         if (profilesError) {
@@ -195,7 +195,7 @@ export default function AnalyticsDashboard() {
           let key = '';
           
           if (groupBy === 'location') {
-            key = item?.profiles?.home_house || 'Unassigned Location';
+            key = item?.profiles?.location || 'Unassigned Location';
           } else if (groupBy === 'course') {
             key = item?.training_events?.courses?.name || 'Unknown Course';
           } else if (groupBy === 'person') {
