@@ -16,10 +16,10 @@ export async function POST(request: NextRequest) {
       process.env.SUPABASE_SERVICE_ROLE_KEY!
     );
 
-    // Use admin API to generate a signup link
-    // This allows users to sign up via a link without pre-existing Auth account
+    // Use admin API to generate a magiclink
+    // This works for both new and existing users without requiring a password
     const { data, error } = await supabase.auth.admin.generateLink({
-      type: 'signup',
+      type: 'magiclink',
       email: email,
       options: {
         redirectTo: `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/auth/callback`
@@ -27,11 +27,11 @@ export async function POST(request: NextRequest) {
     });
 
     if (error) {
-      console.error('Signup link generation error:', JSON.stringify(error, null, 2));
+      console.error('Magic link generation error:', JSON.stringify(error, null, 2));
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
 
-    console.log('Signup link generated successfully for:', email);
+    console.log('Magic link generated successfully for:', email);
 
     const resetLink = data?.properties?.action_link;
 
