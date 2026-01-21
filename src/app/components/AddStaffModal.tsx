@@ -719,12 +719,14 @@ Charlie Scheduler,charlie@example.com,Banks House,manager`;
                               >
                                 ✏️ Edit
                               </button>
-                              <button 
-                                onClick={() => handleSendPasswordReset(staff.email, staff.full_name)} 
-                                className="flex-1 p-2 bg-green-600 hover:bg-green-700 text-white rounded-lg text-[9px] font-bold transition-all"
-                              >
-                                🔗 Send Link
-                              </button>
+                              {(staff.role_tier === 'manager' || staff.role_tier === 'scheduler' || staff.role_tier === 'admin') && (
+                                <button 
+                                  onClick={() => handleSendPasswordReset(staff.email, staff.full_name)} 
+                                  className="flex-1 p-2 bg-green-600 hover:bg-green-700 text-white rounded-lg text-[9px] font-bold transition-all"
+                                >
+                                  🔗 Send Link
+                                </button>
+                              )}
                               <button 
                                 onClick={() => handleDeleteStaff(staff.id)} 
                                 className="flex-1 p-2 bg-red-600 hover:bg-red-700 text-white rounded-lg text-[9px] font-bold transition-all"

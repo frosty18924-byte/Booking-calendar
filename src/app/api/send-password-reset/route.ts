@@ -12,23 +12,42 @@ export async function POST(request: NextRequest) {
       process.env.SUPABASE_SERVICE_ROLE_KEY!
     );
 
-    // Send password reset email via Supabase auth
-    // This generates a magic link that users can use to set/reset their password
-    const { data, error } = await supabase.auth.admin.generateLink({
-      type: 'recovery',
-      email: email,
-      options: {
-        redirectTo: `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/auth/callback?type=recovery`
-      }
-    });
+    // First, check if user exists in Auth
+    const { data: { users }, error: listError } = await supabase.auth.admin.listUsers();
+    const userExists = users?.some(u => u.email === email);
 
-    if (error) {
-      console.error('Supabase error:', error);
-      return NextResponse.json({ error: error.message }, { status: 500 });
+    let resetLink;
+
+    if (!userExists) {
+      // If user doesn't exist, invite them first
+      const { data: inviteData, error: inviteError } = await supabase.auth.admin.inviteUserByEmail(email, {
+        redirectTo: `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/auth/callback?type=recovery`
+      });
+
+      if (inviteError) {
+        console.error('Invitation error:', inviteError);
+        return NextResponse.json({ error: `Failed to invite user: ${inviteError.message}` }, { status: 500 });
+      }
+
+      resetLink = inviteData?.properties?.action_link;
+    } else {
+      // User exists, generate a recovery link
+      const { data, error } = await supabase.auth.admin.generateLink({
+        type: 'recovery',
+        email: email,
+        options: {
+          redirectTo: `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/auth/callback?type=recovery`
+        }
+      });
+
+      if (error) {
+        console.error('Supabase error:', error);
+        return NextResponse.json({ error: error.message }, { status: 500 });
+      }
+
+      resetLink = data?.properties?.action_link;
     }
 
-    // Get the reset link from the response
-    const resetLink = data?.properties?.action_link;
     if (!resetLink) {
       return NextResponse.json({ error: 'Failed to generate reset link' }, { status: 500 });
     }
