@@ -18,7 +18,7 @@ export async function sendBookingEmail(staffEmail: string, staffName: string, co
         'Authorization': `Bearer ${process.env.RESEND_API_KEY}`,
       },
       body: JSON.stringify({
-        from: 'noreply@booking-calendar.vercel.app',
+        from: 'Training Team <onboarding@resend.dev>',
         to: recipient,
         subject: isTestMode ? `[TEST] Booking: ${courseName}` : `Booking Confirmation: ${courseName}`,
         html: `
@@ -70,7 +70,7 @@ export async function sendBookingCancellationEmail(staffEmail: string, staffName
         'Authorization': `Bearer ${process.env.RESEND_API_KEY}`,
       },
       body: JSON.stringify({
-        from: 'noreply@booking-calendar.vercel.app',
+        from: 'Training Team <onboarding@resend.dev>',
         to: recipient,
         subject: isTestMode ? `[TEST] Booking Cancelled: ${courseName}` : `Booking Cancelled: ${courseName}`,
         html: `
@@ -123,7 +123,7 @@ export async function sendCourseScheduledEmail(staffEmail: string, staffName: st
         'Authorization': `Bearer ${process.env.RESEND_API_KEY}`,
       },
       body: JSON.stringify({
-        from: 'noreply@booking-calendar.vercel.app',
+        from: 'Training Team <onboarding@resend.dev>',
         to: recipient,
         subject: isTestMode ? `[TEST] New Course Scheduled: ${courseName}` : `New Course Scheduled: ${courseName}`,
         html: `
@@ -179,7 +179,7 @@ export async function sendBulkEmail(emails: string[], subject: string, htmlConte
         'Authorization': `Bearer ${process.env.RESEND_API_KEY}`,
       },
       body: JSON.stringify({
-        from: 'noreply@booking-calendar.vercel.app',
+        from: 'Training Team <onboarding@resend.dev>',
         to: recipients,
         subject: isTestMode ? `[TEST] ${subject}` : subject,
         html: htmlContent,
@@ -219,7 +219,7 @@ export async function sendPasswordResetEmail(staffEmail: string, staffName: stri
         'Authorization': `Bearer ${process.env.RESEND_API_KEY}`,
       },
       body: JSON.stringify({
-        from: 'noreply@booking-calendar.vercel.app',
+        from: 'Training Team <onboarding@resend.dev>',
         to: recipient,
         subject: isTestMode ? `[TEST] Set Your Password - Training Portal` : `Set Your Password - Training Portal`,
         html: `
