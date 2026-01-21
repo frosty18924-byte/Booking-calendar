@@ -177,7 +177,9 @@ export default function AddStaffModal({ onClose, onRefresh }: { onClose: () => v
       const staffData = [];
       let errorCount = 0;
       let skippedDuplicates = 0;
+      let skippedInternalDuplicates = 0;
       let errors: string[] = [];
+      const emailsInThisUpload = new Set<string>(); // Track emails within this CSV
 
       // First, fetch all existing emails to check for duplicates
       const { data: existingProfiles } = await supabase
@@ -211,10 +213,19 @@ export default function AddStaffModal({ onClose, onRefresh }: { onClose: () => v
           continue;
         }
 
-        // Check if email already exists (skip silently for duplicates)
-        if (existingEmails.has(row.email.toLowerCase())) {
+        const emailLower = row.email.toLowerCase();
+
+        // Check if email is a duplicate within this upload (internal duplicate)
+        if (emailsInThisUpload.has(emailLower)) {
+          skippedInternalDuplicates++;
+          console.log(`⏭️  Row ${i + 1}: Skipped duplicate email within this upload: ${row.email}`);
+          continue;
+        }
+
+        // Check if email already exists in database
+        if (existingEmails.has(emailLower)) {
           skippedDuplicates++;
-          console.log(`⏭️  Row ${i + 1}: Skipped duplicate email ${row.email}`);
+          console.log(`⏭️  Row ${i + 1}: Skipped duplicate email in database: ${row.email}`);
           continue;
         }
 
@@ -222,7 +233,7 @@ export default function AddStaffModal({ onClose, onRefresh }: { onClose: () => v
 
         const staffRecord: any = {
           full_name: row.full_name,
-          email: row.email.toLowerCase(),
+          email: emailLower,
           location: row.home_house,
           role_tier: row.role_tier || 'staff',
           managed_houses: []
@@ -234,12 +245,16 @@ export default function AddStaffModal({ onClose, onRefresh }: { onClose: () => v
         }
 
         staffData.push(staffRecord);
+        emailsInThisUpload.add(emailLower); // Add to internal tracking
       }
 
       if (staffData.length === 0) {
         let message = '❌ No valid staff records to upload';
+        if (skippedInternalDuplicates > 0) {
+          message += `\n(${skippedInternalDuplicates} duplicate emails in this file)`;
+        }
         if (skippedDuplicates > 0) {
-          message += `\n(${skippedDuplicates} duplicate emails skipped)`;
+          message += `\n(${skippedDuplicates} duplicate emails in database)`;
         }
         if (errors.length > 0) {
           message += '\n\n' + errors.slice(0, 3).join('\n');
@@ -255,11 +270,14 @@ export default function AddStaffModal({ onClose, onRefresh }: { onClose: () => v
       if (error) {
         console.error('Supabase error details:', error);
         let message = `❌ Upload failed: ${error.message}`;
+        if (skippedInternalDuplicates > 0) {
+          message += `\n(${skippedInternalDuplicates} duplicates within file skipped)`;
+        }
         if (skippedDuplicates > 0) {
-          message += `\n(${skippedDuplicates} duplicates were skipped)`;
+          message += `\n(${skippedDuplicates} duplicates in database skipped)`;
         }
         if (errorCount > 0) {
-          message += `\n(${errorCount} invalid rows were skipped)`;
+          message += `\n(${errorCount} invalid rows skipped)`;
         }
         setBulkMessage(message);
       } else {
@@ -277,8 +295,11 @@ export default function AddStaffModal({ onClose, onRefresh }: { onClose: () => v
         }
         
         let message = `✅ Successfully uploaded ${staffData.length} staff members`;
+        if (skippedInternalDuplicates > 0) {
+          message += ` (${skippedInternalDuplicates} duplicates in file skipped)`;
+        }
         if (skippedDuplicates > 0) {
-          message += ` (${skippedDuplicates} duplicates skipped)`;
+          message += ` (${skippedDuplicates} duplicates in database skipped)`;
         }
         if (errorCount > 0) {
           message += ` (${errorCount} invalid rows skipped)`;
