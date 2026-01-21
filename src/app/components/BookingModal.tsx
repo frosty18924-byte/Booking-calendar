@@ -68,8 +68,8 @@ export default function BookingModal({ event, onClose, onRefresh, onOpenChecklis
     
     if (userRole === 'manager' && userLocation) {
       // Managers see staff from their location, plus unassigned staff
-      const { data: locationStaff } = await supabase.from('profiles').select('*').eq('home_house', userLocation).order('full_name');
-      const { data: unassignedStaff } = await supabase.from('profiles').select('*').is('home_house', null).order('full_name');
+      const { data: locationStaff } = await supabase.from('profiles').select('*').eq('location', userLocation).order('full_name');
+      const { data: unassignedStaff } = await supabase.from('profiles').select('*').is('location', null).order('full_name');
       staffData = [...(locationStaff || []), ...(unassignedStaff || [])];
     } else if (userRole === 'admin' || userRole === 'scheduler') {
       // Admins and schedulers see all staff
@@ -91,7 +91,7 @@ export default function BookingModal({ event, onClose, onRefresh, onOpenChecklis
     
     if (data && data.length > 0) {
       const profileIds = data.map((b: any) => b.profile_id);
-      const { data: profilesData } = await supabase.from('profiles').select('id, full_name, home_house').in('id', profileIds);
+      const { data: profilesData } = await supabase.from('profiles').select('id, full_name, location').in('id', profileIds);
       const rosterWithProfiles = data.map((booking: any) => ({
         ...booking,
         profiles: profilesData?.find(p => p.id === booking.profile_id)
@@ -117,7 +117,7 @@ export default function BookingModal({ event, onClose, onRefresh, onOpenChecklis
     const filteredStaff = staff.filter(s => s.full_name?.toLowerCase().includes(searchQuery.toLowerCase()));
     
     filteredStaff.forEach(person => {
-      const location = person.home_house || 'Unassigned';
+      const location = person.location || 'Unassigned';
       if (!grouped[location]) {
         grouped[location] = [];
       }
@@ -206,6 +206,50 @@ export default function BookingModal({ event, onClose, onRefresh, onOpenChecklis
     onRefresh();
   };
 
+  const handleCancelEvent = async () => {
+    if (!confirm(`Cancel this event? All ${roster.length} participants will be notified and removed.`)) return;
+    
+    try {
+      // Send cancellation emails to all participants
+      for (const booking of roster) {
+        try {
+          await fetch('/api/send-booking-cancellation', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ 
+              staffId: booking.profile_id, 
+              eventId: event.id,
+              reason: 'This event has been cancelled'
+            })
+          });
+        } catch (err) {
+          console.error('Failed to send cancellation email:', err);
+        }
+      }
+      
+      // Delete all bookings for this event
+      const { error: deleteBookingsError } = await supabase
+        .from('bookings')
+        .delete()
+        .eq('event_id', event.id);
+      
+      if (deleteBookingsError) throw deleteBookingsError;
+      
+      // Delete the event itself
+      const { error: deleteEventError } = await supabase
+        .from('training_events')
+        .delete()
+        .eq('id', event.id);
+      
+      if (deleteEventError) throw deleteEventError;
+      
+      onRefresh();
+      onClose();
+    } catch (error: any) {
+      alert('Error cancelling event: ' + error.message);
+    }
+  };
+
   const canViewRoster = hasPermission(userRole, 'ROSTER', 'canView');
   const canEditRoster = hasPermission(userRole, 'ROSTER', 'canEdit');
 
@@ -215,13 +259,23 @@ export default function BookingModal({ event, onClose, onRefresh, onOpenChecklis
         
         {/* Header */}
         <div style={{ backgroundColor: isDark ? '#0f172a' : '#f1f5f9' }} className="p-6 border-b text-center relative flex items-center justify-between">
-          <button 
-            onClick={onOpenChecklist}
-            style={{ backgroundColor: '#8b5cf6' }}
-            className="text-white px-4 py-2 rounded-lg font-bold text-sm hover:opacity-90 transition-all"
-          >
-            📋 Checklist
-          </button>
+          <div className="flex gap-2">
+            <button 
+              onClick={onOpenChecklist}
+              style={{ backgroundColor: '#8b5cf6' }}
+              className="text-white px-4 py-2 rounded-lg font-bold text-sm hover:opacity-90 transition-all"
+            >
+              📋 Checklist
+            </button>
+            <button 
+              onClick={handleCancelEvent}
+              style={{ backgroundColor: '#ef4444' }}
+              className="text-white px-4 py-2 rounded-lg font-bold text-sm hover:opacity-90 transition-all"
+              title="Cancel this event and remove all participants"
+            >
+              ❌ Cancel Event
+            </button>
+          </div>
           <div className="flex-1 text-center">
             <h2 style={{ color: isDark ? '#f1f5f9' : '#1e293b' }} className="text-xl font-black uppercase">{event.courses?.name}</h2>
             <p className="text-[10px] font-bold opacity-50 uppercase">{event.event_date}</p>
@@ -275,7 +329,7 @@ export default function BookingModal({ event, onClose, onRefresh, onOpenChecklis
                             <input type="checkbox" checked={selectedIds.includes(person.id)} onChange={(e) => e.target.checked ? setSelectedIds([...selectedIds, person.id]) : setSelectedIds(selectedIds.filter(id => id !== person.id))} className="w-4 h-4 rounded" />
                             <div className="flex-1">
                               <span className="text-xs font-bold block text-black dark:text-white">{person.full_name}</span>
-                              <span className="text-[9px] uppercase font-black opacity-50">📍 {person.home_house}</span>
+                              <span className="text-[9px] uppercase font-black opacity-50">📍 {person.location}</span>
                             </div>
                           </label>
                         ))}
@@ -295,7 +349,7 @@ export default function BookingModal({ event, onClose, onRefresh, onOpenChecklis
                   <div className="flex justify-between items-start mb-4">
                     <div>
                       <p className={`text-sm font-black ${row.attended_at ? 'text-emerald-500' : 'text-black dark:text-white'}`}>{row.profiles?.full_name}</p>
-                      <p className="text-[9px] font-bold opacity-50 uppercase">📍 {row.profiles?.home_house}</p>
+                      <p className="text-[9px] font-bold opacity-50 uppercase">📍 {row.profiles?.location}</p>
                     </div>
                     <div className="flex gap-2">
                       <button 
