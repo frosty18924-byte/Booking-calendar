@@ -229,5 +229,4 @@ export async function sendPasswordResetEmail(staffEmail: string, staffName: stri
   }
 
   return response.ok;
-}  return response.ok;
 }
