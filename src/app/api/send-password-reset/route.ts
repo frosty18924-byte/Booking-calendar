@@ -16,58 +16,28 @@ export async function POST(request: NextRequest) {
       process.env.SUPABASE_SERVICE_ROLE_KEY!
     );
 
-    // Generate magic link for password setup/reset
-    // This works for both new and existing users via OTP
-    const { data, error } = await supabase.auth.admin.generateLink({
-      type: 'magiclink',
+    // Try magic link first - this works without pre-creating users
+    const { data, error } = await supabase.auth.signInWithOtp({
       email: email,
       options: {
-        redirectTo: `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/auth/callback`
+        shouldCreateUser: true,
+        emailRedirectTo: `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/auth/callback`
       }
     });
 
     if (error) {
-      console.error('Magic link generation error:', JSON.stringify(error, null, 2));
-      
-      // If user doesn't exist, we need to create them first
-      if ((error as any).code === 'user_not_found') {
-        console.log('User not found, attempting to create with minimal data...');
-        
-        // Create user with minimal data - just email
-        const { error: createError } = await supabase.auth.admin.createUser({
-          email: email,
-          password: 'temp_' + Math.random().toString(36).slice(-12),
-          email_confirm: true
-        });
-
-        if (createError) {
-          console.error('Create user error:', JSON.stringify(createError, null, 2));
-          return NextResponse.json({ 
-            error: 'Failed to create user account: ' + (createError as any).message 
-          }, { status: 500 });
-        }
-
-        // Try generating link again after creating user
-        const { data: linkData, error: linkError } = await supabase.auth.admin.generateLink({
-          type: 'magiclink',
-          email: email,
-          options: {
-            redirectTo: `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/auth/callback`
-          }
-        });
-
-        if (linkError) {
-          console.error('Magic link generation after user creation failed:', JSON.stringify(linkError, null, 2));
-          return NextResponse.json({ error: linkError.message }, { status: 500 });
-        }
-
-        data.properties = linkData?.properties;
-      } else {
-        return NextResponse.json({ error: error.message }, { status: 500 });
-      }
+      console.error('Sign in with OTP error:', JSON.stringify(error, null, 2));
+      return NextResponse.json({ error: error.message }, { status: 500 });
     }
 
-    const resetLink = data?.properties?.action_link;
+    console.log('OTP sent successfully:', {
+      email: data?.user?.email,
+      userId: data?.user?.id
+    });
+
+    const resetLink = data?.session?.access_token ? 
+      `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/auth/callback?token=${data.session.access_token}` :
+      `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/auth/callback?email=${email}`;
 
     if (!resetLink) {
       return NextResponse.json({ error: 'Failed to generate link' }, { status: 500 });
