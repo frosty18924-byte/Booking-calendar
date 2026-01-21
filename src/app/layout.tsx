@@ -8,6 +8,7 @@ const geistMono = Geist_Mono({ variable: "--font-geist-mono", subsets: ["latin"]
 export const metadata: Metadata = {
   title: "Cascade Training Portal",
   description: "Management and Analytics Dashboard",
+  viewport: "width=device-width, initial-scale=1.0, maximum-scale=1.0",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

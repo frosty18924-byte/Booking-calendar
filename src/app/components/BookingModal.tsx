@@ -151,6 +151,18 @@ export default function BookingModal({ event, onClose, onRefresh, onOpenChecklis
     const bookingData = selectedIds.map(id => ({ event_id: event.id, profile_id: id }));
     const { error } = await supabase.from('bookings').insert(bookingData);
     if (!error) {
+      // Send confirmation emails for each booked staff member
+      for (const staffId of selectedIds) {
+        try {
+          await fetch('/api/send-booking-confirmation', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ staffId, eventId: event.id })
+          });
+        } catch (err) {
+          console.error('Failed to send email for staff:', staffId, err);
+        }
+      }
       setSelectedIds([]);
       await fetchInitialData();
       setActiveTab('roster');
@@ -161,7 +173,33 @@ export default function BookingModal({ event, onClose, onRefresh, onOpenChecklis
 
   const handleRemoveStaff = async (bookingId: string) => {
     if (!confirm('Remove staff member?')) return;
+    
+    // Get booking details before deletion
+    const { data: booking } = await supabase
+      .from('bookings')
+      .select('profile_id')
+      .eq('id', bookingId)
+      .single();
+
     await supabase.from('bookings').delete().eq('id', bookingId);
+    
+    // Send cancellation email
+    if (booking?.profile_id) {
+      try {
+        await fetch('/api/send-booking-cancellation', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ 
+            staffId: booking.profile_id, 
+            eventId: event.id,
+            reason: 'Booking removed by administrator'
+          })
+        });
+      } catch (err) {
+        console.error('Failed to send cancellation email:', err);
+      }
+    }
+    
     await fetchRoster();
     await fetchInitialData();
     onRefresh();

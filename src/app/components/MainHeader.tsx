@@ -26,17 +26,17 @@ export default function MainHeader({ title, backPath }: { title: string, backPat
   };
 
   return (
-    <header className="flex justify-between items-center mb-8 bg-white dark:bg-[#1e293b] p-6 rounded-3xl border border-slate-200 dark:border-slate-700 shadow-sm transition-all">
-      <div className="flex items-center gap-4">
+    <header className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6 sm:mb-8 bg-white dark:bg-[#1e293b] p-4 sm:p-6 rounded-3xl border border-slate-200 dark:border-slate-700 shadow-sm transition-all">
+      <div className="flex items-center gap-4 w-full sm:w-auto">
         {backPath && (
-          <button onClick={() => router.push(backPath)} className="text-blue-600 dark:text-blue-400 font-bold">
+          <button onClick={() => router.push(backPath)} className="text-blue-600 dark:text-blue-400 font-bold text-sm sm:text-base">
             ← Back
           </button>
         )}
-        <h1 className="text-xl font-black uppercase text-slate-800 dark:text-white tracking-tight">{title}</h1>
+        <h1 className="text-lg sm:text-xl font-black uppercase text-slate-800 dark:text-white tracking-tight">{title}</h1>
       </div>
 
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-2 sm:gap-3 w-full sm:w-auto justify-end">
         <button 
           onClick={toggleTheme}
           className="p-2.5 rounded-xl bg-slate-100 dark:bg-[#0f172a] border border-slate-200 dark:border-slate-700"
@@ -47,7 +47,7 @@ export default function MainHeader({ title, backPath }: { title: string, backPat
         {!backPath && (
           <button 
             onClick={() => router.push('/admin')}
-            className="bg-slate-900 dark:bg-blue-600 text-white px-5 py-2.5 rounded-xl font-bold text-sm"
+            className="bg-slate-900 dark:bg-blue-600 text-white px-3 sm:px-5 py-2 sm:py-2.5 rounded-xl font-bold text-[9px] sm:text-sm whitespace-nowrap"
           >
             Admin Dashboard
           </button>

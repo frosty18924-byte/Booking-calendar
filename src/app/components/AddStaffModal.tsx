@@ -176,6 +176,7 @@ export default function AddStaffModal({ onClose, onRefresh }: { onClose: () => v
 
       const staffData = [];
       let errorCount = 0;
+      let skippedDuplicates = 0;
       let errors: string[] = [];
 
       // First, fetch all existing emails to check for duplicates
@@ -210,10 +211,10 @@ export default function AddStaffModal({ onClose, onRefresh }: { onClose: () => v
           continue;
         }
 
-        // Check if email already exists
+        // Check if email already exists (skip silently for duplicates)
         if (existingEmails.has(row.email.toLowerCase())) {
-          errorCount++;
-          errors.push(`Row ${i + 1}: ${row.full_name} - Email ${row.email} already exists`);
+          skippedDuplicates++;
+          console.log(`⏭️  Row ${i + 1}: Skipped duplicate email ${row.email}`);
           continue;
         }
 
@@ -236,8 +237,14 @@ export default function AddStaffModal({ onClose, onRefresh }: { onClose: () => v
       }
 
       if (staffData.length === 0) {
-        const errorMsg = errors.length > 0 ? errors.slice(0, 3).join('\n') : '';
-        setBulkMessage(`❌ No valid staff records to upload${errorMsg ? '\n\n' + errorMsg : ''}`);
+        let message = '❌ No valid staff records to upload';
+        if (skippedDuplicates > 0) {
+          message += `\n(${skippedDuplicates} duplicate emails skipped)`;
+        }
+        if (errors.length > 0) {
+          message += '\n\n' + errors.slice(0, 3).join('\n');
+        }
+        setBulkMessage(message);
         setBulkLoading(false);
         return;
       }
@@ -247,7 +254,14 @@ export default function AddStaffModal({ onClose, onRefresh }: { onClose: () => v
       
       if (error) {
         console.error('Supabase error details:', error);
-        setBulkMessage(`❌ Upload failed: ${error.message}${errors.length > 0 ? '\n\nSkipped: ' + errors.length + ' rows (duplicates/invalid)' : ''}`);
+        let message = `❌ Upload failed: ${error.message}`;
+        if (skippedDuplicates > 0) {
+          message += `\n(${skippedDuplicates} duplicates were skipped)`;
+        }
+        if (errorCount > 0) {
+          message += `\n(${errorCount} invalid rows were skipped)`;
+        }
+        setBulkMessage(message);
       } else {
         console.log('Upload success:', data);
         // Check if locations were actually inserted
@@ -261,7 +275,16 @@ export default function AddStaffModal({ onClose, onRefresh }: { onClose: () => v
             console.warn('⚠️ WARNING: All location values are NULL in inserted records. This is likely an RLS policy issue.');
           }
         }
-        setBulkMessage(`✅ Successfully uploaded ${staffData.length} staff members${errorCount > 0 ? ` (${errorCount} rows skipped)` : ''}`);
+        
+        let message = `✅ Successfully uploaded ${staffData.length} staff members`;
+        if (skippedDuplicates > 0) {
+          message += ` (${skippedDuplicates} duplicates skipped)`;
+        }
+        if (errorCount > 0) {
+          message += ` (${errorCount} invalid rows skipped)`;
+        }
+        setBulkMessage(message);
+        
         await fetchInitialData();
         onRefresh();
         

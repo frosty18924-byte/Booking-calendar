@@ -33,3 +33,98 @@ export async function sendBookingEmail(staffEmail: string, staffName: string, co
 
   return response.ok;
 }
+
+export async function sendBookingCancellationEmail(staffEmail: string, staffName: string, courseName: string, date: string, reason?: string) {
+  const isTestMode = process.env.NEXT_PUBLIC_EMAIL_TEST_MODE === 'true';
+  const testRecipient = process.env.NEXT_PUBLIC_TEST_EMAIL_ADDRESS;
+  const recipient = isTestMode ? testRecipient : staffEmail;
+
+  const response = await fetch('https://api.resend.com/emails', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${process.env.RESEND_API_KEY}`,
+    },
+    body: JSON.stringify({
+      from: 'Training Team <onboarding@resend.dev>',
+      to: recipient,
+      subject: isTestMode ? `[TEST] Booking Cancelled: ${courseName}` : `Booking Cancelled: ${courseName}`,
+      html: `
+        <div style="font-family: sans-serif; padding: 20px; border: 1px solid #fee2e2; border-radius: 10px; background-color: #fef2f2;">
+          <h2 style="color: #dc2626;">Booking Cancelled</h2>
+          <p>Hi <strong>${staffName}</strong>,</p>
+          <p>Your booking for the following course has been cancelled:</p>
+          <ul>
+            <li><strong>Course:</strong> ${courseName}</li>
+            <li><strong>Date:</strong> ${new Date(date).toLocaleDateString()}</li>
+            ${reason ? `<li><strong>Reason:</strong> ${reason}</li>` : ''}
+          </ul>
+          <p>If you have any questions, please contact the training team.</p>
+          ${isTestMode ? `<p style="color: red;"><strong>Note:</strong> This was a test email intended for ${staffEmail}</p>` : ''}
+        </div>
+      `,
+    }),
+  });
+
+  return response.ok;
+}
+
+export async function sendCourseScheduledEmail(staffEmail: string, staffName: string, courseName: string, date: string, startTime: string, endTime: string, location: string) {
+  const isTestMode = process.env.NEXT_PUBLIC_EMAIL_TEST_MODE === 'true';
+  const testRecipient = process.env.NEXT_PUBLIC_TEST_EMAIL_ADDRESS;
+  const recipient = isTestMode ? testRecipient : staffEmail;
+
+  const response = await fetch('https://api.resend.com/emails', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${process.env.RESEND_API_KEY}`,
+    },
+    body: JSON.stringify({
+      from: 'Training Team <onboarding@resend.dev>',
+      to: recipient,
+      subject: isTestMode ? `[TEST] New Course Scheduled: ${courseName}` : `New Course Scheduled: ${courseName}`,
+      html: `
+        <div style="font-family: sans-serif; padding: 20px; border: 1px solid #dbeafe; border-radius: 10px; background-color: #f0f9ff;">
+          <h2 style="color: #0284c7;">New Training Course Available</h2>
+          <p>Hi <strong>${staffName}</strong>,</p>
+          <p>A new training course has been scheduled that may be relevant to you:</p>
+          <div style="background-color: white; padding: 15px; border-radius: 8px; margin: 15px 0;">
+            <p style="margin: 5px 0;"><strong>📚 Course:</strong> ${courseName}</p>
+            <p style="margin: 5px 0;"><strong>📅 Date:</strong> ${new Date(date).toLocaleDateString()}</p>
+            <p style="margin: 5px 0;"><strong>⏰ Time:</strong> ${startTime} - ${endTime}</p>
+            <p style="margin: 5px 0;"><strong>📍 Location:</strong> ${location}</p>
+          </div>
+          <p>Log in to the training portal to book your place.</p>
+          ${isTestMode ? `<p style="color: red;"><strong>Note:</strong> This was a test email intended for ${staffEmail}</p>` : ''}
+        </div>
+      `,
+    }),
+  });
+
+  return response.ok;
+}
+
+export async function sendBulkEmail(emails: string[], subject: string, htmlContent: string) {
+  const isTestMode = process.env.NEXT_PUBLIC_EMAIL_TEST_MODE === 'true';
+  const testRecipient = process.env.NEXT_PUBLIC_TEST_EMAIL_ADDRESS;
+
+  // If test mode, send to test email only
+  const recipients = isTestMode ? [testRecipient] : emails;
+
+  const response = await fetch('https://api.resend.com/emails', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${process.env.RESEND_API_KEY}`,
+    },
+    body: JSON.stringify({
+      from: 'Training Team <onboarding@resend.dev>',
+      to: recipients,
+      subject: isTestMode ? `[TEST] ${subject}` : subject,
+      html: htmlContent,
+    }),
+  });
+
+  return response.ok;
+}

@@ -47,17 +47,32 @@ export default function ScheduleModal({ onClose, onRefresh }: { onClose: () => v
       return;
     }
 
-    const { error } = await supabase.from('training_events').insert([{
+    const { data: insertedEvent, error } = await supabase.from('training_events').insert([{
       ...formData,
       start_time: `${formData.start_time}:00`,
       end_time: `${formData.end_time}:00`
-    }]);
+    }]).select().single();
 
-    if (!error) {
+    if (!error && insertedEvent) {
+      // Send course notification to all staff
+      try {
+        await fetch('/api/send-course-notification', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ 
+            eventId: insertedEvent.id, 
+            notifyAllStaff: true 
+          })
+        });
+      } catch (err) {
+        console.error('Failed to send course notification:', err);
+        // Don't fail the event creation if email fails
+      }
+      
       onRefresh();
       onClose();
     } else {
-      alert(error.message);
+      alert(error?.message || 'Failed to create event');
     }
     setLoading(false);
   };
