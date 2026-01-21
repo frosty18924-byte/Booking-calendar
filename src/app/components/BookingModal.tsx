@@ -67,9 +67,10 @@ export default function BookingModal({ event, onClose, onRefresh, onOpenChecklis
     let staffData: any[] = [];
     
     if (userRole === 'manager' && userLocation) {
-      // Managers only see staff from their location
-      const { data } = await supabase.from('profiles').select('*').eq('home_house', userLocation).order('full_name');
-      staffData = data || [];
+      // Managers see staff from their location, plus unassigned staff
+      const { data: locationStaff } = await supabase.from('profiles').select('*').eq('home_house', userLocation).order('full_name');
+      const { data: unassignedStaff } = await supabase.from('profiles').select('*').is('home_house', null).order('full_name');
+      staffData = [...(locationStaff || []), ...(unassignedStaff || [])];
     } else if (userRole === 'admin' || userRole === 'scheduler') {
       // Admins and schedulers see all staff
       const { data } = await supabase.from('profiles').select('*').order('full_name');

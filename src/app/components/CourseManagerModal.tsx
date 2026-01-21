@@ -99,6 +99,51 @@ export default function CourseManagerModal({ onClose }: { onClose: () => void })
     }
   };
 
+  const handleCancelCourse = async (courseId: string, courseName: string) => {
+    if (!confirm(`Cancel "${courseName}"? This will remove all participants from all instances of this course and then delete it.`)) return;
+    
+    try {
+      // Get all events for this course
+      const { data: events } = await supabase
+        .from('events')
+        .select('id')
+        .eq('course_id', courseId);
+      
+      if (events && events.length > 0) {
+        const eventIds = events.map(e => e.id);
+        
+        // Delete all bookings for these events
+        const { error: deleteBookingsError } = await supabase
+          .from('bookings')
+          .delete()
+          .in('event_id', eventIds);
+        
+        if (deleteBookingsError) throw deleteBookingsError;
+      }
+      
+      // Delete all events for this course
+      const { error: deleteEventsError } = await supabase
+        .from('events')
+        .delete()
+        .eq('course_id', courseId);
+      
+      if (deleteEventsError) throw deleteEventsError;
+      
+      // Finally delete the course
+      const { error: deleteCourseError } = await supabase
+        .from('courses')
+        .delete()
+        .eq('id', courseId);
+      
+      if (deleteCourseError) throw deleteCourseError;
+      
+      fetchCourses();
+      alert(`Course "${courseName}" has been cancelled and all participants have been removed.`);
+    } catch (error: any) {
+      alert('Error cancelling course: ' + error.message);
+    }
+  };
+
   const handleOpenOverride = (course: any) => {
     setSelectedCourseForOverride(course);
     setShowOverrideModal(true);
@@ -201,6 +246,16 @@ export default function CourseManagerModal({ onClose }: { onClose: () => void })
                       className="p-3 text-white rounded-lg font-bold transition-all"
                     >
                       ✏️
+                    </button>
+                    <button 
+                      onClick={() => handleCancelCourse(course.id, course.name)}
+                      style={{ backgroundColor: '#f97316' }}
+                      onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#ea580c'}
+                      onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#f97316'}
+                      className="p-3 text-white rounded-lg font-bold transition-all"
+                      title="Cancel this course and remove all participants"
+                    >
+                      ❌
                     </button>
                     <button 
                       onClick={() => handleDelete(course.id)}
