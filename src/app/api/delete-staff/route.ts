@@ -35,7 +35,24 @@ export async function POST(request: Request) {
       );
     }
 
-    // Delete from profiles table first
+    // Delete from bookings table first (all their course assignments)
+    const { error: bookingsError } = await supabaseAdmin
+      .from('bookings')
+      .delete()
+      .eq('user_id', staffId);
+
+    if (bookingsError) {
+      console.error('Bookings deletion error:', bookingsError);
+      return Response.json(
+        {
+          success: false,
+          error: `Failed to delete bookings: ${bookingsError.message}`,
+        },
+        { status: 400 }
+      );
+    }
+
+    // Delete from profiles table
     const { error: profileError } = await supabaseAdmin
       .from('profiles')
       .delete()
