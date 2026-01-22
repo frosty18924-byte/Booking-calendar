@@ -59,11 +59,49 @@ export async function POST(request: Request) {
           .single();
 
         if (existingProfile) {
-          console.warn('User already exists:', staff.email);
+          console.warn('User already exists in profiles:', staff.email);
           results.push({
             email: staff.email,
             success: false,
             error: `User with email ${staff.email} already exists`,
+          });
+          continue;
+        }
+
+        // Check if auth user already exists
+        const { data: { users }, error: usersError } = await supabaseAdmin.auth.admin.listUsers();
+        const existingAuthUser = users?.find(u => u.email?.toLowerCase() === staff.email.toLowerCase());
+
+        if (existingAuthUser) {
+          console.warn('Auth user exists but no profile, attempting to create profile:', staff.email);
+          // Create profile for existing auth user
+          const { error: profileError } = await supabaseAdmin
+            .from('profiles')
+            .insert([
+              {
+                id: existingAuthUser.id,
+                full_name: staff.full_name,
+                email: staff.email,
+                location: staff.location,
+                role_tier: staff.role_tier,
+                password_needs_change: false,
+              },
+            ]);
+
+          if (profileError) {
+            console.error('Profile creation error for existing auth user:', profileError);
+            results.push({
+              email: staff.email,
+              success: false,
+              error: `Auth user exists but couldn't create profile: ${profileError.message}`,
+            });
+            continue;
+          }
+
+          results.push({
+            email: staff.email,
+            success: true,
+            message: 'Profile created for existing auth user',
           });
           continue;
         }
