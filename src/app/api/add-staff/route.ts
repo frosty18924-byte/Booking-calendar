@@ -51,6 +51,23 @@ export async function POST(request: Request) {
       try {
         console.log('Creating user for:', staff.email);
         
+        // Check if email already exists in profiles
+        const { data: existingProfile, error: checkError } = await supabaseAdmin
+          .from('profiles')
+          .select('id, email')
+          .eq('email', staff.email.toLowerCase())
+          .single();
+
+        if (existingProfile) {
+          console.warn('User already exists:', staff.email);
+          results.push({
+            email: staff.email,
+            success: false,
+            error: `User with email ${staff.email} already exists`,
+          });
+          continue;
+        }
+
         // Use provided password or generate one
         const userPassword = staff.password || (Math.random().toString(36).slice(-12) + Math.random().toString(36).slice(-4));
         

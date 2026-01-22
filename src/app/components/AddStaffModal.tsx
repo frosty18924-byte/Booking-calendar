@@ -360,13 +360,32 @@ Charlie Scheduler,charlie@example.com,Banks House,manager`;
       return;
     }
 
-    if (!confirm('Delete this staff member?')) return;
+    if (!confirm('Delete this staff member? This will remove them from everywhere including login.')) return;
     try {
-      const { error } = await supabase.from('profiles').delete().eq('id', id);
-      if (error) throw error;
+      // Find the staff member's email for the API call
+      const staff = allStaff.find(s => s.id === id);
+      if (!staff) {
+        alert('Staff member not found');
+        return;
+      }
+
+      const response = await fetch('/api/delete-staff', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ staffId: id, email: staff.email })
+      });
+
+      const result = await response.json();
+
+      if (!result.success) {
+        alert('❌ Error: ' + result.error);
+        return;
+      }
+
+      alert('✅ Staff member removed completely');
       fetchInitialData();
     } catch (error: any) {
-      alert(error.message);
+      alert('❌ Error: ' + error.message);
     }
   };
 
