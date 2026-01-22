@@ -1,4 +1,6 @@
 import { createClient } from '@supabase/supabase-js';
+import { sendPasswordResetEmail } from '@/lib/email';
+
 export const dynamic = 'force-dynamic';
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
@@ -48,10 +50,13 @@ export async function POST(request: Request) {
       try {
         console.log('Creating user for:', staff.email);
         
+        // Generate a secure password (will be sent in reset email)
+        const tempPassword = Math.random().toString(36).slice(-12) + Math.random().toString(36).slice(-4);
+        
         // Create auth user with service role
         const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
           email: staff.email,
-          password: Math.random().toString(36).slice(-12),
+          password: tempPassword,
           email_confirm: true,
         });
 
@@ -87,13 +92,49 @@ export async function POST(request: Request) {
             success: false,
             error: profileError.message,
           });
-        } else {
-          console.log('Profile created for:', staff.email);
+          continue;
+        }
+
+        console.log('Profile created for:', staff.email);
+
+        // Generate password reset link
+        const { data: resetData, error: resetError } = await supabaseAdmin.auth.admin.generateLink({
+          type: 'recovery',
+          email: staff.email,
+          options: {
+            redirectTo: `${process.env.NEXT_PUBLIC_APP_URL}/auth/reset-password`,
+          },
+        });
+
+        if (resetError) {
+          console.error('Reset link generation error:', resetError);
           results.push({
             email: staff.email,
             success: true,
+            message: 'User created but password reset email could not be sent',
+            tempPassword: tempPassword,
           });
+          continue;
         }
+
+        // Send password reset email with temp password info
+        const resetLink = resetData?.actionLink || '';
+        const emailSent = await sendPasswordResetEmail(
+          staff.email,
+          staff.full_name,
+          resetLink
+        );
+
+        if (!emailSent) {
+          console.warn('Email failed to send for:', staff.email);
+        }
+
+        results.push({
+          email: staff.email,
+          success: true,
+          tempPassword: tempPassword,
+          message: 'User created and password reset email sent',
+        });
       } catch (error) {
         console.error('Catch error:', error);
         results.push({
