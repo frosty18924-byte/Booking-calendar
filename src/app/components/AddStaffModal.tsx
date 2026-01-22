@@ -22,7 +22,8 @@ export default function AddStaffModal({ onClose, onRefresh }: { onClose: () => v
     email: '', 
     home_house: '', 
     role_tier: 'staff' as 'staff' | 'manager' | 'scheduler' | 'admin',
-    managed_houses: [] as string[]
+    managed_houses: [] as string[],
+    password: ''
   });
 
   useEffect(() => { 
@@ -116,19 +117,35 @@ export default function AddStaffModal({ onClose, onRefresh }: { onClose: () => v
         alert('✅ Staff member updated successfully');
         setEditingId(null);
       } else {
-        // Map home_house to location for database insert
-        const insertData = {
+        // For new users, use the API endpoint to create auth user and profile
+        const payload = {
           full_name: formData.full_name,
           email: formData.email,
           location: formData.home_house,
           role_tier: formData.role_tier,
-          managed_houses: formData.managed_houses
+          ...(formData.password && { password: formData.password })
         };
-        const { error } = await supabase.from('profiles').insert([insertData]);
-        if (error) throw error;
+
+        const response = await fetch('/api/add-staff', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+
+        const result = await response.json();
+
+        if (!result.success || !result.results[0].success) {
+          throw new Error(result.results[0].error || 'Failed to create user');
+        }
+
+        if (formData.password) {
+          alert(`✅ Staff member created!\n\nPassword set: ${formData.password}\n\nThey will be prompted to change it on first login.`);
+        } else {
+          alert(`✅ Staff member created!\n\nPassword reset email has been sent to ${formData.email}`);
+        }
       }
       
-      setFormData({ full_name: '', email: '', home_house: '', role_tier: 'staff', managed_houses: [] });
+      setFormData({ full_name: '', email: '', home_house: '', role_tier: 'staff', managed_houses: [], password: '' });
       fetchInitialData();
       onRefresh();
     } catch (error: any) {
@@ -596,7 +613,24 @@ Charlie Scheduler,charlie@example.com,Banks House,manager`;
                 />
               </div>
 
-              <div>
+              {!editingId && (
+                <div>
+                  <label style={{ color: isDark ? '#94a3b8' : '#64748b' }} className="text-[10px] font-black uppercase mb-1 block">Password (Optional)</label>
+                  <input 
+                    type="password" 
+                    placeholder="Leave blank to send them a reset email"
+                    style={{ backgroundColor: isDark ? '#0f172a' : '#f1f5f9', color: isDark ? '#f1f5f9' : '#1e293b', borderColor: isDark ? '#334155' : '#cbd5e1' }}
+                    className="w-full p-3 border rounded-xl outline-none focus:ring-2 focus:ring-blue-500" 
+                    value={formData.password} 
+                    onChange={e => setFormData({...formData, password: e.target.value})} 
+                  />
+                  <p style={{ color: isDark ? '#64748b' : '#94a3b8' }} className="text-xs mt-1">
+                    {formData.password 
+                      ? '✓ They must change this password on first login' 
+                      : '✓ They will receive a password reset email'}
+                  </p>
+                </div>
+              )}
                 <label style={{ color: isDark ? '#94a3b8' : '#64748b' }} className="text-[10px] font-black uppercase mb-1 block">Role</label>
                 <select 
                   required 

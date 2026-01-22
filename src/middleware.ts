@@ -36,6 +36,7 @@ export async function middleware(request: NextRequest) {
   } = await supabase.auth.getUser()
 
   const isLoginPage = request.nextUrl.pathname === '/login'
+  const isChangePasswordPage = request.nextUrl.pathname === '/auth/change-password-required'
 
   // 1. If NOT logged in and NOT on login page and NOT on auth callback -> FORCE to /login
   if (!user && !isLoginPage && !request.nextUrl.pathname.startsWith('/auth')) {
@@ -49,6 +50,25 @@ export async function middleware(request: NextRequest) {
     const url = request.nextUrl.clone()
     url.pathname = '/'
     return NextResponse.redirect(url)
+  }
+
+  // 3. If logged in, check if password needs to be changed
+  if (user && !isChangePasswordPage) {
+    try {
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('password_needs_change')
+        .eq('id', user.id)
+        .single()
+
+      if (profile?.password_needs_change === true) {
+        const url = request.nextUrl.clone()
+        url.pathname = '/auth/change-password-required'
+        return NextResponse.redirect(url)
+      }
+    } catch (error) {
+      console.error('Error checking password status:', error)
+    }
   }
 
   return response
