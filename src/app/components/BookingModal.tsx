@@ -278,17 +278,17 @@ export default function BookingModal({ event, onClose, onRefresh, onOpenChecklis
           </div>
           <div className="flex-1 text-center">
             <h2 style={{ color: isDark ? '#f1f5f9' : '#1e293b' }} className="text-xl font-black uppercase">{event.courses?.name}</h2>
-            <p className="text-[10px] font-bold opacity-50 uppercase">{event.event_date}</p>
+            <p style={{ color: isDark ? '#94a3b8' : '#64748b' }} className="text-[10px] font-bold uppercase">{event.event_date}</p>
           </div>
           <button onClick={onClose} className="text-2xl font-light" style={{ color: isDark ? '#94a3b8' : '#64748b' }}>&times;</button>
         </div>
 
         {/* Tabs */}
-        <div className="flex p-1.5 m-6 bg-slate-100 dark:bg-slate-800 rounded-2xl gap-1.5">
-          <button onClick={() => setActiveTab('booking')} className={`flex-1 py-2 text-xs font-black uppercase rounded-xl transition-all ${activeTab === 'booking' ? 'bg-white dark:bg-slate-700 text-blue-600 shadow-sm' : 'text-slate-500'}`}>
+        <div style={{ backgroundColor: isDark ? '#1e293b' : '#f1f5f9' }} className="flex p-1.5 m-6 rounded-2xl gap-1.5">
+          <button onClick={() => setActiveTab('booking')} style={{ backgroundColor: activeTab === 'booking' ? '#2563eb' : 'transparent', color: activeTab === 'booking' ? '#ffffff' : (isDark ? '#94a3b8' : '#64748b') }} className="flex-1 py-2 text-xs font-black uppercase rounded-xl transition-all">
             Add Staff ({staff.length})
           </button>
-          <button onClick={() => setActiveTab('roster')} className={`flex-1 py-2 text-xs font-black uppercase rounded-xl transition-all ${activeTab === 'roster' ? 'bg-white dark:bg-slate-700 text-blue-600 shadow-sm' : 'text-slate-500'}`}>
+          <button onClick={() => setActiveTab('roster')} style={{ backgroundColor: activeTab === 'roster' ? '#2563eb' : 'transparent', color: activeTab === 'roster' ? '#ffffff' : (isDark ? '#94a3b8' : '#64748b') }} className="flex-1 py-2 text-xs font-black uppercase rounded-xl transition-all">
             Roster ({roster.length})
           </button>
         </div>
@@ -298,7 +298,8 @@ export default function BookingModal({ event, onClose, onRefresh, onOpenChecklis
             <>
               <input 
                 type="text" placeholder="Search staff..." 
-                className="w-full p-3 mb-4 rounded-xl text-xs bg-slate-100 dark:bg-slate-800 outline-none text-black dark:text-white"
+                style={{ backgroundColor: isDark ? '#0f172a' : '#f1f5f9', color: isDark ? '#f1f5f9' : '#1e293b', borderColor: isDark ? '#334155' : '#cbd5e1' }}
+                className="w-full p-3 mb-4 rounded-xl text-xs border outline-none"
                 value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} 
               />
               <div className="space-y-2">
