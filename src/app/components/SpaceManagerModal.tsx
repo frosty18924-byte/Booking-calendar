@@ -8,13 +8,32 @@ export default function SpaceManagerModal({ onClose }: { onClose: () => void }) 
   const [items, setItems] = useState<any[]>([]);
   const [newName, setNewName] = useState('');
   const [loading, setLoading] = useState(false);
+  const [isDark, setIsDark] = useState(true);
 
   // Table depends on which tab is active
   const tableName = activeTab === 'houses' ? 'locations' : 'venues';
 
   useEffect(() => {
+    checkTheme();
     fetchItems();
   }, [activeTab]);
+
+  useEffect(() => {
+    const handleThemeChange = (event: any) => {
+      setIsDark(event.detail.isDark);
+    };
+    
+    window.addEventListener('themeChange', handleThemeChange);
+    return () => window.removeEventListener('themeChange', handleThemeChange);
+  }, []);
+
+  function checkTheme() {
+    if (typeof window !== 'undefined') {
+      const theme = localStorage.getItem('theme');
+      const isDarkMode = theme === 'dark' || (!theme && window.matchMedia('(prefers-color-scheme: dark)').matches);
+      setIsDark(isDarkMode);
+    }
+  }
 
   async function fetchItems() {
     const { data } = await supabase.from(tableName).select('*').order('name');
@@ -47,24 +66,26 @@ export default function SpaceManagerModal({ onClose }: { onClose: () => void }) 
 
   return (
     <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-md flex items-center justify-center p-4 z-50 animate-in fade-in duration-200">
-      <div className="bg-white rounded-3xl p-8 w-full max-w-md shadow-2xl border border-slate-200">
+      <div style={{ backgroundColor: isDark ? '#1e293b' : '#ffffff', borderColor: isDark ? '#334155' : '#cbd5e1' }} className="rounded-3xl p-8 w-full max-w-md shadow-2xl border transition-colors duration-300">
         
         <div className="flex justify-between items-center mb-6">
-          <h2 className="text-2xl font-black text-slate-800 uppercase tracking-tight">Space Manager</h2>
-          <button onClick={onClose} className="text-slate-400 hover:text-slate-600 text-2xl">&times;</button>
+          <h2 style={{ color: isDark ? '#f1f5f9' : '#1e293b' }} className="text-2xl font-black uppercase tracking-tight">Space Manager</h2>
+          <button onClick={onClose} style={{ color: isDark ? '#94a3b8' : '#64748b' }} className="hover:text-red-500 text-2xl transition-colors">&times;</button>
         </div>
 
         {/* TAB SWITCHER */}
-        <div className="flex bg-slate-100 p-1 rounded-xl mb-8">
+        <div style={{ backgroundColor: isDark ? '#0f172a' : '#f1f5f9' }} className="flex p-1 rounded-xl mb-8">
           <button 
             onClick={() => { setActiveTab('houses'); setNewName(''); }}
-            className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all ${activeTab === 'houses' ? 'bg-white text-amber-600 shadow-sm' : 'text-slate-500'}`}
+            style={{ backgroundColor: activeTab === 'houses' ? '#f59e0b' : 'transparent', color: activeTab === 'houses' ? '#ffffff' : (isDark ? '#94a3b8' : '#64748b') }}
+            className="flex-1 py-2 text-xs font-bold rounded-lg transition-all"
           >
             🏠 Staff Houses
           </button>
           <button 
             onClick={() => { setActiveTab('venues'); setNewName(''); }}
-            className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all ${activeTab === 'venues' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-500'}`}
+            style={{ backgroundColor: activeTab === 'venues' ? '#2563eb' : 'transparent', color: activeTab === 'venues' ? '#ffffff' : (isDark ? '#94a3b8' : '#64748b') }}
+            className="flex-1 py-2 text-xs font-bold rounded-lg transition-all"
           >
             🏫 Training Venues
           </button>
@@ -76,14 +97,16 @@ export default function SpaceManagerModal({ onClose }: { onClose: () => void }) 
             type="text" 
             required 
             placeholder={activeTab === 'houses' ? "House Name (e.g. Felix House)" : "Venue (e.g. Training Room A)"}
-            className="flex-1 p-3 border border-slate-200 rounded-xl text-black outline-none focus:ring-2 focus:ring-amber-500"
+            style={{ backgroundColor: isDark ? '#0f172a' : '#ffffff', color: isDark ? '#f1f5f9' : '#1e293b', borderColor: isDark ? '#334155' : '#cbd5e1' }}
+            className="flex-1 p-3 border rounded-xl outline-none focus:ring-2 focus:ring-blue-500"
             value={newName} 
             onChange={(e) => setNewName(e.target.value)}
           />
           <button 
             type="submit"
             disabled={loading} 
-            className={`px-5 rounded-xl font-bold text-white transition-all ${activeTab === 'houses' ? 'bg-amber-600 hover:bg-amber-700' : 'bg-blue-600 hover:bg-blue-700'}`}
+            style={{ backgroundColor: activeTab === 'houses' ? '#f59e0b' : '#2563eb' }}
+            className="px-5 rounded-xl font-bold text-white transition-all hover:opacity-90"
           >
             {loading ? '...' : 'Add'}
           </button>
@@ -91,14 +114,14 @@ export default function SpaceManagerModal({ onClose }: { onClose: () => void }) 
 
         {/* LIST VIEW */}
         <div className="space-y-2 max-h-60 overflow-y-auto pr-2 custom-scrollbar">
-          <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">
+          <p style={{ color: isDark ? '#94a3b8' : '#64748b' }} className="text-[10px] font-black uppercase tracking-widest mb-2">
             Existing {activeTab === 'houses' ? 'Houses' : 'Venues'}
           </p>
           {items.length === 0 ? (
-            <p className="text-slate-400 italic text-sm py-4">Nothing added yet.</p>
+            <p style={{ color: isDark ? '#64748b' : '#94a3b8' }} className="italic text-sm py-4">Nothing added yet.</p>
           ) : (
             items.map(item => (
-              <div key={item.id} className="p-4 bg-slate-50 rounded-xl text-sm font-bold text-slate-700 border border-slate-100 flex justify-between items-center group">
+              <div key={item.id} style={{ backgroundColor: isDark ? '#0f172a' : '#f1f5f9', borderColor: isDark ? '#334155' : '#e2e8f0', color: isDark ? '#cbd5e1' : '#1e293b' }} className="p-4 rounded-xl text-sm font-bold border flex justify-between items-center group">
                 <span>{item.name}</span>
                 <button 
                   onClick={() => handleDelete(item.id)}

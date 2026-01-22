@@ -7,6 +7,7 @@ export default function ScheduleModal({ onClose, onRefresh }: { onClose: () => v
   const [courses, setCourses] = useState<any[]>([]);
   const [venues, setVenues] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
+  const [isDark, setIsDark] = useState(true);
   
   const [formData, setFormData] = useState({
     course_id: '',
@@ -17,6 +18,7 @@ export default function ScheduleModal({ onClose, onRefresh }: { onClose: () => v
   });
 
   useEffect(() => {
+    checkTheme();
     async function fetchData() {
       // Promise.all ensures both tables load before rendering
       const [coursesRes, venuesRes] = await Promise.all([
@@ -28,6 +30,23 @@ export default function ScheduleModal({ onClose, onRefresh }: { onClose: () => v
     }
     fetchData();
   }, []);
+
+  useEffect(() => {
+    const handleThemeChange = (event: any) => {
+      setIsDark(event.detail.isDark);
+    };
+    
+    window.addEventListener('themeChange', handleThemeChange);
+    return () => window.removeEventListener('themeChange', handleThemeChange);
+  }, []);
+
+  function checkTheme() {
+    if (typeof window !== 'undefined') {
+      const theme = localStorage.getItem('theme');
+      const isDarkMode = theme === 'dark' || (!theme && window.matchMedia('(prefers-color-scheme: dark)').matches);
+      setIsDark(isDarkMode);
+    }
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
