@@ -55,13 +55,18 @@ export async function middleware(request: NextRequest) {
   // 3. If logged in, check if password needs to be changed
   if (user && !isChangePasswordPage) {
     try {
-      const { data: profile } = await supabase
+      const { data: profile, error: profileError } = await supabase
         .from('profiles')
         .select('password_needs_change')
         .eq('id', user.id)
         .single()
 
+      if (profileError) {
+        console.error('Error fetching profile:', profileError)
+      }
+
       if (profile?.password_needs_change === true) {
+        console.log('Redirecting user to change password page for user:', user.id)
         const url = request.nextUrl.clone()
         url.pathname = '/auth/change-password-required'
         return NextResponse.redirect(url)

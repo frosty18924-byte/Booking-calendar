@@ -50,6 +50,8 @@ export async function POST(request: Request) {
     for (const staff of staffMembers) {
       try {
         console.log('Creating user for:', staff.email);
+        console.log('Staff data received:', JSON.stringify(staff));
+        console.log('Password provided?', !!staff.password, 'Password value:', staff.password);
         
         // Check if email already exists in profiles
         const { data: existingProfile, error: checkError } = await supabaseAdmin
@@ -129,6 +131,9 @@ export async function POST(request: Request) {
         console.log('User created:', authData.user.id);
 
         // Insert profile with the user ID - include password_needs_change flag if password was provided
+        const passwordNeedsChange = staff.password ? true : false;
+        console.log('Setting password_needs_change to:', passwordNeedsChange, 'for', staff.email);
+        
         const { error: profileError } = await supabaseAdmin
           .from('profiles')
           .insert([
@@ -138,7 +143,7 @@ export async function POST(request: Request) {
               email: staff.email,
               location: staff.location,
               role_tier: staff.role_tier,
-              password_needs_change: staff.password ? true : false, // Force change only if custom password was set
+              password_needs_change: passwordNeedsChange,
             },
           ]);
 
