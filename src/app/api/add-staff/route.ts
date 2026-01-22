@@ -2,11 +2,6 @@ import { createClient } from '@supabase/supabase-js';
 import { sendPasswordResetEmail } from '@/lib/email';
 
 export const dynamic = 'force-dynamic';
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
-
-// Create admin client with service role key
-const supabaseAdmin = createClient(supabaseUrl, serviceRoleKey);
 
 interface StaffMember {
   full_name: string;
@@ -18,6 +13,11 @@ interface StaffMember {
 
 export async function POST(request: Request) {
   try {
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+    const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
+
+    // Create admin client with service role key
+    const supabaseAdmin = createClient(supabaseUrl, serviceRoleKey);
     const body = await request.json();
     const staffMembers: StaffMember[] = Array.isArray(body) ? body : [body];
 

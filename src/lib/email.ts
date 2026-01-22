@@ -97,4 +97,20 @@ export async function sendPasswordResetEmail(staffEmail: string, staffName: stri
   return await sendEmail(staffEmail, subject, html);
 }
 
+// Stub functions for email types not yet implemented with service account
+export async function sendBookingEmail(staffEmail: string, staffName: string, courseName: string, date: string) {
+  console.warn('sendBookingEmail not yet configured with service account');
+  return false;
+}
+
+export async function sendBookingCancellationEmail(staffEmail: string, staffName: string, courseName: string, date: string, reason?: string) {
+  console.warn('sendBookingCancellationEmail not yet configured with service account');
+  return false;
+}
+
+export async function sendBulkEmail(emails: string[], subject: string, htmlContent: string) {
+  console.warn('sendBulkEmail not yet configured with service account');
+  return false;
+}
+
 export { sendEmail };

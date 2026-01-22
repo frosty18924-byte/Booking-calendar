@@ -631,6 +631,8 @@ Charlie Scheduler,charlie@example.com,Banks House,manager`;
                   </p>
                 </div>
               )}
+
+              <div>
                 <label style={{ color: isDark ? '#94a3b8' : '#64748b' }} className="text-[10px] font-black uppercase mb-1 block">Role</label>
                 <select 
                   required 

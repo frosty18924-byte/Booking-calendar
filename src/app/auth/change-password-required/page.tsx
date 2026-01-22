@@ -2,11 +2,10 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { createClient } from '@/lib/supabase';
+import { supabase } from '@/lib/supabase';
 
 export default function ChangePasswordRequiredPage() {
   const router = useRouter();
-  const supabase = createClient();
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [error, setError] = useState('');
