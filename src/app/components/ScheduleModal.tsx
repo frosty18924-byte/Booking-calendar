@@ -118,7 +118,7 @@ export default function ScheduleModal({ onClose, onRefresh }: { onClose: () => v
               <label className="block text-[10px] font-black uppercase text-slate-400 dark:text-slate-500 mb-2">Date</label>
               <input 
                 type="date" required
-                className="w-full px-4 py-3 bg-slate-50 dark:bg-[#0f172a] border border-slate-200 dark:border-slate-800 rounded-xl text-slate-900 dark:text-white outline-none font-bold text-sm"
+                className="w-full px-4 py-3 bg-white border border-slate-200 dark:border-slate-800 rounded-xl text-slate-900 outline-none font-bold text-sm"
                 value={formData.event_date}
                 onChange={(e) => setFormData({...formData, event_date: e.target.value})}
               />
