@@ -98,19 +98,20 @@ export default function ScheduleModal({ onClose, onRefresh }: { onClose: () => v
 
   return (
     <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-md flex items-center justify-center p-4 z-50 animate-in fade-in duration-200">
-      <div className="bg-white dark:bg-[#1e293b] rounded-[40px] w-full max-w-lg shadow-2xl border border-slate-200 dark:border-slate-700 overflow-hidden flex flex-col transition-colors duration-300">
+      <div style={{ backgroundColor: isDark ? '#1e293b' : '#ffffff', borderColor: isDark ? '#334155' : '#cbd5e1' }} className="rounded-[40px] w-full max-w-lg shadow-2xl border overflow-hidden flex flex-col transition-colors duration-300">
         
-        <div className="bg-slate-50 dark:bg-[#0f172a] p-8 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center">
-          <h2 className="text-xl font-black text-slate-800 dark:text-white uppercase tracking-tight">Schedule Session</h2>
-          <button onClick={onClose} className="text-slate-400 dark:text-slate-600 hover:text-red-500 text-3xl font-light transition-colors">&times;</button>
+        <div style={{ backgroundColor: isDark ? '#0f172a' : '#f1f5f9', borderColor: isDark ? '#334155' : '#e2e8f0' }} className="p-8 border-b flex justify-between items-center">
+          <h2 style={{ color: isDark ? '#f1f5f9' : '#1e293b' }} className="text-xl font-black uppercase tracking-tight">Schedule Session</h2>
+          <button onClick={onClose} style={{ color: isDark ? '#94a3b8' : '#64748b' }} className="hover:text-red-500 text-3xl font-light transition-colors">&times;</button>
         </div>
 
         <form onSubmit={handleSubmit} className="p-8 space-y-6">
           <div>
-            <label className="block text-[10px] font-black uppercase text-slate-400 dark:text-slate-500 mb-2">Select Course</label>
+            <label style={{ color: isDark ? '#94a3b8' : '#64748b' }} className="block text-[10px] font-black uppercase mb-2">Select Course</label>
             <select 
               required
-              className="w-full px-4 py-3 bg-slate-50 dark:bg-[#0f172a] border border-slate-200 dark:border-slate-800 rounded-xl text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none font-bold text-sm"
+              style={{ backgroundColor: isDark ? '#0f172a' : '#f1f5f9', color: isDark ? '#f1f5f9' : '#1e293b', borderColor: isDark ? '#334155' : '#cbd5e1' }}
+              className="w-full px-4 py-3 border rounded-xl focus:ring-2 focus:ring-blue-500 outline-none font-bold text-sm"
               value={formData.course_id}
               onChange={(e) => setFormData({...formData, course_id: e.target.value})}
             >
@@ -120,10 +121,11 @@ export default function ScheduleModal({ onClose, onRefresh }: { onClose: () => v
           </div>
 
           <div>
-            <label className="block text-[10px] font-black uppercase text-slate-400 dark:text-slate-500 mb-2">Training Venue</label>
+            <label style={{ color: isDark ? '#94a3b8' : '#64748b' }} className="block text-[10px] font-black uppercase mb-2">Training Venue</label>
             <select 
               required
-              className="w-full px-4 py-3 bg-slate-50 dark:bg-[#0f172a] border border-slate-200 dark:border-slate-800 rounded-xl text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none font-bold text-sm"
+              style={{ backgroundColor: isDark ? '#0f172a' : '#f1f5f9', color: isDark ? '#f1f5f9' : '#1e293b', borderColor: isDark ? '#334155' : '#cbd5e1' }}
+              className="w-full px-4 py-3 border rounded-xl focus:ring-2 focus:ring-blue-500 outline-none font-bold text-sm"
               value={formData.location}
               onChange={(e) => setFormData({...formData, location: e.target.value})}
             >
@@ -134,7 +136,7 @@ export default function ScheduleModal({ onClose, onRefresh }: { onClose: () => v
 
           <div className="grid grid-cols-2 gap-4">
             <div className="col-span-2">
-              <label className="block text-[10px] font-black uppercase text-slate-400 dark:text-slate-500 mb-2">Date</label>
+              <label style={{ color: isDark ? '#94a3b8' : '#64748b' }} className="block text-[10px] font-black uppercase mb-2">Date</label>
               <style>{`
                 input[type="date"]::-webkit-calendar-picker-indicator {
                   filter: ${isDark ? 'invert(1) brightness(1.2)' : 'none'};

@@ -7,19 +7,37 @@ interface RosterModalProps {
   event: { id: string; course_name: string; event_date: string; venue_id: string } | null;
   onClose: () => void;
   onRefresh: () => void;
-  isDark?: boolean;
 }
 
-export default function RosterModal({ event, onClose, onRefresh, isDark = true }: RosterModalProps) {
+export default function RosterModal({ event, onClose, onRefresh }: RosterModalProps) {
   const [loading, setLoading] = useState(false);
+  const [isDark, setIsDark] = useState(true);
   const [availableStaff, setAvailableStaff] = useState<any[]>([]);
   const [bookedStaff, setBookedStaff] = useState<any[]>([]);
 
   useEffect(() => {
     if (event) {
+      checkTheme();
       fetchData();
     }
   }, [event]);
+
+  useEffect(() => {
+    const handleThemeChange = (event: any) => {
+      setIsDark(event.detail.isDark);
+    };
+    
+    window.addEventListener('themeChange', handleThemeChange);
+    return () => window.removeEventListener('themeChange', handleThemeChange);
+  }, []);
+
+  function checkTheme() {
+    if (typeof window !== 'undefined') {
+      const theme = localStorage.getItem('theme');
+      const isDarkMode = theme === 'dark' || (!theme && window.matchMedia('(prefers-color-scheme: dark)').matches);
+      setIsDark(isDarkMode);
+    }
+  }
 
   async function fetchData() {
     setLoading(true);
