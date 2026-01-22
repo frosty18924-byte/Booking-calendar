@@ -95,10 +95,16 @@ export default function CourseOverrideModal({ courseId, courseName, onClose }: {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-4">
             <div>
               <label style={{ color: isDark ? '#94a3b8' : '#64748b' }} className="block text-[10px] font-black uppercase mb-2">Event Date</label>
+              <style>{`
+                input[type="date"]::-webkit-calendar-picker-indicator {
+                  filter: ${isDark ? 'invert(1) brightness(1.2)' : 'none'};
+                  cursor: pointer;
+                }
+              `}</style>
               <input 
                 type="date" 
                 required 
-                style={{ backgroundColor: isDark ? '#1e293b' : '#ffffff', color: isDark ? '#f1f5f9' : '#1e293b', borderColor: isDark ? '#334155' : '#cbd5e1' }}
+                style={{ backgroundColor: isDark ? '#0f172a' : '#ffffff', color: isDark ? '#f1f5f9' : '#1e293b', borderColor: isDark ? '#334155' : '#cbd5e1' }}
                 className="w-full p-3 border rounded-xl outline-none focus:ring-2 focus:ring-purple-500"
                 value={formData.event_date} 
                 onChange={e => setFormData({...formData, event_date: e.target.value})}

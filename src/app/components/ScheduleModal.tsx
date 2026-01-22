@@ -135,9 +135,16 @@ export default function ScheduleModal({ onClose, onRefresh }: { onClose: () => v
           <div className="grid grid-cols-2 gap-4">
             <div className="col-span-2">
               <label className="block text-[10px] font-black uppercase text-slate-400 dark:text-slate-500 mb-2">Date</label>
+              <style>{`
+                input[type="date"]::-webkit-calendar-picker-indicator {
+                  filter: ${isDark ? 'invert(1) brightness(1.2)' : 'none'};
+                  cursor: pointer;
+                }
+              `}</style>
               <input 
                 type="date" required
-                className="w-full px-4 py-3 bg-white border border-slate-200 dark:border-slate-800 rounded-xl text-slate-900 outline-none font-bold text-sm"
+                style={{ backgroundColor: isDark ? '#0f172a' : '#ffffff', color: isDark ? '#f1f5f9' : '#1e293b', borderColor: isDark ? '#334155' : '#cbd5e1' }}
+                className="w-full px-4 py-3 border rounded-xl outline-none font-bold text-sm"
                 value={formData.event_date}
                 onChange={(e) => setFormData({...formData, event_date: e.target.value})}
               />
