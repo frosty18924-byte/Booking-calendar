@@ -84,9 +84,14 @@ export async function POST(request: Request) {
       .eq('id', staffId);
 
     console.log('Profile deletion error:', profileError);
+    
+    // Log if deletion succeeded (no error doesn't mean it worked)
+    if (!profileError) {
+      console.log('✓ Profile deletion completed without error');
+    }
 
     if (profileError) {
-      console.error('Profile deletion error:', profileError);
+      console.error('❌ Profile deletion error:', profileError);
       return Response.json(
         {
           success: false,
