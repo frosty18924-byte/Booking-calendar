@@ -93,8 +93,22 @@ export default function CalendarPage() {
     setLoading(true);
     const startDate = format(startOfMonth(currentMonth), 'yyyy-MM-dd');
     const endDate = format(endOfMonth(currentMonth), 'yyyy-MM-dd');
-    const { data } = await supabase.from('training_events').select('*, courses(*), bookings(*), course_event_overrides(*)').gte('event_date', startDate).lte('event_date', endDate);
-    setEvents(data || []);
+    const { data } = await supabase.from('training_events').select('*, courses(*), bookings(*)').gte('event_date', startDate).lte('event_date', endDate);
+    
+    // Fetch overrides separately for each event
+    if (data) {
+      const eventsWithOverrides = await Promise.all(data.map(async (event) => {
+        const { data: overrides } = await supabase
+          .from('course_event_overrides')
+          .select('max_attendees')
+          .eq('course_id', event.course_id)
+          .eq('event_date', event.event_date);
+        return { ...event, course_event_overrides: overrides };
+      }));
+      setEvents(eventsWithOverrides);
+    } else {
+      setEvents([]);
+    }
     setLoading(false);
   }
 
