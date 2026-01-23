@@ -78,6 +78,7 @@ export async function POST(request: Request) {
 
     // Delete from profiles table - try multiple methods
     console.log('Attempting to delete profile with id:', staffId);
+    console.log('Staff ID type:', typeof staffId, 'Length:', staffId?.length);
     
     // First attempt: standard delete
     let { error: profileError } = await supabaseAdmin
@@ -87,14 +88,22 @@ export async function POST(request: Request) {
 
     console.log('Profile deletion error (method 1):', profileError?.message || 'Success');
     
+    // Small delay to ensure database consistency
+    await new Promise(resolve => setTimeout(resolve, 500));
+    
     // If first attempt didn't error but profile might still exist, try verification
-    const { data: stillExistsCheck1 } = await supabaseAdmin
+    const { data: stillExistsCheck1, error: verifyError1 } = await supabaseAdmin
       .from('profiles')
-      .select('id')
+      .select('id, email')
       .eq('id', staffId);
     
+    console.log('Verification query error:', verifyError1?.message || 'No error');
     const stillExists1 = stillExistsCheck1 && stillExistsCheck1.length > 0;
     console.log('Profile still exists after method 1:', stillExists1);
+    
+    if (stillExistsCheck1 && stillExistsCheck1.length > 0) {
+      console.log('Profile data still in database:', JSON.stringify(stillExistsCheck1[0]));
+    }
     
     // If still exists, try deleting by email as well
     if (stillExists1) {
@@ -105,6 +114,8 @@ export async function POST(request: Request) {
         .eq('email', email);
       
       console.log('Email-based delete error:', emailDeleteError?.message || 'Success');
+      
+      await new Promise(resolve => setTimeout(resolve, 500));
       
       const { data: stillExistsCheck2 } = await supabaseAdmin
         .from('profiles')
