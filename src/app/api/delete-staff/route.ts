@@ -85,9 +85,24 @@ export async function POST(request: Request) {
 
     console.log('Profile deletion error:', profileError);
     
-    // Log if deletion succeeded (no error doesn't mean it worked)
-    if (!profileError) {
-      console.log('✓ Profile deletion completed without error');
+    // Verify the profile was actually deleted
+    const { data: profileAfterDelete } = await supabaseAdmin
+      .from('profiles')
+      .select('id')
+      .eq('id', staffId);
+    
+    const profileStillExists = profileAfterDelete && profileAfterDelete.length > 0;
+    console.log('Profile still exists after delete attempt:', profileStillExists);
+    
+    if (!profileError && profileStillExists) {
+      console.error('⚠️  DELETE QUERY EXECUTED BUT PROFILE WAS NOT ACTUALLY DELETED - RLS ISSUE!');
+      return Response.json(
+        {
+          success: false,
+          error: `Profile delete query failed silently - RLS policy may be blocking deletion`,
+        },
+        { status: 400 }
+      );
     }
 
     if (profileError) {
@@ -100,6 +115,8 @@ export async function POST(request: Request) {
         { status: 400 }
       );
     }
+    
+    console.log('✓ Profile successfully deleted');
 
     // Delete auth user
     const { error: authError } = await supabaseAdmin.auth.admin.deleteUser(staffId);
