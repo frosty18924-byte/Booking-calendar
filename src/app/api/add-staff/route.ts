@@ -54,13 +54,18 @@ export async function POST(request: Request) {
         console.log('Password provided?', !!staff.password, 'Password value:', staff.password);
         
         // Check if email already exists in profiles
-        const { data: existingProfile, error: checkError } = await supabaseAdmin
+        const emailToCheck = staff.email.toLowerCase();
+        console.log('Checking for profile with email:', emailToCheck);
+        
+        const { data: existingProfiles, error: checkError } = await supabaseAdmin
           .from('profiles')
           .select('id, email')
-          .eq('email', staff.email.toLowerCase())
-          .single();
+          .eq('email', emailToCheck);
 
-        if (existingProfile) {
+        console.log('Profile check result - Found:', existingProfiles?.length || 0, 'Error:', checkError?.message);
+        
+        if (existingProfiles && existingProfiles.length > 0) {
+          const existingProfile = existingProfiles[0];
           console.warn('User already exists in profiles:', staff.email);
           console.warn('Existing profile details - ID:', existingProfile.id, 'Email:', existingProfile.email, 'Email length:', existingProfile.email?.length);
           results.push({
