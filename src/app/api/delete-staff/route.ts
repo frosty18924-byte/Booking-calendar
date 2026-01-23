@@ -96,13 +96,33 @@ export async function POST(request: Request) {
     
     if (!profileError && profileStillExists) {
       console.error('⚠️  DELETE QUERY EXECUTED BUT PROFILE WAS NOT ACTUALLY DELETED - RLS ISSUE!');
-      return Response.json(
-        {
-          success: false,
-          error: `Profile delete query failed silently - RLS policy may be blocking deletion`,
-        },
-        { status: 400 }
-      );
+      console.log('Attempting to manually force delete profile using raw query...');
+      
+      // Try a different approach - delete by email instead of ID
+      const { error: emailDeleteError } = await supabaseAdmin
+        .from('profiles')
+        .delete()
+        .eq('email', email);
+      
+      console.log('Email-based delete result:', emailDeleteError?.message || 'Success');
+      
+      // Check if it worked this time
+      const { data: profileCheckAfterEmailDelete } = await supabaseAdmin
+        .from('profiles')
+        .select('id')
+        .eq('email', email);
+      
+      const profileStillExistsAfterEmailDelete = profileCheckAfterEmailDelete && profileCheckAfterEmailDelete.length > 0;
+      
+      if (profileStillExistsAfterEmailDelete) {
+        return Response.json(
+          {
+            success: false,
+            error: `Profile cannot be deleted - possible RLS policy blocking deletion. Use /api/force-delete-profile to clean up manually.`,
+          },
+          { status: 400 }
+        );
+      }
     }
 
     if (profileError) {
