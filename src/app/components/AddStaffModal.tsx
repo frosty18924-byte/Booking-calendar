@@ -138,10 +138,12 @@ export default function AddStaffModal({ onClose, onRefresh }: { onClose: () => v
           throw new Error(result.results[0].error || 'Failed to create user');
         }
 
-        if (formData.password) {
-          alert(`✅ Staff member created!\n\nPassword set: ${formData.password}\n\nThey will be prompted to change it on first login.`);
+        if (formData.role_tier === 'staff') {
+          alert(`✅ Staff member created and added to roster!\n\nThey do not have login access.`);
+        } else if (formData.password) {
+          alert(`✅ ${formData.role_tier.charAt(0).toUpperCase() + formData.role_tier.slice(1)} created!\n\nPassword set: ${formData.password}\n\nThey will be prompted to change it on first login.`);
         } else {
-          alert(`✅ Staff member created!\n\nPassword reset email has been sent to ${formData.email}`);
+          alert(`✅ ${formData.role_tier.charAt(0).toUpperCase() + formData.role_tier.slice(1)} created!\n\nPassword reset email has been sent to ${formData.email}`);
         }
       }
       
@@ -666,6 +668,12 @@ Charlie Scheduler,charlie@example.com,Banks House,manager`;
                       ? '✓ They must change this password on first login' 
                       : '✓ They will receive a password reset email'}
                   </p>
+                </div>
+              )}
+              
+              {!editingId && formData.role_tier === 'staff' && (
+                <div style={{ backgroundColor: isDark ? '#0f172a' : '#f1f5f9', borderColor: isDark ? '#334155' : '#e2e8f0', color: isDark ? '#cbd5e1' : '#1e293b' }} className="p-4 border rounded-xl text-xs font-bold">
+                  ℹ️ Staff members are roster-only and do not have login access
                 </div>
               )}
 
