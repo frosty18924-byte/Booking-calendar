@@ -62,6 +62,7 @@ export async function POST(request: Request) {
 
         if (existingProfile) {
           console.warn('User already exists in profiles:', staff.email);
+          console.warn('Existing profile details - ID:', existingProfile.id, 'Email:', existingProfile.email, 'Email length:', existingProfile.email?.length);
           results.push({
             email: staff.email,
             success: false,
