@@ -58,16 +58,15 @@ export async function POST(request: Request) {
     // Delete from profiles table - use direct delete
     console.log('Attempting to delete profile with id:', staffId);
     
-    // First verify the profile exists
+    // First verify the profile exists (use select without .single() to avoid error)
     const { data: profileExists } = await supabaseAdmin
       .from('profiles')
       .select('id')
-      .eq('id', staffId)
-      .single();
+      .eq('id', staffId);
     
-    console.log('Profile exists:', !!profileExists);
+    console.log('Profile exists:', profileExists && profileExists.length > 0);
     
-    if (!profileExists) {
+    if (!profileExists || profileExists.length === 0) {
       return Response.json(
         {
           success: false,
