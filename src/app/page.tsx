@@ -93,10 +93,22 @@ export default function CalendarPage() {
     setLoading(true);
     const startDate = format(startOfMonth(currentMonth), 'yyyy-MM-dd');
     const endDate = format(endOfMonth(currentMonth), 'yyyy-MM-dd');
-    const { data } = await supabase.from('training_events').select('*, courses(*), bookings(*)').gte('event_date', startDate).lte('event_date', endDate);
+    const { data } = await supabase.from('training_events').select('*, courses(*), bookings(*), course_event_overrides(*)').gte('event_date', startDate).lte('event_date', endDate);
     setEvents(data || []);
     setLoading(false);
   }
+
+  // Helper function to get max capacity for an event
+  const getMaxCapacity = (event: any) => {
+    const baseCapacity = event.courses?.max_attendees || 10;
+    
+    // Check if there's an override for this event date
+    if (event.course_event_overrides && event.course_event_overrides.length > 0) {
+      return event.course_event_overrides[0].max_attendees;
+    }
+    
+    return baseCapacity;
+  };
 
   const calendarDays = eachDayOfInterval({
     start: startOfWeek(startOfMonth(currentMonth)),
@@ -197,6 +209,7 @@ export default function CalendarPage() {
                     {dayEvents.map(event => {
                       const colors = getCourseColor(event.courses?.name || 'Unknown');
                       const participantCount = event.bookings?.length || 0;
+                      const maxCapacity = getMaxCapacity(event);
                       return (
                         <button
                           key={event.id}
@@ -211,7 +224,7 @@ export default function CalendarPage() {
                             <span>
                               {event.start_time?.slice(0, 5) || '09:00'} - {event.end_time?.slice(0, 5) || '17:00'}
                             </span>
-                            <span>{participantCount}/10</span>
+                            <span>{participantCount}/{maxCapacity}</span>
                           </div>
                         </button>
                       );
