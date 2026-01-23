@@ -96,6 +96,23 @@ export async function POST(request: Request) {
 
         if (existingAuthUser) {
           console.warn('Auth user exists but no profile, attempting to create profile:', staff.email);
+          
+          // Double-check that profile doesn't exist for this auth user
+          const { data: checkProfile } = await supabaseAdmin
+            .from('profiles')
+            .select('id')
+            .eq('id', existingAuthUser.id);
+          
+          if (checkProfile && checkProfile.length > 0) {
+            console.warn('Profile already exists for this auth user:', existingAuthUser.id);
+            results.push({
+              email: staff.email,
+              success: false,
+              error: `Profile already exists for this user`,
+            });
+            continue;
+          }
+          
           // Create profile for existing auth user
           const { error: profileError } = await supabaseAdmin
             .from('profiles')
