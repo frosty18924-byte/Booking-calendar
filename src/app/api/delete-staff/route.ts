@@ -36,10 +36,14 @@ export async function POST(request: Request) {
     }
 
     // Delete from bookings table first (all their course assignments)
-    const { error: bookingsError } = await supabaseAdmin
+    console.log('Attempting to delete bookings for profile_id:', staffId);
+    const { error: bookingsError, count: bookingsCount } = await supabaseAdmin
       .from('bookings')
       .delete()
-      .eq('profile_id', staffId);
+      .eq('profile_id', staffId)
+      .select('id', { count: 'exact' });
+
+    console.log('Bookings deletion result - Count:', bookingsCount, 'Error:', bookingsError);
 
     if (bookingsError) {
       console.error('Bookings deletion error:', bookingsError);
@@ -53,10 +57,14 @@ export async function POST(request: Request) {
     }
 
     // Delete from profiles table
-    const { error: profileError } = await supabaseAdmin
+    console.log('Attempting to delete profile with id:', staffId);
+    const { error: profileError, count: profileCount } = await supabaseAdmin
       .from('profiles')
       .delete()
-      .eq('id', staffId);
+      .eq('id', staffId)
+      .select('id', { count: 'exact' });
+
+    console.log('Profile deletion result - Count:', profileCount, 'Error:', profileError);
 
     if (profileError) {
       console.error('Profile deletion error:', profileError);
