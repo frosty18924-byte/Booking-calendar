@@ -55,14 +55,36 @@ export async function POST(request: Request) {
       );
     }
 
-    // Delete from profiles table
+    // Delete from profiles table - use direct delete
     console.log('Attempting to delete profile with id:', staffId);
-    const { error: profileError } = await supabaseAdmin
+    
+    // First verify the profile exists
+    const { data: profileExists } = await supabaseAdmin
+      .from('profiles')
+      .select('id')
+      .eq('id', staffId)
+      .single();
+    
+    console.log('Profile exists:', !!profileExists);
+    
+    if (!profileExists) {
+      return Response.json(
+        {
+          success: false,
+          error: `Profile with id ${staffId} not found`,
+        },
+        { status: 400 }
+      );
+    }
+
+    // Now delete it
+    const { error: profileError, count } = await supabaseAdmin
       .from('profiles')
       .delete()
-      .eq('id', staffId);
+      .eq('id', staffId)
+      .select();
 
-    console.log('Profile deletion error:', profileError);
+    console.log('Profile deletion - Count:', count, 'Error:', profileError);
 
     if (profileError) {
       console.error('Profile deletion error:', profileError);
