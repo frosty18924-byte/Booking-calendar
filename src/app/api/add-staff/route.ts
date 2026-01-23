@@ -71,8 +71,22 @@ export async function POST(request: Request) {
         }
 
         // Check if auth user already exists
+        console.log('Checking for existing auth user with email:', staff.email.toLowerCase());
         const { data: { users }, error: usersError } = await supabaseAdmin.auth.admin.listUsers();
+        
+        if (usersError) {
+          console.error('Error listing users:', usersError);
+          results.push({
+            email: staff.email,
+            success: false,
+            error: `Failed to check existing users: ${usersError.message}`,
+          });
+          continue;
+        }
+        
+        console.log('Total auth users found:', users?.length);
         const existingAuthUser = users?.find(u => u.email?.toLowerCase() === staff.email.toLowerCase());
+        console.log('Existing auth user found:', !!existingAuthUser, 'User ID:', existingAuthUser?.id);
 
         if (existingAuthUser) {
           console.warn('Auth user exists but no profile, attempting to create profile:', staff.email);
