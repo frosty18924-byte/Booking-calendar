@@ -107,6 +107,16 @@ export async function POST(request: NextRequest) {
       .insert(bookingData);
 
     if (insertError) {
+      // Check if it's a capacity constraint error from the database trigger
+      if (insertError.message && insertError.message.includes('at full capacity')) {
+        return NextResponse.json(
+          { 
+            error: `❌ Course is now full! Another user just booked the last available spot(s). Please refresh and try again.`,
+            capacityFull: true
+          },
+          { status: 400 }
+        );
+      }
       return NextResponse.json(
         { error: `Failed to create bookings: ${insertError.message}` },
         { status: 500 }
@@ -122,6 +132,18 @@ export async function POST(request: NextRequest) {
     });
   } catch (error: any) {
     console.error('Booking error:', error);
+    
+    // Handle capacity constraint errors
+    if (error.message && error.message.includes('at full capacity')) {
+      return NextResponse.json(
+        { 
+          error: `❌ Course is now full! Another user just booked the last available spot(s). Please refresh and try again.`,
+          capacityFull: true
+        },
+        { status: 400 }
+      );
+    }
+    
     return NextResponse.json(
       { error: error.message || 'Internal server error' },
       { status: 500 }

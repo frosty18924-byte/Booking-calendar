@@ -160,7 +160,17 @@ export default function BookingModal({ event, onClose, onRefresh, onOpenChecklis
       const result = await response.json();
 
       if (!response.ok) {
-        alert(`❌ ${result.error}`);
+        // If course became full, suggest refresh
+        if (result.capacityFull) {
+          alert(`${result.error}\n\nThe booking form will refresh to show updated availability.`);
+          setTimeout(async () => {
+            onRefresh();
+            setSelectedIds([]);
+            await fetchInitialData();
+          }, 500);
+        } else {
+          alert(`❌ ${result.error}`);
+        }
         setLoading(false);
         return;
       }
