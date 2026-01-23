@@ -50,7 +50,7 @@ export default function RosterModal({ event, onClose, onRefresh }: RosterModalPr
         .from('bookings')
         .select(`
           id,
-          user_id,
+          profile_id,
           attended_at,
           is_late,
           profiles(id, full_name, home_house),
@@ -61,7 +61,7 @@ export default function RosterModal({ event, onClose, onRefresh }: RosterModalPr
         .eq('event_id', event?.id);
 
       // Extract booked staff IDs
-      const bookedIds = bookings?.map(b => b.user_id) || [];
+      const bookedIds = bookings?.map(b => b.profile_id) || [];
 
       // Set booked staff with booking IDs for removal
       const booked = bookings?.map(b => {
@@ -69,7 +69,7 @@ export default function RosterModal({ event, onClose, onRefresh }: RosterModalPr
         const profile = Array.isArray(b.profiles) ? b.profiles[0] : b.profiles;
         return {
           booking_id: b.id,
-          id: b.user_id,
+          id: b.profile_id,
           full_name: profile?.full_name,
           home_house: profile?.home_house,
           attended_at: b.attended_at,
