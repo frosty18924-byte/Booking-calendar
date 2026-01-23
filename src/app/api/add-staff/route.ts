@@ -171,7 +171,7 @@ export async function POST(request: Request) {
         await new Promise(resolve => setTimeout(resolve, 300));
 
         // Check if profile was auto-created by trigger
-        const { data: existingProfile, error: checkError } = await supabaseAdmin
+        const { data: existingProfile, error: authCheckError } = await supabaseAdmin
           .from('profiles')
           .select('id')
           .eq('id', authData.user.id);
