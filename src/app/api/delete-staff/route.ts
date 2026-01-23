@@ -76,14 +76,14 @@ export async function POST(request: Request) {
       );
     }
 
-    // Now delete it
-    const { error: profileError, count } = await supabaseAdmin
+    // Delete from profiles table
+    console.log('Attempting to delete profile with id:', staffId);
+    const { error: profileError } = await supabaseAdmin
       .from('profiles')
       .delete()
-      .eq('id', staffId)
-      .select();
+      .eq('id', staffId);
 
-    console.log('Profile deletion - Count:', count, 'Error:', profileError);
+    console.log('Profile deletion error:', profileError);
 
     if (profileError) {
       console.error('Profile deletion error:', profileError);
