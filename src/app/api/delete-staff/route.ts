@@ -39,7 +39,7 @@ export async function POST(request: Request) {
     const { error: bookingsError } = await supabaseAdmin
       .from('bookings')
       .delete()
-      .eq('user_id', staffId);
+      .eq('profile_id', staffId);
 
     if (bookingsError) {
       console.error('Bookings deletion error:', bookingsError);

@@ -95,7 +95,7 @@ export default function RosterModal({ event, onClose, onRefresh }: RosterModalPr
     setLoading(true);
     try {
       const { error } = await supabase.from('bookings').insert([{
-        user_id: staffId,
+        profile_id: staffId,
         event_id: event?.id,
         attended_at: null
       }]);
