@@ -7,13 +7,25 @@ interface RosterModalProps {
   event: { id: string; course_name: string; event_date: string; venue_id: string } | null;
   onClose: () => void;
   onRefresh: () => void;
+  userRole?: 'staff' | 'manager' | 'scheduler' | 'admin';
+  userLocation?: string;
 }
 
-export default function RosterModal({ event, onClose, onRefresh }: RosterModalProps) {
+export default function RosterModal({ event, onClose, onRefresh, userRole = 'admin', userLocation }: RosterModalProps) {
   const [loading, setLoading] = useState(false);
   const [isDark, setIsDark] = useState(true);
   const [availableStaff, setAvailableStaff] = useState<any[]>([]);
   const [bookedStaff, setBookedStaff] = useState<any[]>([]);
+
+  // Check if user can remove staff from roster
+  const canRemoveStaff = userRole !== 'staff';
+  
+  // Check if manager can remove a specific staff member (only from their location)
+  const canRemoveFromLocation = (staffLocation?: string) => {
+    if (userRole === 'admin' || userRole === 'scheduler') return true;
+    if (userRole === 'manager' && userLocation && staffLocation === userLocation) return true;
+    return false;
+  };
 
   useEffect(() => {
     if (event) {
@@ -72,6 +84,7 @@ export default function RosterModal({ event, onClose, onRefresh }: RosterModalPr
           id: b.profile_id,
           full_name: profile?.full_name,
           home_house: profile?.home_house,
+          location: profile?.location,
           attended_at: b.attended_at,
           is_late: b.is_late,
           absence_reason: b.absence_reason,
@@ -177,13 +190,16 @@ export default function RosterModal({ event, onClose, onRefresh }: RosterModalPr
                         <p style={{ color: isDark ? '#f1f5f9' : '#1e293b' }} className="font-bold text-sm">{staff.full_name}</p>
                         <p style={{ color: isDark ? '#94a3b8' : '#64748b' }} className="text-[9px] uppercase font-black">📍 {staff.home_house}</p>
                       </div>
-                      <button
-                        onClick={() => handleRemoveStaff(staff.booking_id)}
-                        disabled={loading}
-                        className="text-red-500 hover:bg-red-500/10 p-2 rounded transition-colors"
-                      >
-                        🗑️
-                      </button>
+                      {canRemoveStaff && canRemoveFromLocation(staff.location) && (
+                        <button
+                          onClick={() => handleRemoveStaff(staff.booking_id)}
+                          disabled={loading}
+                          className="text-red-500 hover:bg-red-500/10 p-2 rounded transition-colors"
+                          title="Remove from roster"
+                        >
+                          🗑️
+                        </button>
+                      )}
                     </div>
 
                     <div className="flex gap-2 items-center">
