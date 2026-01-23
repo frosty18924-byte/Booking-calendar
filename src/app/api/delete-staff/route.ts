@@ -86,10 +86,17 @@ export async function POST(request: Request) {
     console.log('Profile deletion error:', profileError);
     
     // Verify the profile was actually deleted
-    const { data: profileAfterDelete } = await supabaseAdmin
+    console.log('Verifying profile deletion by querying with ID:', staffId);
+    const { data: profileAfterDelete, error: verifyError } = await supabaseAdmin
       .from('profiles')
-      .select('id')
+      .select('id, email, full_name, location, role_tier')
       .eq('id', staffId);
+    
+    console.log('Profile verification query error:', verifyError?.message);
+    console.log('Profiles found after delete:', profileAfterDelete?.length || 0);
+    if (profileAfterDelete && profileAfterDelete.length > 0) {
+      console.log('Profile data after delete attempt:', JSON.stringify(profileAfterDelete[0]));
+    }
     
     const profileStillExists = profileAfterDelete && profileAfterDelete.length > 0;
     console.log('Profile still exists after delete attempt:', profileStillExists);
