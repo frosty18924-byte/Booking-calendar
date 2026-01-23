@@ -167,16 +167,20 @@ export async function POST(request: Request) {
 
         console.log('User created:', authData.user.id);
 
-        // Wait a moment for the on_auth_user_created trigger to create a default profile
-        await new Promise(resolve => setTimeout(resolve, 300));
+        // Wait for the on_auth_user_created trigger to create a default profile
+        // Increase delay to ensure trigger completes
+        await new Promise(resolve => setTimeout(resolve, 1000));
 
         // Check if profile was auto-created by trigger
         const { data: existingProfile, error: authCheckError } = await supabaseAdmin
           .from('profiles')
-          .select('id')
+          .select('*')
           .eq('id', authData.user.id);
 
         console.log('Profile check after auth creation - exists:', existingProfile?.length > 0);
+        if (existingProfile && existingProfile.length > 0) {
+          console.log('Existing profile data:', JSON.stringify(existingProfile[0]));
+        }
 
         // Include password_needs_change flag if password was provided
         const passwordNeedsChange = staff.password ? true : false;
@@ -190,27 +194,33 @@ export async function POST(request: Request) {
           password_needs_change: passwordNeedsChange,
         };
 
+        console.log('Profile data to save:', JSON.stringify(profileData));
+
         let profileError = null;
 
         // If profile already exists (created by trigger), update it; otherwise insert
         if (existingProfile && existingProfile.length > 0) {
-          console.log('Profile already exists, updating with provided data');
-          const { error } = await supabaseAdmin
+          console.log('Profile already exists, UPDATING with provided data for ID:', authData.user.id);
+          const { error, data } = await supabaseAdmin
             .from('profiles')
             .update(profileData)
-            .eq('id', authData.user.id);
+            .eq('id', authData.user.id)
+            .select();
           profileError = error;
+          console.log('Update result - error:', error?.message || 'Success', 'rows affected:', data?.length || 0);
         } else {
-          console.log('Profile does not exist, inserting new profile');
-          const { error } = await supabaseAdmin
+          console.log('Profile does not exist, INSERTING new profile for ID:', authData.user.id);
+          const { error, data } = await supabaseAdmin
             .from('profiles')
             .insert([
               {
                 id: authData.user.id,
                 ...profileData,
               },
-            ]);
+            ])
+            .select();
           profileError = error;
+          console.log('Insert result - error:', error?.message || 'Success', 'rows inserted:', data?.length || 0);
         }
 
         if (profileError) {
