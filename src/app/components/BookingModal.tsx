@@ -149,9 +149,24 @@ export default function BookingModal({ event, onClose, onRefresh, onOpenChecklis
   const handleBooking = async () => {
     if (!hasPermission(userRole, 'BOOKINGS', 'canCreate')) return;
     setLoading(true);
-    const bookingData = selectedIds.map(id => ({ event_id: event.id, profile_id: id }));
-    const { error } = await supabase.from('bookings').insert(bookingData);
-    if (!error) {
+    try {
+      // Use the new booking endpoint that validates capacity
+      const response = await fetch('/api/book-staff', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ eventId: event.id, staffIds: selectedIds })
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        alert(`❌ ${result.error}`);
+        setLoading(false);
+        return;
+      }
+
+      alert(`✅ ${result.message}`);
+
       // Send confirmation emails for each booked staff member
       for (const staffId of selectedIds) {
         try {
@@ -168,6 +183,8 @@ export default function BookingModal({ event, onClose, onRefresh, onOpenChecklis
       await fetchInitialData();
       setActiveTab('roster');
       onRefresh();
+    } catch (error: any) {
+      alert(`❌ Error: ${error.message}`);
     }
     setLoading(false);
   };
