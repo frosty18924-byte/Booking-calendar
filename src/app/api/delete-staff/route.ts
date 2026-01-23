@@ -76,74 +76,55 @@ export async function POST(request: Request) {
       );
     }
 
-    // Delete from profiles table
+    // Delete from profiles table - try multiple methods
     console.log('Attempting to delete profile with id:', staffId);
-    const { error: profileError } = await supabaseAdmin
+    
+    // First attempt: standard delete
+    let { error: profileError } = await supabaseAdmin
       .from('profiles')
       .delete()
       .eq('id', staffId);
 
-    console.log('Profile deletion error:', profileError);
+    console.log('Profile deletion error (method 1):', profileError?.message || 'Success');
     
-    // Verify the profile was actually deleted
-    console.log('Verifying profile deletion by querying with ID:', staffId);
-    const { data: profileAfterDelete, error: verifyError } = await supabaseAdmin
+    // If first attempt didn't error but profile might still exist, try verification
+    const { data: stillExistsCheck1 } = await supabaseAdmin
       .from('profiles')
-      .select('id, email, full_name, location, role_tier')
+      .select('id')
       .eq('id', staffId);
     
-    console.log('Profile verification query error:', verifyError?.message);
-    console.log('Profiles found after delete:', profileAfterDelete?.length || 0);
-    if (profileAfterDelete && profileAfterDelete.length > 0) {
-      console.log('Profile data after delete attempt:', JSON.stringify(profileAfterDelete[0]));
-    }
+    const stillExists1 = stillExistsCheck1 && stillExistsCheck1.length > 0;
+    console.log('Profile still exists after method 1:', stillExists1);
     
-    const profileStillExists = profileAfterDelete && profileAfterDelete.length > 0;
-    console.log('Profile still exists after delete attempt:', profileStillExists);
-    
-    if (!profileError && profileStillExists) {
-      console.error('⚠️  DELETE QUERY EXECUTED BUT PROFILE WAS NOT ACTUALLY DELETED - RLS ISSUE!');
-      console.log('Attempting to manually force delete profile using raw query...');
-      
-      // Try a different approach - delete by email instead of ID
+    // If still exists, try deleting by email as well
+    if (stillExists1) {
+      console.log('Attempting delete by email as well:', email);
       const { error: emailDeleteError } = await supabaseAdmin
         .from('profiles')
         .delete()
         .eq('email', email);
       
-      console.log('Email-based delete result:', emailDeleteError?.message || 'Success');
+      console.log('Email-based delete error:', emailDeleteError?.message || 'Success');
       
-      // Check if it worked this time
-      const { data: profileCheckAfterEmailDelete } = await supabaseAdmin
+      const { data: stillExistsCheck2 } = await supabaseAdmin
         .from('profiles')
         .select('id')
-        .eq('email', email);
+        .eq('id', staffId);
       
-      const profileStillExistsAfterEmailDelete = profileCheckAfterEmailDelete && profileCheckAfterEmailDelete.length > 0;
+      const stillExists2 = stillExistsCheck2 && stillExistsCheck2.length > 0;
+      console.log('Profile still exists after email delete:', stillExists2);
       
-      if (profileStillExistsAfterEmailDelete) {
+      if (stillExists2) {
+        console.error('⚠️ PROFILE CANNOT BE DELETED - Both ID and email delete queries failed!');
         return Response.json(
           {
             success: false,
-            error: `Profile cannot be deleted - possible RLS policy blocking deletion. Use /api/force-delete-profile to clean up manually.`,
+            error: `Profile cannot be deleted. Use /api/force-delete-profile?profileId=${staffId} to force deletion.`,
           },
           { status: 400 }
         );
       }
     }
-
-    if (profileError) {
-      console.error('❌ Profile deletion error:', profileError);
-      return Response.json(
-        {
-          success: false,
-          error: `Failed to delete profile: ${profileError.message}`,
-        },
-        { status: 400 }
-      );
-    }
-    
-    console.log('✓ Profile successfully deleted');
 
     // Delete auth user
     const { error: authError } = await supabaseAdmin.auth.admin.deleteUser(staffId);
