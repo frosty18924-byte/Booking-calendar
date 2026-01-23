@@ -632,25 +632,6 @@ Charlie Scheduler,charlie@example.com,Banks House,manager`;
                 />
               </div>
 
-              {!editingId && (
-                <div>
-                  <label style={{ color: isDark ? '#94a3b8' : '#64748b' }} className="text-[10px] font-black uppercase mb-1 block">Password (Optional)</label>
-                  <input 
-                    type="password" 
-                    placeholder="Leave blank to send them a reset email"
-                    style={{ backgroundColor: isDark ? '#0f172a' : '#f1f5f9', color: isDark ? '#f1f5f9' : '#1e293b', borderColor: isDark ? '#334155' : '#cbd5e1' }}
-                    className="w-full p-3 border rounded-xl outline-none focus:ring-2 focus:ring-blue-500" 
-                    value={formData.password} 
-                    onChange={e => setFormData({...formData, password: e.target.value})} 
-                  />
-                  <p style={{ color: isDark ? '#64748b' : '#94a3b8' }} className="text-xs mt-1">
-                    {formData.password 
-                      ? '✓ They must change this password on first login' 
-                      : '✓ They will receive a password reset email'}
-                  </p>
-                </div>
-              )}
-
               <div>
                 <label style={{ color: isDark ? '#94a3b8' : '#64748b' }} className="text-[10px] font-black uppercase mb-1 block">Role</label>
                 <select 
@@ -668,6 +649,25 @@ Charlie Scheduler,charlie@example.com,Banks House,manager`;
                   <option value="admin">Admin</option>
                 </select>
               </div>
+
+              {!editingId && formData.role_tier !== 'staff' && (
+                <div>
+                  <label style={{ color: isDark ? '#94a3b8' : '#64748b' }} className="text-[10px] font-black uppercase mb-1 block">Password (Optional)</label>
+                  <input 
+                    type="password" 
+                    placeholder="Leave blank to send them a reset email"
+                    style={{ backgroundColor: isDark ? '#0f172a' : '#f1f5f9', color: isDark ? '#f1f5f9' : '#1e293b', borderColor: isDark ? '#334155' : '#cbd5e1' }}
+                    className="w-full p-3 border rounded-xl outline-none focus:ring-2 focus:ring-blue-500" 
+                    value={formData.password} 
+                    onChange={e => setFormData({...formData, password: e.target.value})} 
+                  />
+                  <p style={{ color: isDark ? '#64748b' : '#94a3b8' }} className="text-xs mt-1">
+                    {formData.password 
+                      ? '✓ They must change this password on first login' 
+                      : '✓ They will receive a password reset email'}
+                  </p>
+                </div>
+              )}
 
               {(formData.role_tier === 'staff' || formData.role_tier === 'admin' || formData.role_tier === 'scheduler' || formData.role_tier === 'manager') && (
                 <div>
