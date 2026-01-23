@@ -35,46 +35,10 @@ export async function POST(request: Request) {
       );
     }
 
-    // Delete auth user FIRST - so profile doesn't get recreated
-    console.log('Attempting to delete auth user with id:', staffId);
-    const { error: authError } = await supabaseAdmin.auth.admin.deleteUser(staffId);
-
-    if (authError) {
-      console.error('Auth deletion error:', authError);
-      return Response.json(
-        {
-          success: false,
-          error: `Failed to delete auth user: ${authError.message}`,
-        },
-        { status: 400 }
-      );
-    }
-    console.log('Auth user deleted successfully');
-
-    // Delete from bookings table (all their course assignments)
-    console.log('Attempting to delete bookings for profile_id:', staffId);
-    const { error: bookingsError } = await supabaseAdmin
-      .from('bookings')
-      .delete()
-      .eq('profile_id', staffId);
-
-    console.log('Bookings deletion error:', bookingsError);
-
-    if (bookingsError) {
-      console.error('Bookings deletion error:', bookingsError);
-      return Response.json(
-        {
-          success: false,
-          error: `Failed to delete bookings: ${bookingsError.message}`,
-        },
-        { status: 400 }
-      );
-    }
-
-    // Delete from profiles table
-    console.log('Attempting to delete profile with id:', staffId);
+    // For roster-only staff (no auth account), just soft delete the profile
+    console.log('Attempting to soft delete profile for:', staffId);
     
-    // First verify the profile exists (use select without .single() to avoid error)
+    // First verify the profile exists
     const { data: profileExists } = await supabaseAdmin
       .from('profiles')
       .select('id')
@@ -102,7 +66,6 @@ export async function POST(request: Request) {
         deleted_at: new Date().toISOString(),
         full_name: 'Deleted User',
         email: `deleted-${staffId}@system.local`, // Anonymize email
-        password_needs_change: false,
       })
       .eq('id', staffId);
 
