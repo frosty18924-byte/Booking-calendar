@@ -35,7 +35,23 @@ export async function POST(request: Request) {
       );
     }
 
-    // Delete from bookings table first (all their course assignments)
+    // Delete auth user FIRST - so profile doesn't get recreated
+    console.log('Attempting to delete auth user with id:', staffId);
+    const { error: authError } = await supabaseAdmin.auth.admin.deleteUser(staffId);
+
+    if (authError) {
+      console.error('Auth deletion error:', authError);
+      return Response.json(
+        {
+          success: false,
+          error: `Failed to delete auth user: ${authError.message}`,
+        },
+        { status: 400 }
+      );
+    }
+    console.log('Auth user deleted successfully');
+
+    // Delete from bookings table (all their course assignments)
     console.log('Attempting to delete bookings for profile_id:', staffId);
     const { error: bookingsError } = await supabaseAdmin
       .from('bookings')
@@ -55,7 +71,7 @@ export async function POST(request: Request) {
       );
     }
 
-    // Delete from profiles table - use direct delete
+    // Delete from profiles table
     console.log('Attempting to delete profile with id:', staffId);
     
     // First verify the profile exists (use select without .single() to avoid error)
@@ -135,23 +151,6 @@ export async function POST(request: Request) {
           { status: 400 }
         );
       }
-    }
-
-    // Delete auth user
-    const { error: authError } = await supabaseAdmin.auth.admin.deleteUser(staffId);
-
-    if (authError) {
-      console.error('Auth deletion error:', authError);
-      // Even if auth deletion fails, profile was already deleted
-      // Return success but with warning message
-      return Response.json(
-        {
-          success: true,
-          message: 'Staff member removed from portal, but auth account deletion had an issue',
-          warning: authError.message,
-        },
-        { status: 200 }
-      );
     }
 
     console.log('Staff member deleted successfully:', email);
