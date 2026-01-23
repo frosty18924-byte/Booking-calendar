@@ -132,9 +132,9 @@ export default function AdminPage() {
                style={{ backgroundColor: '#2563eb' }} 
                onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#1d4ed8'} 
                onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#2563eb'} 
-               className="w-full py-2 sm:py-3 text-white font-bold rounded-xl transition-all text-sm"
+               className="w-full py-2 sm:py-3 text-white font-bold rounded-xl transition-all text-sm hover:scale-105 active:scale-95 shadow-md hover:shadow-lg duration-200"
              >
-               Open Staffing
+               👥 Open Staffing
              </button>
           </div>
 
@@ -151,9 +151,9 @@ export default function AdminPage() {
                style={{ backgroundColor: '#f59e0b' }} 
                onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#d97706'} 
                onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#f59e0b'} 
-               className="w-full py-2 sm:py-3 text-white font-bold rounded-xl transition-all text-sm"
+               className="w-full py-2 sm:py-3 text-white font-bold rounded-xl transition-all text-sm hover:scale-105 active:scale-95 shadow-md hover:shadow-lg duration-200"
              >
-               Open Venues
+               🏢 Open Venues
              </button>
           </div>
 
@@ -170,9 +170,9 @@ export default function AdminPage() {
                style={{ backgroundColor: '#a855f7' }} 
                onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#9333ea'} 
                onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#a855f7'} 
-               className="w-full py-2 sm:py-3 text-white font-bold rounded-xl transition-all text-sm"
+               className="w-full py-2 sm:py-3 text-white font-bold rounded-xl transition-all text-sm hover:scale-105 active:scale-95 shadow-md hover:shadow-lg duration-200"
              >
-               Open Catalog
+               📖 Open Catalog
              </button>
           </div>
 
@@ -189,9 +189,9 @@ export default function AdminPage() {
               style={{ backgroundColor: '#10b981' }} 
               onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#059669'} 
               onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#10b981'} 
-              className="w-full py-2 sm:py-3 text-white font-bold rounded-xl transition-all text-sm"
+              className="w-full py-2 sm:py-3 text-white font-bold rounded-xl transition-all text-sm hover:scale-105 active:scale-95 shadow-md hover:shadow-lg duration-200"
              >
-               View Dashboard
+               📊 View Dashboard
              </button>
           </div>
         </div>

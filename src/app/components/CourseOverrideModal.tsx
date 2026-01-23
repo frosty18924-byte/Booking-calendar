@@ -85,7 +85,7 @@ export default function CourseOverrideModal({ courseId, courseName, onClose }: {
           <h2 style={{ color: isDark ? '#f1f5f9' : '#1e293b' }} className="text-2xl font-black uppercase tracking-tight">
             Capacity Overrides - {courseName}
           </h2>
-          <button onClick={onClose} style={{ color: isDark ? '#94a3b8' : '#64748b' }} className="hover:text-red-500 text-2xl transition-colors">&times;</button>
+          <button onClick={onClose} style={{ color: isDark ? '#94a3b8' : '#64748b' }} className="hover:text-red-500 text-2xl transition-all hover:scale-125 active:scale-100 duration-200">✕</button>
         </div>
 
         {/* ADD OVERRIDE FORM */}
@@ -141,9 +141,9 @@ export default function CourseOverrideModal({ courseId, courseName, onClose }: {
             style={{ backgroundColor: '#a855f7' }}
             onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#9333ea'}
             onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#a855f7'}
-            className="w-full text-white py-3 rounded-xl font-bold shadow-lg transition-all disabled:opacity-50"
+            className="w-full text-white py-3 rounded-xl font-bold shadow-lg transition-all disabled:opacity-50 hover:scale-105 active:scale-95 duration-200"
           >
-            {loading ? 'Processing...' : '+ Add Override'}
+            {loading ? 'Processing...' : '➕ Add Override'}
           </button>
         </form>
 
@@ -170,7 +170,7 @@ export default function CourseOverrideModal({ courseId, courseName, onClose }: {
                     style={{ backgroundColor: '#dc2626' }}
                     onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#b91c1c'}
                     onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#dc2626'}
-                    className="p-3 text-white rounded-lg font-bold transition-all"
+                    className="p-3 text-white rounded-lg font-bold transition-all hover:scale-110 active:scale-95 shadow-md hover:shadow-lg duration-200"
                   >
                     🗑️
                   </button>

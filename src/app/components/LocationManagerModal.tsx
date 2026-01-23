@@ -253,17 +253,17 @@ export default function LocationManagerModal({ onClose }: { onClose: () => void 
                       type="submit"
                       disabled={loading || editingLocationAccessible.length === 0} 
                       style={{ backgroundColor: '#2563eb' }}
-                      className="flex-1 text-white p-3 rounded-xl font-bold transition-all disabled:opacity-50"
+                      className="flex-1 text-white p-3 rounded-xl font-bold transition-all disabled:opacity-50 hover:scale-105 active:scale-95 duration-200"
                     >
-                      {loading ? 'Saving...' : 'Save Changes'}
+                      {loading ? 'Saving...' : '💾 Save Changes'}
                     </button>
                     <button 
                       type="button"
                       onClick={() => setEditingLocationId(null)}
                       style={{ backgroundColor: isDark ? '#334155' : '#cbd5e1', color: isDark ? '#f1f5f9' : '#1e293b' }}
-                      className="flex-1 p-3 rounded-xl font-bold transition-all"
+                      className="flex-1 p-3 rounded-xl font-bold transition-all hover:scale-105 active:scale-95 duration-200"
                     >
-                      Cancel
+                      Cancel ✕
                     </button>
                   </div>
                 </form>
@@ -343,13 +343,13 @@ export default function LocationManagerModal({ onClose }: { onClose: () => void 
                     <div className="flex gap-2">
                       <button 
                         onClick={() => handleEditLocation(loc)}
-                        className="p-2 rounded-lg hover:bg-blue-600 hover:text-white text-blue-400 transition-all"
+                        className="p-2 rounded-lg hover:bg-blue-600 hover:text-white text-blue-400 transition-all hover:scale-110 active:scale-95 shadow-md hover:shadow-lg duration-200"
                       >
                         ✏️
                       </button>
                       <button 
                         onClick={() => handleDeleteLocation(loc.id)}
-                        className="p-2 rounded-lg hover:bg-red-600 hover:text-white text-red-400 transition-all"
+                        className="p-2 rounded-lg hover:bg-red-600 hover:text-white text-red-400 transition-all hover:scale-110 active:scale-95 shadow-md hover:shadow-lg duration-200"
                       >
                         🗑️
                       </button>
@@ -396,17 +396,17 @@ export default function LocationManagerModal({ onClose }: { onClose: () => void 
                       type="submit"
                       disabled={loading} 
                       style={{ backgroundColor: '#a855f7' }}
-                      className="flex-1 text-white p-3 rounded-xl font-bold transition-all disabled:opacity-50"
+                      className="flex-1 text-white p-3 rounded-xl font-bold transition-all disabled:opacity-50 hover:scale-105 active:scale-95 duration-200"
                     >
-                      {loading ? 'Saving...' : 'Save Changes'}
+                      {loading ? 'Saving...' : '💾 Save Changes'}
                     </button>
                     <button 
                       type="button"
                       onClick={() => setEditingVenueId(null)}
                       style={{ backgroundColor: isDark ? '#334155' : '#cbd5e1', color: isDark ? '#f1f5f9' : '#1e293b' }}
-                      className="flex-1 p-3 rounded-xl font-bold transition-all"
+                      className="flex-1 p-3 rounded-xl font-bold transition-all hover:scale-105 active:scale-95 duration-200"
                     >
-                      Cancel
+                      Cancel ✕
                     </button>
                   </div>
                 </form>
@@ -458,13 +458,13 @@ export default function LocationManagerModal({ onClose }: { onClose: () => void 
                     <div className="flex gap-2">
                       <button 
                         onClick={() => handleEditVenue(venue)}
-                        className="p-2 rounded-lg hover:bg-blue-600 hover:text-white text-blue-400 transition-all"
+                        className="p-2 rounded-lg hover:bg-blue-600 hover:text-white text-blue-400 transition-all hover:scale-110 active:scale-95 shadow-md hover:shadow-lg duration-200"
                       >
                         ✏️
                       </button>
                       <button 
                         onClick={() => handleDeleteVenue(venue.id)}
-                        className="p-2 rounded-lg hover:bg-red-600 hover:text-white text-red-400 transition-all"
+                        className="p-2 rounded-lg hover:bg-red-600 hover:text-white text-red-400 transition-all hover:scale-110 active:scale-95 shadow-md hover:shadow-lg duration-200"
                       >
                         🗑️
                       </button>

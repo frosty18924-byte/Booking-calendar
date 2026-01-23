@@ -304,9 +304,9 @@ export default function AnalyticsDashboard() {
               style={{ backgroundColor: '#dc2626' }} 
               onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#b91c1c'} 
               onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#dc2626'} 
-              className="text-white px-6 py-2 rounded-2xl font-black text-xs uppercase tracking-widest shadow-lg transition-all cursor-pointer"
+              className="text-white px-6 py-2 rounded-2xl font-black text-xs uppercase tracking-widest shadow-lg transition-all cursor-pointer hover:scale-105 active:scale-95 hover:shadow-xl duration-200"
             >
-              Sign Out
+              🚪 Sign Out
             </button>
           )}
         </div>
@@ -316,9 +316,9 @@ export default function AnalyticsDashboard() {
           <button 
             onClick={() => router.push('/')}
             style={{ color: isDark ? '#94a3b8' : '#475569' }}
-            className="p-2 hover:opacity-80 rounded-lg font-bold text-2xl"
+            className="p-2 hover:opacity-80 rounded-lg font-bold text-2xl hover:scale-125 active:scale-100 transition-transform duration-200"
           >
-            ←
+            ⬅️
           </button>
           <h1 style={{ color: isDark ? '#f1f5f9' : '#1e293b' }} className="text-3xl font-black uppercase tracking-tighter">Intelligence Hub</h1>
           <ThemeToggle />

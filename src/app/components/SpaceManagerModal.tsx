@@ -125,7 +125,7 @@ export default function SpaceManagerModal({ onClose }: { onClose: () => void }) 
                 <span>{item.name}</span>
                 <button 
                   onClick={() => handleDelete(item.id)}
-                  className="text-red-300 hover:text-red-500 transition-colors opacity-0 group-hover:opacity-100"
+                  className="text-red-300 hover:text-red-500 transition-all opacity-0 group-hover:opacity-100 hover:scale-125 active:scale-95 duration-200"
                 >
                   🗑️
                 </button>
@@ -136,9 +136,9 @@ export default function SpaceManagerModal({ onClose }: { onClose: () => void }) 
 
         <button 
           onClick={onClose} 
-          className="w-full mt-8 py-3 bg-slate-800 text-white font-bold rounded-xl hover:bg-black transition-all"
+          className="w-full mt-8 py-3 bg-slate-800 text-white font-bold rounded-xl hover:bg-black hover:scale-105 active:scale-95 transition-all shadow-lg hover:shadow-xl duration-200"
         >
-          Finished
+          ✕ Finished
         </button>
       </div>
     </div>

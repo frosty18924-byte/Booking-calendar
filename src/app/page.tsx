@@ -128,13 +128,13 @@ export default function CalendarPage() {
 
               <div className="flex items-center justify-end gap-3">
                 {canViewAdmin && (
-                  <a href="/admin" className="cursor-pointer bg-emerald-600 text-white px-4 py-2 rounded-xl font-black text-[10px] uppercase hover:opacity-80 transition-all">
-                    Admin
+                  <a href="/admin" className="cursor-pointer bg-emerald-600 text-white px-4 py-2 rounded-xl font-black text-[10px] uppercase hover:bg-emerald-700 hover:shadow-md hover:scale-105 active:scale-95 transition-all duration-200">
+                    ⚙️ Admin
                   </a>
                 )}
                 {user && (
-                  <button onClick={() => supabase.auth.signOut().then(() => window.location.href = '/login')} className="cursor-pointer bg-red-600 text-white px-4 py-2 rounded-xl font-black text-[10px] uppercase hover:opacity-80 transition-all">
-                    Sign Out
+                  <button onClick={() => supabase.auth.signOut().then(() => window.location.href = '/login')} className="cursor-pointer bg-red-600 text-white px-4 py-2 rounded-xl font-black text-[10px] uppercase hover:bg-red-700 hover:shadow-md hover:scale-105 active:scale-95 transition-all duration-200">
+                    🚪 Sign Out
                   </button>
                 )}
                 <div className="cursor-pointer"><ThemeToggle /></div>
@@ -153,18 +153,18 @@ export default function CalendarPage() {
               </select>
 
               <div className="flex items-center gap-6">
-                <button onClick={() => setCurrentMonth(subMonths(currentMonth, 1))} className="cursor-pointer text-2xl font-bold hover:scale-125 transition-transform">←</button>
+                <button onClick={() => setCurrentMonth(subMonths(currentMonth, 1))} className="cursor-pointer text-2xl font-bold hover:scale-150 active:scale-100 transition-transform duration-200">⬅️</button>
                 <h2 style={{ color: isDark ? '#f1f5f9' : '#1e293b' }} className="text-2xl font-black uppercase min-w-[200px] text-center">{format(currentMonth, 'MMMM yyyy')}</h2>
-                <button onClick={() => setCurrentMonth(addMonths(currentMonth, 1))} className="cursor-pointer text-2xl font-bold hover:scale-125 transition-transform">→</button>
-                <button onClick={() => setCurrentMonth(new Date())} className="cursor-pointer bg-slate-500 hover:bg-slate-600 text-white px-3 py-2 rounded-lg font-bold text-[10px] uppercase transition-all" title="Go back to today">
-                  Today
+                <button onClick={() => setCurrentMonth(addMonths(currentMonth, 1))} className="cursor-pointer text-2xl font-bold hover:scale-150 active:scale-100 transition-transform duration-200">➡️</button>
+                <button onClick={() => setCurrentMonth(new Date())} className="cursor-pointer bg-slate-500 hover:bg-slate-600 text-white px-3 py-2 rounded-lg font-bold text-[10px] uppercase transition-all hover:shadow-md active:scale-95 duration-200" title="Go back to today">
+                  📅 Today
                 </button>
               </div>
 
               <div className="min-w-[140px] flex justify-end">
                 {canSchedule && (
-                  <button onClick={() => setShowSchedule(true)} className="cursor-pointer bg-blue-600 text-white px-6 py-3 rounded-2xl font-black text-[10px] uppercase shadow-xl hover:bg-blue-700 transition-all">
-                    + Schedule
+                  <button onClick={() => setShowSchedule(true)} className="cursor-pointer bg-blue-600 text-white px-6 py-3 rounded-2xl font-black text-[10px] uppercase shadow-xl hover:bg-blue-700 hover:shadow-2xl hover:scale-105 active:scale-95 transition-all duration-200">
+                    ➕ Schedule
                   </button>
                 )}
               </div>

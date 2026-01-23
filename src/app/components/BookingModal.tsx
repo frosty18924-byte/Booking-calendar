@@ -364,7 +364,7 @@ export default function BookingModal({ event, onClose, onRefresh, onOpenChecklis
                       >
                         {row.attended_at ? 'Present' : 'Mark Present'}
                       </button>
-                      <button onClick={() => handleRemoveStaff(row.id)} className="p-2 bg-red-600 text-white rounded-lg text-[10px]">🗑️</button>
+                      <button onClick={() => handleRemoveStaff(row.id)} className="p-2 bg-red-600 text-white rounded-lg text-[10px] transition-all hover:bg-red-700 hover:scale-110 active:scale-95 shadow-md hover:shadow-lg duration-200">🗑️</button>
                     </div>
                   </div>
 

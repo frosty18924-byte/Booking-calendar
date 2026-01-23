@@ -194,7 +194,7 @@ export default function RosterModal({ event, onClose, onRefresh, userRole = 'adm
                         <button
                           onClick={() => handleRemoveStaff(staff.booking_id)}
                           disabled={loading}
-                          className="text-red-500 hover:bg-red-500/10 p-2 rounded transition-colors"
+                          className="text-red-500 hover:bg-red-500/10 p-2 rounded transition-all hover:scale-110 active:scale-95 duration-200"
                           title="Remove from roster"
                         >
                           🗑️
@@ -295,9 +295,9 @@ export default function RosterModal({ event, onClose, onRefresh, userRole = 'adm
                       onClick={() => handleBookStaff(staff.id)}
                       disabled={loading}
                       style={{ backgroundColor: '#2563eb' }}
-                      className="p-2 text-white rounded-lg text-[10px] font-bold transition-all hover:opacity-80"
+                      className="p-2 text-white rounded-lg text-[10px] font-bold transition-all hover:opacity-80 hover:scale-105 active:scale-95 shadow-md hover:shadow-lg duration-200"
                     >
-                      + Add
+                      ➕ Add
                     </button>
                   </div>
                 ))
@@ -309,9 +309,9 @@ export default function RosterModal({ event, onClose, onRefresh, userRole = 'adm
         <button
           onClick={onClose}
           style={{ backgroundColor: isDark ? '#334155' : '#cbd5e1', color: isDark ? '#f1f5f9' : '#1e293b' }}
-          className="mt-6 w-full py-3 rounded-xl font-bold transition-all hover:opacity-80"
+          className="mt-6 w-full py-3 rounded-xl font-bold transition-all hover:opacity-80 hover:shadow-md active:scale-95 duration-200"
         >
-          Close
+          Close ✕
         </button>
       </div>
     </div>

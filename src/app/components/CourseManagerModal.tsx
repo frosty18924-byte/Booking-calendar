@@ -197,18 +197,18 @@ export default function CourseManagerModal({ onClose }: { onClose: () => void })
               style={{ backgroundColor: '#a855f7' }}
               onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#9333ea'}
               onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#a855f7'}
-              className="flex-1 text-white py-3 rounded-xl font-bold shadow-lg transition-all disabled:opacity-50"
+              className="flex-1 text-white py-3 rounded-xl font-bold shadow-lg transition-all disabled:opacity-50 hover:scale-105 active:scale-95 duration-200"
             >
-              {loading ? 'Processing...' : editingId ? 'Save Changes' : '+ Add Course'}
+              {loading ? 'Processing...' : editingId ? '💾 Save Changes' : '➕ Add Course'}
             </button>
             {editingId && (
               <button
                 type="button"
                 onClick={handleCancel}
                 style={{ backgroundColor: isDark ? '#334155' : '#cbd5e1', color: isDark ? '#f1f5f9' : '#1e293b' }}
-                className="px-6 py-3 rounded-xl font-bold transition-all"
+                className="px-6 py-3 rounded-xl font-bold transition-all hover:scale-105 active:scale-95 shadow-md duration-200"
               >
-                Cancel
+                Cancel ✕
               </button>
             )}
           </div>
@@ -243,7 +243,7 @@ export default function CourseManagerModal({ onClose }: { onClose: () => void })
                       style={{ backgroundColor: '#2563eb' }}
                       onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#1d4ed8'}
                       onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#2563eb'}
-                      className="p-3 text-white rounded-lg font-bold transition-all"
+                      className="p-3 text-white rounded-lg font-bold transition-all hover:scale-110 active:scale-95 shadow-md hover:shadow-lg duration-200"
                     >
                       ✏️
                     </button>
@@ -252,7 +252,7 @@ export default function CourseManagerModal({ onClose }: { onClose: () => void })
                       style={{ backgroundColor: '#f97316' }}
                       onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#ea580c'}
                       onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#f97316'}
-                      className="p-3 text-white rounded-lg font-bold transition-all"
+                      className="p-3 text-white rounded-lg font-bold transition-all hover:scale-110 active:scale-95 shadow-md hover:shadow-lg duration-200"
                       title="Cancel this course and remove all participants"
                     >
                       ❌
@@ -262,7 +262,7 @@ export default function CourseManagerModal({ onClose }: { onClose: () => void })
                       style={{ backgroundColor: '#dc2626' }}
                       onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#b91c1c'}
                       onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#dc2626'}
-                      className="p-3 text-white rounded-lg font-bold transition-all"
+                      className="p-3 text-white rounded-lg font-bold transition-all hover:scale-110 active:scale-95 shadow-md hover:shadow-lg duration-200"
                     >
                       🗑️
                     </button>

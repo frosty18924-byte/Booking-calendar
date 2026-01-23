@@ -594,11 +594,11 @@ Charlie Scheduler,charlie@example.com,Banks House,manager`;
               style={{ backgroundColor: '#f59e0b' }}
               onMouseEnter={(e) => e.currentTarget.style.opacity = '0.9'}
               onMouseLeave={(e) => e.currentTarget.style.opacity = '1'}
-              className="text-white px-4 py-2 rounded-lg font-bold text-xs uppercase transition-all"
+              className="text-white px-4 py-2 rounded-lg font-bold text-xs uppercase transition-all hover:scale-105 active:scale-95 shadow-md hover:shadow-lg duration-200"
             >
               📤 Bulk Upload
             </button>
-            <button onClick={onClose} style={{ color: isDark ? '#94a3b8' : '#64748b' }} className="hover:text-red-500 text-2xl transition-colors">&times;</button>
+            <button onClick={onClose} style={{ color: isDark ? '#94a3b8' : '#64748b' }} className="hover:text-red-500 text-2xl transition-colors hover:scale-125 active:scale-100 duration-200">✕</button>
           </div>
         </div>
 
@@ -710,9 +710,9 @@ Charlie Scheduler,charlie@example.com,Banks House,manager`;
                 style={{ backgroundColor: editingId ? '#2563eb' : '#10b981' }} 
                 onMouseEnter={(e) => e.currentTarget.style.opacity = '0.9'} 
                 onMouseLeave={(e) => e.currentTarget.style.opacity = '1'} 
-                className="w-full py-3 text-white font-bold rounded-xl shadow-lg transition-all disabled:opacity-50"
+                className="w-full py-3 text-white font-bold rounded-xl shadow-lg transition-all disabled:opacity-50 hover:scale-105 active:scale-95 duration-200"
               >
-                {loading ? 'Processing...' : editingId ? 'Save Changes' : 'Create Staff Member'}
+                {loading ? 'Processing...' : editingId ? '💾 Save Changes' : '✅ Create Staff Member'}
               </button>
             </form>
           </div>
@@ -770,21 +770,21 @@ Charlie Scheduler,charlie@example.com,Banks House,manager`;
                             <div className="flex gap-2">
                               <button 
                                 onClick={() => handleEdit(staff)} 
-                                className="flex-1 p-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-[9px] font-bold transition-all"
+                                className="flex-1 p-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-[9px] font-bold transition-all hover:scale-105 active:scale-95 shadow-md hover:shadow-lg duration-200"
                               >
                                 ✏️ Edit
                               </button>
                               {(staff.role_tier === 'manager' || staff.role_tier === 'scheduler' || staff.role_tier === 'admin') && (
                                 <button 
                                   onClick={() => handleSendPasswordReset(staff.email, staff.full_name)} 
-                                  className="flex-1 p-2 bg-green-600 hover:bg-green-700 text-white rounded-lg text-[9px] font-bold transition-all"
+                                  className="flex-1 p-2 bg-green-600 hover:bg-green-700 text-white rounded-lg text-[9px] font-bold transition-all hover:scale-105 active:scale-95 shadow-md hover:shadow-lg duration-200"
                                 >
                                   🔗 Send Link
                                 </button>
                               )}
                               <button 
                                 onClick={() => handleDeleteStaff(staff.id)} 
-                                className="flex-1 p-2 bg-red-600 hover:bg-red-700 text-white rounded-lg text-[9px] font-bold transition-all"
+                                className="flex-1 p-2 bg-red-600 hover:bg-red-700 text-white rounded-lg text-[9px] font-bold transition-all hover:scale-105 active:scale-95 shadow-md hover:shadow-lg duration-200"
                               >
                                 🗑️ Delete
                               </button>
