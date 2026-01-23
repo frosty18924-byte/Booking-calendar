@@ -92,27 +92,6 @@ export async function POST(request: Request) {
       );
     }
 
-    // Delete from profiles table
-    console.log('Attempting to delete profile with id:', staffId);
-    
-    // First verify the profile exists (use select without .single() to avoid error)
-    const { data: profileExists } = await supabaseAdmin
-      .from('profiles')
-      .select('id')
-      .eq('id', staffId);
-    
-    console.log('Profile exists:', profileExists && profileExists.length > 0);
-    
-    if (!profileExists || profileExists.length === 0) {
-      return Response.json(
-        {
-          success: false,
-          error: `Profile with id ${staffId} not found`,
-        },
-        { status: 400 }
-      );
-    }
-
     // Soft delete: anonymize and mark as deleted for historical analytics
     console.log('Attempting to soft delete profile with id:', staffId);
     
