@@ -185,6 +185,7 @@ export async function POST(request: Request) {
         // Include password_needs_change flag if password was provided
         const passwordNeedsChange = staff.password ? true : false;
         console.log('Setting password_needs_change to:', passwordNeedsChange, 'for', staff.email);
+        console.log('DETAILS - staff.password exists:', !!staff.password, 'staff.password value:', staff.password);
         
         const profileData = {
           full_name: staff.full_name,
