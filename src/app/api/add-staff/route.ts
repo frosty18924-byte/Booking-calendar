@@ -47,7 +47,6 @@ export async function POST(request: Request) {
     const results = [];
 
     for (const staff of staffMembers) {
-    for (const staff of staffMembers) {
       try {
         console.log('Adding staff member:', staff.email);
         console.log('Staff data:', JSON.stringify(staff));
