@@ -92,65 +92,67 @@ export async function POST(request: Request) {
       );
     }
 
-    // Delete from profiles table - try multiple methods
+    // Delete from profiles table
     console.log('Attempting to delete profile with id:', staffId);
-    console.log('Staff ID type:', typeof staffId, 'Length:', staffId?.length);
     
-    // First attempt: standard delete
-    let { error: profileError } = await supabaseAdmin
+    // First verify the profile exists (use select without .single() to avoid error)
+    const { data: profileExists } = await supabaseAdmin
       .from('profiles')
-      .delete()
+      .select('id')
+      .eq('id', staffId);
+    
+    console.log('Profile exists:', profileExists && profileExists.length > 0);
+    
+    if (!profileExists || profileExists.length === 0) {
+      return Response.json(
+        {
+          success: false,
+          error: `Profile with id ${staffId} not found`,
+        },
+        { status: 400 }
+      );
+    }
+
+    // Soft delete: anonymize and mark as deleted for historical analytics
+    console.log('Attempting to soft delete profile with id:', staffId);
+    
+    const { error: profileError } = await supabaseAdmin
+      .from('profiles')
+      .update({
+        is_deleted: true,
+        deleted_at: new Date().toISOString(),
+        full_name: 'Deleted User',
+        email: `deleted-${staffId}@system.local`, // Anonymize email
+        password_needs_change: false,
+      })
       .eq('id', staffId);
 
-    console.log('Profile deletion error (method 1):', profileError?.message || 'Success');
+    console.log('Profile soft delete error:', profileError?.message || 'Success');
     
-    // Small delay to ensure database consistency
+    if (profileError) {
+      console.error('Profile soft delete error:', profileError);
+      return Response.json(
+        {
+          success: false,
+          error: `Failed to delete profile: ${profileError.message}`,
+        },
+        { status: 400 }
+      );
+    }
+
+    // Verify soft delete worked
     await new Promise(resolve => setTimeout(resolve, 500));
     
-    // If first attempt didn't error but profile might still exist, try verification
-    const { data: stillExistsCheck1, error: verifyError1 } = await supabaseAdmin
+    const { data: verifyDelete } = await supabaseAdmin
       .from('profiles')
-      .select('id, email')
+      .select('is_deleted, deleted_at')
       .eq('id', staffId);
     
-    console.log('Verification query error:', verifyError1?.message || 'No error');
-    const stillExists1 = stillExistsCheck1 && stillExistsCheck1.length > 0;
-    console.log('Profile still exists after method 1:', stillExists1);
-    
-    if (stillExistsCheck1 && stillExistsCheck1.length > 0) {
-      console.log('Profile data still in database:', JSON.stringify(stillExistsCheck1[0]));
-    }
-    
-    // If still exists, try deleting by email as well
-    if (stillExists1) {
-      console.log('Attempting delete by email as well:', email);
-      const { error: emailDeleteError } = await supabaseAdmin
-        .from('profiles')
-        .delete()
-        .eq('email', email);
-      
-      console.log('Email-based delete error:', emailDeleteError?.message || 'Success');
-      
-      await new Promise(resolve => setTimeout(resolve, 500));
-      
-      const { data: stillExistsCheck2 } = await supabaseAdmin
-        .from('profiles')
-        .select('id')
-        .eq('id', staffId);
-      
-      const stillExists2 = stillExistsCheck2 && stillExistsCheck2.length > 0;
-      console.log('Profile still exists after email delete:', stillExists2);
-      
-      if (stillExists2) {
-        console.error('⚠️ PROFILE CANNOT BE DELETED - Both ID and email delete queries failed!');
-        return Response.json(
-          {
-            success: false,
-            error: `Profile cannot be deleted. Use /api/force-delete-profile?profileId=${staffId} to force deletion.`,
-          },
-          { status: 400 }
-        );
-      }
+    if (verifyDelete && verifyDelete.length > 0) {
+      console.log('Profile soft deleted successfully:', {
+        is_deleted: verifyDelete[0].is_deleted,
+        deleted_at: verifyDelete[0].deleted_at,
+      });
     }
 
     console.log('Staff member deleted successfully:', email);

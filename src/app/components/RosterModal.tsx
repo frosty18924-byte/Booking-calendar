@@ -42,8 +42,8 @@ export default function RosterModal({ event, onClose, onRefresh }: RosterModalPr
   async function fetchData() {
     setLoading(true);
     try {
-      // Fetch all staff
-      const { data: staffData } = await supabase.from('profiles').select('*').order('full_name');
+      // Fetch all active staff (exclude deleted)
+      const { data: staffData } = await supabase.from('profiles').select('*').eq('is_deleted', false).order('full_name');
 
       // Fetch bookings for this event with full profile details
       const { data: bookings } = await supabase

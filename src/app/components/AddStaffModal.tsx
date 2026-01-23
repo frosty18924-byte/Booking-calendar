@@ -78,7 +78,7 @@ export default function AddStaffModal({ onClose, onRefresh }: { onClose: () => v
   async function fetchInitialData() {
     const { data: locData } = await supabase.from('locations').select('*').order('name');
     setLocations(locData || []);
-    const { data: staffData } = await supabase.from('profiles').select('*').order('full_name');
+    const { data: staffData } = await supabase.from('profiles').select('*').eq('is_deleted', false).order('full_name');
     setAllStaff(staffData || []);
   }
 
