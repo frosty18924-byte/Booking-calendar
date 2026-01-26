@@ -715,10 +715,23 @@ Charlie Scheduler,charlie@example.com,Banks House,manager`;
               <button 
                 type="submit"
                 disabled={loading}
-                style={{ backgroundColor: editingId ? '#2563eb' : '#10b981' }} 
-                onMouseEnter={(e) => e.currentTarget.style.opacity = '0.9'} 
-                onMouseLeave={(e) => e.currentTarget.style.opacity = '1'} 
-                className="w-full py-3 text-white font-bold rounded-xl shadow-lg transition-all disabled:opacity-50 hover:scale-105 active:scale-95 duration-200 flex items-center justify-center gap-2"
+                style={{ 
+                  backgroundColor: loading ? '#999999' : editingId ? '#2563eb' : '#10b981',
+                  opacity: loading ? 0.7 : 1
+                }} 
+                onMouseEnter={(e) => {
+                  if (!loading) {
+                    e.currentTarget.style.filter = 'brightness(0.9)';
+                    e.currentTarget.style.transform = 'scale(1.02)';
+                  }
+                }} 
+                onMouseLeave={(e) => {
+                  if (!loading) {
+                    e.currentTarget.style.filter = 'brightness(1)';
+                    e.currentTarget.style.transform = 'scale(1)';
+                  }
+                }} 
+                className="w-full py-3 text-white font-bold rounded-xl shadow-lg transition-all duration-200 flex items-center justify-center gap-2 cursor-pointer"
               >
                 {loading ? (
                   <>
