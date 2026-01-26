@@ -181,58 +181,56 @@ export default function CalendarPage() {
         <div style={{ backgroundColor: isDark ? '#1e293b' : '#ffffff', borderColor: isDark ? '#334155' : '#cbd5e1' }} className="rounded-[40px] shadow-2xl border overflow-hidden">
 
           <div style={{ borderColor: isDark ? '#334155' : '#e2e8f0' }} className="p-4 md:p-8 border-b">
-            <div className="grid grid-cols-1 md:grid-cols-3 items-center gap-4 mb-6 md:mb-8">
-              <div className="flex items-center gap-2 text-center md:text-left justify-center md:justify-start">
+            <div className="grid grid-cols-3 items-center gap-2 md:gap-4 mb-4 md:mb-8">
+              <div className="flex items-center gap-1 md:gap-2">
                 <div className={`w-2 h-2 rounded-full ${user ? 'bg-emerald-500' : 'bg-red-500'}`}></div>
-                <div style={{ color: isDark ? '#94a3b8' : '#64748b' }} className="text-[8px] md:text-[10px] font-black uppercase truncate">
+                <div style={{ color: isDark ? '#94a3b8' : '#64748b' }} className="text-[7px] md:text-[10px] font-black uppercase truncate">
                   {user ? `${user.email}` : 'Offline'}
                 </div>
               </div>
 
-              <h1 style={{ color: isDark ? '#f1f5f9' : '#1e293b' }} className="text-xl md:text-3xl font-black uppercase tracking-tighter text-center">
+              <h1 style={{ color: isDark ? '#f1f5f9' : '#1e293b' }} className="text-sm md:text-3xl font-black uppercase tracking-tighter text-center">
                 Booking Calendar
               </h1>
 
-              <div className="flex items-center justify-center md:justify-end gap-2">
+              <div className="flex items-center justify-end gap-1 md:gap-3">
                 {canViewAdmin && (
-                  <a href="/admin" className="cursor-pointer bg-emerald-600 text-white px-2 md:px-4 py-2 rounded-xl font-black text-[8px] md:text-[10px] uppercase hover:bg-emerald-700 hover:shadow-md hover:scale-105 active:scale-95 transition-all duration-200">
-                    ⚙️
+                  <a href="/admin" className="cursor-pointer bg-emerald-600 text-white px-1 md:px-4 py-1 md:py-2 rounded-lg md:rounded-xl font-black text-[7px] md:text-[10px] uppercase hover:bg-emerald-700 hover:shadow-md hover:scale-105 active:scale-95 transition-all duration-200">
+                    ⚙️ Admin
                   </a>
                 )}
                 {user && (
-                  <button onClick={() => supabase.auth.signOut().then(() => window.location.href = '/login')} className="cursor-pointer bg-red-600 text-white px-2 md:px-4 py-2 rounded-xl font-black text-[8px] md:text-[10px] uppercase hover:bg-red-700 hover:shadow-md hover:scale-105 active:scale-95 transition-all duration-200">
-                    🚪
+                  <button onClick={() => supabase.auth.signOut().then(() => window.location.href = '/login')} className="cursor-pointer bg-red-600 text-white px-1 md:px-4 py-1 md:py-2 rounded-lg md:rounded-xl font-black text-[7px] md:text-[10px] uppercase hover:bg-red-700 hover:shadow-md hover:scale-105 active:scale-95 transition-all duration-200">
+                    🚪 Sign Out
                   </button>
                 )}
                 <div className="cursor-pointer"><ThemeToggle /></div>
               </div>
             </div>
 
-            <div className="flex flex-col gap-4">
-              <div className="flex flex-col md:flex-row justify-between items-center gap-4">
-                <select
-                  value={filterCourse}
-                  onChange={(e) => setFilterCourse(e.target.value)}
-                  style={{ backgroundColor: isDark ? '#0f172a' : '#f8fafc', color: isDark ? '#f1f5f9' : '#1e293b', borderColor: isDark ? '#334155' : '#cbd5e1' }}
-                  className="cursor-pointer rounded-xl border px-4 py-2 text-[10px] font-bold uppercase outline-none w-full md:w-48"
-                >
-                  <option value="all">All Courses</option>
-                  {uniqueCourses.map(c => <option key={c} value={c}>{c}</option>)}
-                </select>
+            <div className="flex flex-row justify-between items-center gap-2 md:gap-6">
+              <select
+                value={filterCourse}
+                onChange={(e) => setFilterCourse(e.target.value)}
+                style={{ backgroundColor: isDark ? '#0f172a' : '#f8fafc', color: isDark ? '#f1f5f9' : '#1e293b', borderColor: isDark ? '#334155' : '#cbd5e1' }}
+                className="cursor-pointer rounded-lg md:rounded-xl border px-2 md:px-4 py-1 md:py-2 text-[8px] md:text-[11px] font-bold uppercase outline-none w-32 md:w-48"
+              >
+                <option value="all">All Courses</option>
+                {uniqueCourses.map(c => <option key={c} value={c}>{c}</option>)}
+              </select>
 
-                <div className="flex items-center gap-2 md:gap-6 w-full md:w-auto justify-center">
-                  <button onClick={() => setCurrentMonth(subMonths(currentMonth, 1))} className="cursor-pointer text-xl md:text-2xl font-bold hover:scale-150 active:scale-100 transition-transform duration-200">⬅️</button>
-                  <h2 style={{ color: isDark ? '#f1f5f9' : '#1e293b' }} className="text-lg md:text-2xl font-black uppercase text-center whitespace-nowrap">{format(currentMonth, 'MMM yyyy')}</h2>
-                  <button onClick={() => setCurrentMonth(addMonths(currentMonth, 1))} className="cursor-pointer text-xl md:text-2xl font-bold hover:scale-150 active:scale-100 transition-transform duration-200">➡️</button>
-                  <button onClick={() => setCurrentMonth(new Date())} className="cursor-pointer bg-slate-500 hover:bg-slate-600 text-white px-2 md:px-3 py-2 rounded-lg font-bold text-[9px] md:text-[10px] uppercase transition-all hover:shadow-md active:scale-95 duration-200" title="Go back to today">
-                    📅 Today
-                  </button>
-                </div>
+              <div className="flex items-center gap-1 md:gap-6">
+                <button onClick={() => setCurrentMonth(subMonths(currentMonth, 1))} className="cursor-pointer text-lg md:text-2xl font-bold hover:scale-150 active:scale-100 transition-transform duration-200">⬅️</button>
+                <h2 style={{ color: isDark ? '#f1f5f9' : '#1e293b' }} className="text-xs md:text-2xl font-black uppercase min-w-[80px] md:min-w-[200px] text-center whitespace-nowrap">{format(currentMonth, 'MMM yyyy')}</h2>
+                <button onClick={() => setCurrentMonth(addMonths(currentMonth, 1))} className="cursor-pointer text-lg md:text-2xl font-bold hover:scale-150 active:scale-100 transition-transform duration-200">➡️</button>
+                <button onClick={() => setCurrentMonth(new Date())} className="cursor-pointer bg-slate-500 hover:bg-slate-600 text-white px-1 md:px-3 py-1 md:py-2 rounded-lg font-bold text-[7px] md:text-[10px] uppercase transition-all hover:shadow-md active:scale-95 duration-200" title="Go back to today">
+                  📅 Today
+                </button>
               </div>
 
-              <div className="flex justify-center md:justify-end">
+              <div className="flex justify-end">
                 {canSchedule && (
-                  <button onClick={() => setShowSchedule(true)} className="cursor-pointer bg-blue-600 text-white px-4 md:px-6 py-2 md:py-3 rounded-2xl font-black text-[9px] md:text-[10px] uppercase shadow-xl hover:bg-blue-700 hover:shadow-2xl hover:scale-105 active:scale-95 transition-all duration-200 w-full md:w-auto">
+                  <button onClick={() => setShowSchedule(true)} className="cursor-pointer bg-blue-600 text-white px-2 md:px-6 py-1 md:py-3 rounded-lg md:rounded-2xl font-black text-[7px] md:text-[10px] uppercase shadow-xl hover:bg-blue-700 hover:shadow-2xl hover:scale-105 active:scale-95 transition-all duration-200">
                     ➕ Schedule
                   </button>
                 )}
