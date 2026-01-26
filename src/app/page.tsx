@@ -172,7 +172,7 @@ export default function CalendarPage() {
                 value={filterCourse}
                 onChange={(e) => setFilterCourse(e.target.value)}
                 style={{ backgroundColor: isDark ? '#0f172a' : '#f8fafc', color: isDark ? '#f1f5f9' : '#1e293b', borderColor: isDark ? '#334155' : '#cbd5e1' }}
-                className="cursor-pointer rounded-xl border px-4 py-2 text-[11px] font-bold uppercase outline-none"
+                className="cursor-pointer rounded-xl border px-4 py-2 text-[11px] font-bold uppercase outline-none w-48"
               >
                 <option value="all">All Courses</option>
                 {uniqueCourses.map(c => <option key={c} value={c}>{c}</option>)}

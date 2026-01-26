@@ -718,9 +718,14 @@ Charlie Scheduler,charlie@example.com,Banks House,manager`;
                 style={{ backgroundColor: editingId ? '#2563eb' : '#10b981' }} 
                 onMouseEnter={(e) => e.currentTarget.style.opacity = '0.9'} 
                 onMouseLeave={(e) => e.currentTarget.style.opacity = '1'} 
-                className="w-full py-3 text-white font-bold rounded-xl shadow-lg transition-all disabled:opacity-50 hover:scale-105 active:scale-95 duration-200"
+                className="w-full py-3 text-white font-bold rounded-xl shadow-lg transition-all disabled:opacity-50 hover:scale-105 active:scale-95 duration-200 flex items-center justify-center gap-2"
               >
-                {loading ? 'Processing...' : editingId ? '💾 Save Changes' : '✅ Create Staff Member'}
+                {loading ? (
+                  <>
+                    <div className="inline-block w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                    <span>Processing...</span>
+                  </>
+                ) : editingId ? '💾 Save Changes' : '✅ Create Staff Member'}
               </button>
             </form>
           </div>
