@@ -21,25 +21,25 @@ export default function CalendarPage() {
   const [user, setUser] = useState<any>(null);
   const [userRole, setUserRole] = useState<string | null>(null);
 
-  // Helper for colors
+  // Helper for colors - All distinct vibrant colors
   const courseColors: { [key: string]: { bg: string; text: string } } = {
     'Team Teach L2': { bg: '#3b82f6', text: '#ffffff' },
-    'Team Teach Refresher': { bg: '#8b5cf6', text: '#ffffff' },
-    'Team Teach Adv': { bg: '#ec4899', text: '#ffffff' },
+    'Team Teach Refresher': { bg: '#f59e0b', text: '#000000' },
+    'Team Teach Adv': { bg: '#dc2626', text: '#ffffff' },
     'Fire': { bg: '#f97316', text: '#ffffff' },
     'EFAW': { bg: '#06b6d4', text: '#ffffff' },
-    'Meds Management': { bg: '#ef4444', text: '#ffffff' },
+    'Meds Management': { bg: '#7c3aed', text: '#ffffff' },
     'Epilepsy': { bg: '#10b981', text: '#ffffff' },
-    'Ess Aut': { bg: '#6366f1', text: '#ffffff' },
+    'Ess Aut': { bg: '#ec4899', text: '#ffffff' },
     'Comms': { bg: '#eab308', text: '#000000' },
     'RSHE': { bg: '#84cc16', text: '#000000' },
     'Oral Health': { bg: '#f43f5e', text: '#ffffff' },
-    'SGA': { bg: '#f59e0b', text: '#000000' },
-    'Adv Meds & Audits': { bg: '#14b8a6', text: '#ffffff' },
+    'SGA': { bg: '#14b8a6', text: '#ffffff' },
+    'Adv Meds & Audits': { bg: '#a855f7', text: '#ffffff' },
     'STAR': { bg: '#d946ef', text: '#ffffff' },
   };
 
-  const getCourseColor = (courseName: string) => courseColors[courseName] || { bg: '#0ea5e9', text: '#ffffff' };
+  const getCourseColor = (courseName: string) => courseColors[courseName] || { bg: '#6366f1', text: '#ffffff' };
 
   useEffect(() => {
     const checkTheme = () => {
