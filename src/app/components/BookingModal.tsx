@@ -372,7 +372,20 @@ export default function BookingModal({ event, onClose, onRefresh, onOpenChecklis
             </>
           ) : (
             <div className="space-y-4">
-              {roster.map((row) => (
+              {roster
+                .sort((a, b) => {
+                  // Sort by location first, then by name
+                  const locationA = a.profiles?.location || 'Unassigned';
+                  const locationB = b.profiles?.location || 'Unassigned';
+                  
+                  if (locationA !== locationB) {
+                    return locationA.localeCompare(locationB);
+                  }
+                  
+                  // If same location, sort by name
+                  return (a.profiles?.full_name || '').localeCompare(b.profiles?.full_name || '');
+                })
+                .map((row) => (
                 <div key={row.id} className="p-4 bg-slate-50 dark:bg-slate-800/50 rounded-[24px] border dark:border-slate-700">
                   <div className="flex justify-between items-start mb-4">
                     <div>
