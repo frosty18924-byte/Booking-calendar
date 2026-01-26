@@ -21,7 +21,7 @@ export default function CalendarPage() {
   const [user, setUser] = useState<any>(null);
   const [userRole, setUserRole] = useState<string | null>(null);
 
-  // Helper for colors - All distinct vibrant colors
+  // Helper for colors - All distinct vibrant colors with fallback to dynamic generation
   const courseColors: { [key: string]: { bg: string; text: string } } = {
     'Team Teach L2': { bg: '#3b82f6', text: '#ffffff' },
     'Team Teach Refresher': { bg: '#f59e0b', text: '#000000' },
@@ -39,7 +39,48 @@ export default function CalendarPage() {
     'STAR': { bg: '#d946ef', text: '#ffffff' },
   };
 
-  const getCourseColor = (courseName: string) => courseColors[courseName] || { bg: '#6366f1', text: '#ffffff' };
+  // Vibrant color palette for dynamic course assignment
+  const vibrantColors = [
+    { bg: '#3b82f6', text: '#ffffff' },
+    { bg: '#f59e0b', text: '#000000' },
+    { bg: '#dc2626', text: '#ffffff' },
+    { bg: '#f97316', text: '#ffffff' },
+    { bg: '#06b6d4', text: '#ffffff' },
+    { bg: '#7c3aed', text: '#ffffff' },
+    { bg: '#10b981', text: '#ffffff' },
+    { bg: '#ec4899', text: '#ffffff' },
+    { bg: '#eab308', text: '#000000' },
+    { bg: '#84cc16', text: '#000000' },
+    { bg: '#f43f5e', text: '#ffffff' },
+    { bg: '#14b8a6', text: '#ffffff' },
+    { bg: '#a855f7', text: '#ffffff' },
+    { bg: '#d946ef', text: '#ffffff' },
+    { bg: '#6366f1', text: '#ffffff' },
+    { bg: '#8b5cf6', text: '#ffffff' },
+    { bg: '#059669', text: '#ffffff' },
+    { bg: '#0891b2', text: '#ffffff' },
+    { bg: '#7f1d1d', text: '#ffffff' },
+    { bg: '#92400e', text: '#ffffff' },
+  ];
+
+  const getCourseColor = (courseName: string) => {
+    if (!courseName) return vibrantColors[0];
+    
+    // Check if we have a predefined color for this course
+    if (courseColors[courseName]) {
+      return courseColors[courseName];
+    }
+    
+    // Generate consistent color based on course name hash
+    let hash = 0;
+    for (let i = 0; i < courseName.length; i++) {
+      hash = ((hash << 5) - hash) + courseName.charCodeAt(i);
+      hash = hash & hash; // Convert to 32bit integer
+    }
+    
+    const colorIndex = Math.abs(hash) % vibrantColors.length;
+    return vibrantColors[colorIndex];
+  };
 
   useEffect(() => {
     const checkTheme = () => {
