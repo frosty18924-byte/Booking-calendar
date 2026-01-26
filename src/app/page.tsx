@@ -24,7 +24,7 @@ export default function CalendarPage() {
   // Helper for colors
   const courseColors: { [key: string]: { bg: string; text: string } } = {
     'Team Teach L2': { bg: '#3b82f6', text: '#ffffff' },
-    'Team Teach Refresher': { bg: '#a855f7', text: '#ffffff' },
+    'Team Teach Refresher': { bg: '#8b5cf6', text: '#ffffff' },
     'Team Teach Adv': { bg: '#ec4899', text: '#ffffff' },
     'Fire': { bg: '#f97316', text: '#ffffff' },
     'EFAW': { bg: '#06b6d4', text: '#ffffff' },
@@ -39,7 +39,7 @@ export default function CalendarPage() {
     'STAR': { bg: '#d946ef', text: '#ffffff' },
   };
 
-  const getCourseColor = (courseName: string) => courseColors[courseName] || { bg: '#6b7280', text: '#ffffff' };
+  const getCourseColor = (courseName: string) => courseColors[courseName] || { bg: '#0ea5e9', text: '#ffffff' };
 
   useEffect(() => {
     const checkTheme = () => {
