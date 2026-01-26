@@ -87,6 +87,12 @@ export default function AnalyticsDashboard() {
       endDate = `${filterYear}-12-31`;
     }
 
+    // Ensure endDate is not in the future (today is the max)
+    const today = new Date().toISOString().split('T')[0];
+    if (endDate > today) {
+      endDate = today;
+    }
+
     try {
       // First fetch all bookings with basic fields
       const { data: bookings, error: bookingsError } = await supabase
@@ -159,10 +165,10 @@ export default function AnalyticsDashboard() {
         profiles: profileMap.get(booking.profile_id),
       }));
 
-      // Filter by date range
+      // Filter by date range and only include past events
       const filtered = mergedData.filter((booking: any) => {
         const eventDate = booking?.training_events?.event_date;
-        return eventDate && eventDate >= startDate && eventDate <= endDate;
+        return eventDate && eventDate >= startDate && eventDate <= endDate && eventDate <= today;
       });
 
       console.log('Filtered bookings:', filtered.length);
