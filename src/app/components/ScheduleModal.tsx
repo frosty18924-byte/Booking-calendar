@@ -142,6 +142,10 @@ export default function ScheduleModal({ onClose, onRefresh }: { onClose: () => v
                   filter: ${isDark ? 'invert(1) brightness(1.2)' : 'none'};
                   cursor: pointer;
                 }
+                input[type="time"]::-webkit-calendar-picker-indicator {
+                  filter: ${isDark ? 'invert(1) brightness(1.2)' : 'none'};
+                  cursor: pointer;
+                }
               `}</style>
               <input 
                 type="date" required
@@ -149,6 +153,28 @@ export default function ScheduleModal({ onClose, onRefresh }: { onClose: () => v
                 className="w-full px-4 py-3 border rounded-xl outline-none font-bold text-sm"
                 value={formData.event_date}
                 onChange={(e) => setFormData({...formData, event_date: e.target.value})}
+              />
+            </div>
+
+            <div>
+              <label style={{ color: isDark ? '#94a3b8' : '#64748b' }} className="block text-[10px] font-black uppercase mb-2">Start Time</label>
+              <input 
+                type="time" required
+                style={{ backgroundColor: isDark ? '#0f172a' : '#ffffff', color: isDark ? '#f1f5f9' : '#1e293b', borderColor: isDark ? '#334155' : '#cbd5e1' }}
+                className="w-full px-4 py-3 border rounded-xl outline-none font-bold text-sm"
+                value={formData.start_time}
+                onChange={(e) => setFormData({...formData, start_time: e.target.value})}
+              />
+            </div>
+
+            <div>
+              <label style={{ color: isDark ? '#94a3b8' : '#64748b' }} className="block text-[10px] font-black uppercase mb-2">End Time</label>
+              <input 
+                type="time" required
+                style={{ backgroundColor: isDark ? '#0f172a' : '#ffffff', color: isDark ? '#f1f5f9' : '#1e293b', borderColor: isDark ? '#334155' : '#cbd5e1' }}
+                className="w-full px-4 py-3 border rounded-xl outline-none font-bold text-sm"
+                value={formData.end_time}
+                onChange={(e) => setFormData({...formData, end_time: e.target.value})}
               />
             </div>
           </div>
