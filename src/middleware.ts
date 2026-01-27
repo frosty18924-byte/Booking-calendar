@@ -45,10 +45,17 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(url)
   }
 
-  // 2. If ALREADY logged in and trying to go to /login -> FORCE to / (calendar)
+  // 2. If ALREADY logged in and trying to go to /login -> FORCE to /dashboard
   if (user && isLoginPage) {
     const url = request.nextUrl.clone()
-    url.pathname = '/'
+    url.pathname = '/dashboard'
+    return NextResponse.redirect(url)
+  }
+
+  // 2b. If user goes to root "/" redirect to dashboard
+  if (user && request.nextUrl.pathname === '/') {
+    const url = request.nextUrl.clone()
+    url.pathname = '/dashboard'
     return NextResponse.redirect(url)
   }
 

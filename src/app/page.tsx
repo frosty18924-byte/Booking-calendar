@@ -1,5 +1,6 @@
 'use client';
 import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { format, startOfMonth, endOfMonth, startOfWeek, endOfWeek, eachDayOfInterval, isSameDay, isSameMonth, subMonths, addMonths } from 'date-fns';
 import ScheduleModal from '@/app/components/ScheduleModal';
 import BookingModal from '@/app/components/BookingModal';
@@ -9,6 +10,7 @@ import { supabase } from '@/lib/supabase';
 import { hasPermission } from '@/lib/permissions';
 
 export default function CalendarPage() {
+  const router = useRouter();
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [events, setEvents] = useState<any[]>([]);
   const [showSchedule, setShowSchedule] = useState(false);
