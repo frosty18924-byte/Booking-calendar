@@ -104,7 +104,36 @@ export default function DashboardPage() {
           </p>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {/* Training Matrix Card */}
+          <div
+            onClick={() => router.push('/training-matrix')}
+            className={`group cursor-pointer p-8 rounded-xl border-2 transition-all duration-300 hover:shadow-lg ${
+              isDark
+                ? 'bg-gray-800 border-gray-700 hover:border-purple-500 hover:bg-gray-750'
+                : 'bg-white border-gray-200 hover:border-purple-500 hover:bg-purple-50'
+            }`}
+          >
+            <div className="flex items-start justify-between mb-4">
+              <div className="text-5xl">📊</div>
+              <div className={`px-3 py-1 rounded-full text-xs font-semibold transition-colors duration-300 ${isDark ? 'bg-purple-900 text-purple-200' : 'bg-purple-100 text-purple-800'}`}>
+                New
+              </div>
+            </div>
+            <h3 className={`text-2xl font-bold mb-2 transition-colors duration-300 ${isDark ? 'text-white' : 'text-gray-900'}`}>
+              Training Matrix
+            </h3>
+            <p className={`transition-colors duration-300 ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
+              View all staff training records, completion dates, and manage certification expiry dates across all locations.
+            </p>
+            <div className="mt-6 flex items-center text-purple-600 dark:text-purple-400 group-hover:translate-x-1 transition-transform">
+              <span className="font-semibold">Open App</span>
+              <svg className="w-5 h-5 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+              </svg>
+            </div>
+          </div>
+
           {/* Course Expiry Checker Card */}
           <div
             onClick={() => router.push('/apps/expiry-checker')}
