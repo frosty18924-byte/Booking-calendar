@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { createClient } from '@supabase/supabase-js';
 
 export const dynamic = 'force-dynamic';
 
@@ -27,72 +28,63 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const deploymentUrl = process.env.NEXT_PUBLIC_GOOGLE_APPS_SCRIPT_URL;
+    // Initialize Supabase client
+    const supabase = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL || '',
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''
+    );
 
-    if (!deploymentUrl) {
+    // Query: Get all training records with expiry_dates between startDate and endDate
+    let query = supabase
+      .from('staff_training_matrix')
+      .select(`
+        id,
+        staff_id,
+        course_id,
+        expiry_date,
+        status,
+        completed_at_location_id,
+        profiles(full_name),
+        courses(name, category, expiry_months),
+        locations(name)
+      `)
+      .gte('expiry_date', startDate)
+      .lte('expiry_date', endDate)
+      .not('expiry_date', 'is', null); // Only include records with expiry dates
+
+    // Apply location filter if provided
+    if (locationFilter) {
+      query = query.eq('completed_at_location_id', locationFilter);
+    }
+
+    const { data: expiringCourses, error } = await query;
+
+    if (error) {
+      console.error('Supabase error:', error);
       return NextResponse.json(
-        { error: 'Google Apps Script URL not configured' },
+        { error: 'Failed to fetch expiring courses' },
         { status: 500 }
       );
     }
 
-    // Build URL with query parameters
-    const url = new URL(deploymentUrl);
-    url.searchParams.set('function', 'getExpiringCourses');
-    url.searchParams.set('startDate', startDate);
-    url.searchParams.set('endDate', endDate);
-    if (locationFilter) {
-      url.searchParams.set('locationFilter', locationFilter);
-    }
+    // Transform data
+    const formattedData: CourseData[] = (expiringCourses || [])
+      .map(record => {
+        const isOneOff = !record.courses?.expiry_months || record.courses.expiry_months === 9999;
+        const expiryDate = new Date(record.expiry_date);
+        
+        return {
+          name: record.profiles?.full_name || 'Unknown',
+          course: record.courses?.name || 'Unknown Course',
+          expiry: record.expiry_date,
+          expiryTime: expiryDate.getTime(),
+          location: record.locations?.name || 'Unknown Location',
+          delivery: record.courses?.category || 'Standard',
+          isOneOff,
+        };
+      });
 
-    console.log('Calling Google Apps Script:', url.toString());
-
-    const response = await fetch(url.toString(), {
-      method: 'GET',
-    });
-
-    if (!response.ok) {
-      console.error('Google Apps Script returned status:', response.status);
-      return NextResponse.json(
-        { error: 'Failed to fetch from Google Apps Script' },
-        { status: response.status }
-      );
-    }
-
-    const text = await response.text();
-    console.log('Google Apps Script response length:', text.length);
-    
-    // Try to parse as JSON
-    let data;
-    try {
-      data = JSON.parse(text);
-    } catch (parseError) {
-      console.error('Failed to parse response as JSON. Response preview:', text.substring(0, 100));
-      console.log('Google Apps Script may not be properly configured. Using fallback data.');
-      // Return fallback/mock data when Google Apps Script doesn't return valid JSON
-      return NextResponse.json([
-        {
-          name: 'John Smith',
-          course: 'Safeguarding',
-          expiry: '15/02/2026',
-          expiryTime: new Date(2026, 1, 15).getTime(),
-          location: 'Felix House School',
-          delivery: 'Online',
-          isOneOff: false,
-        },
-        {
-          name: 'Jane Doe',
-          course: 'Manual Handling',
-          expiry: '20/02/2026',
-          expiryTime: new Date(2026, 1, 20).getTime(),
-          location: 'Head Office',
-          delivery: 'In Person',
-          isOneOff: false,
-        },
-      ]);
-    }
-
-    return NextResponse.json(data);
+    return NextResponse.json(formattedData);
   } catch (error) {
     console.error('Error fetching expiring courses:', error);
     return NextResponse.json(
