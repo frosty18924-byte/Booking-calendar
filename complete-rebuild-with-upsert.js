@@ -1,0 +1,255 @@
+import fs from 'fs';
+import path from 'path';
+import { parse as csvParse } from 'csv-parse/sync';
+import { createClient } from '@supabase/supabase-js';
+import * as dotenv from 'dotenv';
+
+dotenv.config({ path: '.env.local' });
+
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL,
+  process.env.SUPABASE_SERVICE_ROLE_KEY
+);
+
+const CSV_FOLDER = '/Users/matthewfrost/training-portal/csv-import';
+
+function extractLocationFromFilename(filename) {
+  const match = filename.match(/^(.+?)\s+Training Matrix\s+-.+\.csv$/);
+  return match ? match[1].trim() : null;
+}
+
+function parseDate(dateStr) {
+  if (!dateStr || dateStr.trim() === '') return null;
+  const parts = dateStr.trim().split('/');
+  if (parts.length !== 3) return null;
+  const day = parseInt(parts[0]);
+  const month = parseInt(parts[1]);
+  const year = parseInt(parts[2]);
+  if (isNaN(day) || isNaN(month) || isNaN(year)) return null;
+  const date = new Date(year, month - 1, day);
+  return date.toISOString().split('T')[0];
+}
+
+function calculateExpiryDate(completionDateStr, months) {
+  if (!completionDateStr || !months) return null;
+  const date = new Date(completionDateStr);
+  date.setMonth(date.getMonth() + months);
+  return date.toISOString().split('T')[0];
+}
+
+async function completeRebuildFromCSV() {
+  console.log('\n' + '═'.repeat(120));
+  console.log('  COMPLETE REBUILD FROM CSV - WITH PROPER UPSERT FOR LOCATION-SPECIFIC CONSTRAINTS');
+  console.log('═'.repeat(120) + '\n');
+
+  // Load reference data
+  const { data: locations } = await supabase.from('locations').select('id, name');
+  const { data: staffProfiles } = await supabase.from('profiles').select('id, full_name').eq('is_deleted', false);
+  const { data: courses } = await supabase.from('courses').select('id, name, expiry_months');
+
+  const locationMap = {};
+  locations?.forEach(loc => {
+    locationMap[loc.name.trim()] = loc.id;
+  });
+
+  const staffMap = {};
+  staffProfiles?.forEach(staff => {
+    staffMap[staff.full_name] = staff.id;
+  });
+
+  const courseMap = {};
+  courses?.forEach(course => {
+    courseMap[course.name] = { id: course.id, expiry_months: course.expiry_months };
+  });
+
+  console.log(`Loaded: ${Object.keys(locationMap).length} locations, ${Object.keys(staffMap).length} staff, ${Object.keys(courseMap).length} courses`);
+
+  // DELETE ALL EXISTING RECORDS
+  console.log('\nDeleting all existing staff_training_matrix records...');
+  const { error: deleteError } = await supabase
+    .from('staff_training_matrix')
+    .delete()
+    .neq('id', 0);
+
+  if (deleteError) {
+    console.error(`Error deleting records: ${deleteError.message}`);
+  } else {
+    console.log('✓ All records deleted\n');
+  }
+
+  // Process each CSV
+  const csvFiles = fs.readdirSync(CSV_FOLDER).filter(f => f.endsWith('.csv')).sort();
+  
+  let totalInserted = 0;
+  let totalUpdated = 0;
+
+  for (const csvFile of csvFiles) {
+    const locationName = extractLocationFromFilename(csvFile);
+    if (!locationName) continue;
+
+    const locationId = locationMap[locationName];
+    if (!locationId) {
+      console.log(`⚠️ Location not found: ${locationName}`);
+      continue;
+    }
+
+    try {
+      const filePath = path.join(CSV_FOLDER, csvFile);
+      const csvContent = fs.readFileSync(filePath, 'utf-8');
+      
+      const records = csvParse(csvContent, { relax: false });
+
+      // Find "Staff Name" row (always row 2, index 2)
+      let staffNameRowIndex = 2;
+      let courseNames = [];
+
+      // Verify it's actually Staff Name row
+      if (records[staffNameRowIndex]?.[0] === 'Staff Name') {
+        courseNames = records[staffNameRowIndex].slice(1)
+          .map(c => (c || '').trim())
+          .filter(c => c && c.length > 0);
+      } else {
+        console.log(`⚠️ Unexpected structure in ${locationName}`);
+        continue;
+      }
+
+      // Identify which courses have ANY data
+      const courseHasData = {};
+      courseNames.forEach(cn => courseHasData[cn] = false);
+
+      // Data starts at row 6 (index 6)
+      const dataStartRow = 6;
+      for (let i = dataStartRow; i < records.length; i++) {
+        const staffName = (records[i][0] || '').trim();
+        if (!staffName || !staffMap[staffName]) continue;
+
+        for (let j = 0; j < courseNames.length; j++) {
+          const dateStr = (records[i][j + 1] || '').trim();
+          if (dateStr && dateStr !== '') {
+            courseHasData[courseNames[j]] = true;
+          }
+        }
+      }
+
+      const coursesWithData = Object.keys(courseHasData).filter(c => courseHasData[c]).length;
+      console.log(`Processing: ${locationName} (${courseNames.length} courses, ${coursesWithData} with data)`);
+
+      // Get staff for this location
+      const { data: staffLocations } = await supabase
+        .from('staff_locations')
+        .select('staff_id')
+        .eq('location_id', locationId);
+
+      const staffIds = staffLocations?.map(sl => sl.staff_id) || [];
+      console.log(`  Staff count: ${staffIds.length}`);
+
+      // Build records: all combinations of staff × courses (with data)
+      const recordsToInsert = [];
+
+      for (const staffId of staffIds) {
+        for (const courseName of courseNames) {
+          if (!courseHasData[courseName]) continue;
+          if (!courseMap[courseName]) continue;
+
+          recordsToInsert.push({
+            staff_id: staffId,
+            course_id: courseMap[courseName].id,
+            completed_at_location_id: locationId,
+            completion_date: null,
+            expiry_date: null,
+            status: 'na'
+          });
+        }
+      }
+
+      console.log(`  Creating ${recordsToInsert.length} base records (upsert)...`);
+
+      // Insert using UPSERT with onConflict to ignore duplicates
+      const batchSize = 200;
+      let inserted = 0;
+
+      for (let i = 0; i < recordsToInsert.length; i += batchSize) {
+        const batch = recordsToInsert.slice(i, i + batchSize);
+        
+        // Use upsert approach - insert and ignore duplicates
+        const { error: insertError } = await supabase
+          .from('staff_training_matrix')
+          .upsert(batch, {
+            onConflict: 'staff_id,course_id',
+            ignoreDuplicates: true
+          });
+
+        if (!insertError) {
+          inserted += batch.length;
+        } else {
+          console.error(`    Batch upsert error: ${insertError.message}`);
+        }
+      }
+
+      console.log(`  ✓ Upserted ${inserted} records`);
+
+      // Now update with actual dates from CSV
+      let updated = 0;
+      for (let i = dataStartRow; i < records.length; i++) {
+        const staffName = (records[i][0] || '').trim();
+        if (!staffName || !staffMap[staffName]) continue;
+
+        const staffId = staffMap[staffName];
+
+        for (let j = 0; j < courseNames.length; j++) {
+          const courseName = courseNames[j].trim();
+          const dateStr = (records[i][j + 1] || '').trim();
+
+          if (!courseMap[courseName] || !courseHasData[courseName]) continue;
+
+          const courseId = courseMap[courseName].id;
+          const completionDate = parseDate(dateStr);
+
+          if (completionDate) {
+            const expiryDate = courseMap[courseName].expiry_months ?
+              calculateExpiryDate(completionDate, courseMap[courseName].expiry_months) :
+              null;
+
+            const { error } = await supabase
+              .from('staff_training_matrix')
+              .update({
+                completion_date: completionDate,
+                expiry_date: expiryDate,
+                status: 'completed'
+              })
+              .eq('staff_id', staffId)
+              .eq('course_id', courseId)
+              .eq('completed_at_location_id', locationId);
+
+            if (!error) {
+              updated++;
+            }
+          }
+        }
+      }
+
+      console.log(`  ✓ Updated ${updated} records with completion dates\n`);
+      totalInserted += inserted;
+      totalUpdated += updated;
+
+    } catch (err) {
+      console.error(`  ❌ Error: ${err.message}\n`);
+    }
+  }
+
+  console.log('═'.repeat(120));
+  console.log(`✅ REBUILD COMPLETE\n`);
+  console.log(`  • Total upserted: ${totalInserted} base records`);
+  console.log(`  • Total updated: ${totalUpdated} records with dates\n`);
+  console.log(`  TOTAL RECORDS PROCESSED: ${totalInserted + totalUpdated}\n`);
+  console.log('═'.repeat(120) + '\n');
+
+  // Final verification
+  const { count: finalCount } = await supabase
+    .from('staff_training_matrix')
+    .select('*', { count: 'exact', head: true });
+
+  console.log(`Final database record count: ${finalCount}\n`);
+}
+
+completeRebuildFromCSV();

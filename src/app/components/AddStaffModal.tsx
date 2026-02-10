@@ -77,7 +77,9 @@ export default function AddStaffModal({ onClose, onRefresh }: { onClose: () => v
 
   async function fetchInitialData() {
     const { data: locData } = await supabase.from('locations').select('*').order('name');
-    setLocations(locData || []);
+    // Deduplicate locations by id to prevent duplicates in dropdown
+    const uniqueLocations = locData ? Array.from(new Map(locData.map((loc: any) => [loc.id, loc])).values()) : [];
+    setLocations(uniqueLocations);
     const { data: staffData } = await supabase.from('profiles').select('*').eq('is_deleted', false).order('full_name');
     setAllStaff(staffData || []);
   }

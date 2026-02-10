@@ -1,0 +1,225 @@
+
+> training-portal@0.1.0 dev
+> next dev
+
+   ▲ Next.js 15.5.9
+   - Local:        http://localhost:3000
+   - Network:      http://10.5.58.23:3000
+   - Environments: .env.local
+
+ ✓ Starting...
+ ✓ Ready in 1110ms
+ ✓ Compiled /middleware in 116ms (164 modules)
+ ✓ Compiled /dashboard in 355ms (664 modules)
+ GET /dashboard 200 in 546ms
+ ✓ Compiled /favicon.ico in 94ms (405 modules)
+ GET /favicon.ico 200 in 163ms
+ ✓ Compiled /training-matrix in 163ms (690 modules)
+ GET /training-matrix 200 in 220ms
+ ✓ Compiled /api/update-course in 146ms (733 modules)
+Updating course via RPC function: {
+  courseId: '67825d6a-91f4-4340-a011-d7bc6629e029',
+  updates: { expiry_months: 24, never_expires: false }
+}
+Updating course via RPC function: {
+  courseId: '67825d6a-91f4-4340-a011-d7bc6629e029',
+  updates: { expiry_months: 24, never_expires: false }
+}
+Update successful: {
+  id: '67825d6a-91f4-4340-a011-d7bc6629e029',
+  name: 'Team Teach\nPositive Behaviour \nTraining Level 2',
+  category: 'Specialist Training',
+  display_order: 31,
+  expiry_months: 24
+}
+ POST /api/update-course 200 in 173ms
+Update successful: {
+  id: '67825d6a-91f4-4340-a011-d7bc6629e029',
+  name: 'Team Teach\nPositive Behaviour \nTraining Level 2',
+  category: 'Specialist Training',
+  display_order: 31,
+  expiry_months: 24
+}
+ POST /api/update-course 200 in 358ms
+ GET /training-matrix 200 in 50ms
+Updating course via RPC function: {
+  courseId: '3a904a0f-e916-4283-a097-d05e3672c5fe',
+  updates: { expiry_months: 24, never_expires: false }
+}
+Update successful: {
+  id: '3a904a0f-e916-4283-a097-d05e3672c5fe',
+  name: 'CYP Safeguarding Children and Young People',
+  category: 'Careskills Wave 1',
+  display_order: 1,
+  expiry_months: 24
+}
+ POST /api/update-course 200 in 112ms
+Updating course via RPC function: {
+  courseId: '3a904a0f-e916-4283-a097-d05e3672c5fe',
+  updates: { expiry_months: 24, never_expires: false }
+}
+Update successful: {
+  id: '3a904a0f-e916-4283-a097-d05e3672c5fe',
+  name: 'CYP Safeguarding Children and Young People',
+  category: 'Careskills Wave 1',
+  display_order: 1,
+  expiry_months: 24
+}
+ POST /api/update-course 200 in 67ms
+Updating course via RPC function: {
+  courseId: 'd9cf453f-292f-4de3-9fff-0f12ff194f81',
+  updates: { expiry_months: 24, never_expires: false }
+}
+Update successful: {
+  id: 'd9cf453f-292f-4de3-9fff-0f12ff194f81',
+  name: 'Safeguarding and Protection of Adults',
+  category: 'Safeguarding and Protection',
+  display_order: 2,
+  expiry_months: 24
+}
+ POST /api/update-course 200 in 102ms
+Updating course via RPC function: {
+  courseId: 'd9cf453f-292f-4de3-9fff-0f12ff194f81',
+  updates: { expiry_months: 24, never_expires: false }
+}
+Update successful: {
+  id: 'd9cf453f-292f-4de3-9fff-0f12ff194f81',
+  name: 'Safeguarding and Protection of Adults',
+  category: 'Safeguarding and Protection',
+  display_order: 2,
+  expiry_months: 24
+}
+ POST /api/update-course 200 in 61ms
+Updating course via RPC function: {
+  courseId: '3e857fad-aa9f-4334-b430-55ee274ecd9e',
+  updates: { expiry_months: 12, never_expires: false }
+}
+Updating course via RPC function: {
+  courseId: '3e857fad-aa9f-4334-b430-55ee274ecd9e',
+  updates: { expiry_months: 12, never_expires: false }
+}
+Update successful: {
+  id: '3e857fad-aa9f-4334-b430-55ee274ecd9e',
+  name: 'First Aid',
+  category: 'First Aid and Safety',
+  display_order: 3,
+  expiry_months: 12
+}
+ POST /api/update-course 200 in 173ms
+Update successful: {
+  id: '3e857fad-aa9f-4334-b430-55ee274ecd9e',
+  name: 'First Aid',
+  category: 'First Aid and Safety',
+  display_order: 3,
+  expiry_months: 12
+}
+ POST /api/update-course 200 in 142ms
+ GET /training-matrix 200 in 152ms
+ GET /favicon.ico 200 in 10ms
+ GET /favicon.ico 200 in 21ms
+ ✓ Compiled /_not-found in 254ms (696 modules)
+ GET /apple-touch-icon.png 404 in 303ms
+ GET /apple-touch-icon-precomposed.png 404 in 385ms
+ ✓ Compiled /api/update-course in 77ms (454 modules)
+Updating course via RPC function: {
+  courseId: 'a480dc07-64d6-4f3d-b3ea-d7212cb519e5',
+  updates: { expiry_months: 36, never_expires: false }
+}
+Updating course via RPC function: {
+  courseId: 'a480dc07-64d6-4f3d-b3ea-d7212cb519e5',
+  updates: { expiry_months: 36, never_expires: false }
+}
+Update successful: {
+  id: 'a480dc07-64d6-4f3d-b3ea-d7212cb519e5',
+  name: 'Epilepsy Classroom',
+  category: 'Specialist Training',
+  display_order: 35,
+  expiry_months: 36
+}
+ POST /api/update-course 200 in 291ms
+Update successful: {
+  id: 'a480dc07-64d6-4f3d-b3ea-d7212cb519e5',
+  name: 'Epilepsy Classroom',
+  category: 'Specialist Training',
+  display_order: 35,
+  expiry_months: 36
+}
+ POST /api/update-course 200 in 146ms
+ GET /training-matrix 200 in 163ms
+Updating course via RPC function: {
+  courseId: '9a6444ec-00cc-4302-9021-8d89abac977a',
+  updates: { expiry_months: 24, never_expires: false }
+}
+Updating course via RPC function: {
+  courseId: '9a6444ec-00cc-4302-9021-8d89abac977a',
+  updates: { expiry_months: 24, never_expires: false }
+}
+Update successful: {
+  id: '9a6444ec-00cc-4302-9021-8d89abac977a',
+  name: 'Medication Classroom',
+  category: 'Online Courses',
+  display_order: 30,
+  expiry_months: 24
+}
+ POST /api/update-course 200 in 204ms
+Update successful: {
+  id: '9a6444ec-00cc-4302-9021-8d89abac977a',
+  name: 'Medication Classroom',
+  category: 'Online Courses',
+  display_order: 30,
+  expiry_months: 24
+}
+ POST /api/update-course 200 in 122ms
+Updating course via RPC function: {
+  courseId: 'bf4185ee-1298-44c3-866c-e1c73f309eb8',
+  updates: { expiry_months: 36, never_expires: false }
+}
+Update successful: {
+  id: 'bf4185ee-1298-44c3-866c-e1c73f309eb8',
+  name: 'Fire Safety Training',
+  category: 'Specialist Training',
+  display_order: 33,
+  expiry_months: 36
+}
+ POST /api/update-course 200 in 134ms
+Updating course via RPC function: {
+  courseId: 'bf4185ee-1298-44c3-866c-e1c73f309eb8',
+  updates: { expiry_months: 36, never_expires: false }
+}
+Update successful: {
+  id: 'bf4185ee-1298-44c3-866c-e1c73f309eb8',
+  name: 'Fire Safety Training',
+  category: 'Specialist Training',
+  display_order: 33,
+  expiry_months: 36
+}
+ POST /api/update-course 200 in 86ms
+Updating course via RPC function: {
+  courseId: '67825d6a-91f4-4340-a011-d7bc6629e029',
+  updates: { expiry_months: 12, never_expires: false }
+}
+Updating course via RPC function: {
+  courseId: '67825d6a-91f4-4340-a011-d7bc6629e029',
+  updates: { expiry_months: 12, never_expires: false }
+}
+Update successful: {
+  id: '67825d6a-91f4-4340-a011-d7bc6629e029',
+  name: 'Team Teach\nPositive Behaviour \nTraining Level 2',
+  category: 'Specialist Training',
+  display_order: 31,
+  expiry_months: 12
+}
+ POST /api/update-course 200 in 707ms
+Update successful: {
+  id: '67825d6a-91f4-4340-a011-d7bc6629e029',
+  name: 'Team Teach\nPositive Behaviour \nTraining Level 2',
+  category: 'Specialist Training',
+  display_order: 31,
+  expiry_months: 12
+}
+ POST /api/update-course 200 in 569ms
+ GET /training-matrix 200 in 52ms
+ GET /training-matrix 200 in 41ms
+ GET /training-matrix 200 in 49ms
+ GET /training-matrix 200 in 31ms
+[?25h

@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import CalendarPage from '@/app/page';
-import AppSidebar from '@/app/components/AppSidebar';
+import HomeButton from '@/app/components/HomeButton';
 import { supabase } from '@/lib/supabase';
 
 export default function BookingCalendarPage() {
@@ -46,8 +46,8 @@ export default function BookingCalendarPage() {
 
   return (
     <div className={`min-h-screen transition-colors duration-500 ${isDark ? 'dark' : ''}`}>
-      <AppSidebar isDark={isDark} />
-      <div className="lg:ml-20 relative">
+      <HomeButton isDark={isDark} />
+      <div className="relative">
         <CalendarPage />
       </div>
     </div>

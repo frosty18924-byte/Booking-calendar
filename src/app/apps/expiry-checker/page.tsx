@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import CourseExpiryChecker from '@/app/components/CourseExpiryChecker';
-import AppSidebar from '@/app/components/AppSidebar';
+import HomeButton from '@/app/components/HomeButton';
 import { supabase } from '@/lib/supabase';
 
 export default function ExpiryCheckerPage() {
@@ -46,10 +46,8 @@ export default function ExpiryCheckerPage() {
 
   return (
     <div className={`min-h-screen transition-colors duration-500 ${isDark ? 'dark' : ''}`}>
-      <AppSidebar isDark={isDark} />
-      <div className="lg:ml-20">
-        <CourseExpiryChecker isDark={isDark} />
-      </div>
+      <HomeButton isDark={isDark} />
+      <CourseExpiryChecker isDark={isDark} />
     </div>
   );
 }

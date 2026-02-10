@@ -201,11 +201,7 @@ export default function CalendarPage() {
                     ⚙️ Admin
                   </a>
                 )}
-                {user && (
-                  <button onClick={() => supabase.auth.signOut().then(() => window.location.href = '/login')} className="cursor-pointer bg-red-600 text-white px-1 md:px-4 py-1 md:py-2 rounded-lg md:rounded-xl font-black text-[7px] md:text-[10px] uppercase hover:bg-red-700 hover:shadow-md hover:scale-105 active:scale-95 transition-all duration-200">
-                    🚪 Sign Out
-                  </button>
-                )}
+
                 <div className="cursor-pointer"><ThemeToggle /></div>
               </div>
             </div>

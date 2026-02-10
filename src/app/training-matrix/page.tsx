@@ -1,7 +1,7 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { supabase } from '@/lib/supabase';
 import { hasPermission } from '@/lib/permissions';
 import ThemeToggle from '@/app/components/ThemeToggle';
@@ -12,7 +12,7 @@ interface TrainingRecord {
   staff_name: string;
   course_id: string;
   course_name: string;
-  completion_date: string;
+  completion_date: string | null;
   expiry_date: string | null;
   location_name: string;
 }
@@ -28,6 +28,7 @@ interface Course {
   name: string;
   category?: string;
   expiry_months?: number;
+  never_expires?: boolean;
 }
 
 interface MatrixCell {
@@ -48,8 +49,10 @@ export default function TrainingMatrixPage() {
   const [matrixData, setMatrixData] = useState<Record<string, Record<string, MatrixCell>>>({});
   const [loading, setLoading] = useState(true);
   const [isDark, setIsDark] = useState(true);
+  const tableScrollContainerRef = useRef<HTMLDivElement>(null);
   const [editingCell, setEditingCell] = useState<{ staffId: string; courseId: string } | null>(null);
   const [editDate, setEditDate] = useState<string>('');
+  const [editStatus, setEditStatus] = useState<'completed' | 'booked' | 'awaiting' | 'na' | null>(null);
   const [staffDividers, setStaffDividers] = useState<Set<string>>(new Set());
   const [staffOrder, setStaffOrder] = useState<Map<string, number>>(new Map());
   const [showAddCourse, setShowAddCourse] = useState(false);
@@ -63,7 +66,10 @@ export default function TrainingMatrixPage() {
   const [showReorderCourses, setShowReorderCourses] = useState(false);
   const [courseOrderInput, setCourseOrderInput] = useState('');
 
-  function formatExpiryDisplay(months?: number): string {
+  function formatExpiryDisplay(months?: number, neverExpires?: boolean): string {
+    // Check if course never expires (9999 months, neverExpires flag, or null months)
+    if (neverExpires || months === 9999 || months === null || months === undefined) return 'One-Off';
+    
     const m = months || 12;
     const years = Math.floor(m / 12);
     const remainingMonths = m % 12;
@@ -150,8 +156,10 @@ export default function TrainingMatrixPage() {
       }
 
       if (data && data.length > 0) {
-        setLocations(data);
-        setSelectedLocation((data[0] as any).id);
+        // Deduplicate locations by id to prevent duplicates in dropdown
+        const uniqueLocations = Array.from(new Map(data.map(loc => [loc.id, loc])).values());
+        setLocations(uniqueLocations);
+        setSelectedLocation(uniqueLocations[0].id);
       }
     } catch (error) {
       console.error('Error in fetchLocations:', error);
@@ -162,17 +170,19 @@ export default function TrainingMatrixPage() {
     try {
       setLoading(true);
 
-      // First, fetch all staff from staff_locations
+      // First, fetch all staff from staff_locations (without is_deleted filter - we'll filter in code)
       const { data: staffLocationsData, error: staffLocationsError } = await supabase
         .from('staff_locations')
         .select('staff_id, profiles(id, full_name, is_deleted)')
         .eq('location_id', selectedLocation)
-        .eq('profiles.is_deleted', false)
         .order('created_at', { ascending: true });
 
       if (staffLocationsError) {
         console.warn('Error fetching staff from staff_locations:', staffLocationsError);
       }
+      
+      // Filter out deleted profiles in code
+      const activeStaffLocationsData = staffLocationsData?.filter((sl: any) => !sl.profiles?.is_deleted) || [];
 
       // Also fetch staff who have training records for this location (even if not in staff_locations)
       // Get distinct staff IDs first, then fetch their profiles - WITH PAGINATION
@@ -242,8 +252,8 @@ export default function TrainingMatrixPage() {
       // Merge both lists, eliminating duplicates
       const staffMap = new Map<string, any>();
       
-      console.log('Staff from staff_locations:', staffLocationsData?.length || 0);
-      staffLocationsData?.forEach((s: any) => {
+      console.log('Staff from staff_locations:', activeStaffLocationsData?.length || 0);
+      activeStaffLocationsData?.forEach((s: any) => {
         if (s.profiles) {
           staffMap.set(s.profiles.id, {
             id: s.profiles.id,
@@ -271,26 +281,37 @@ export default function TrainingMatrixPage() {
         profiles: { id: s.id, full_name: s.full_name }
       }));
 
-      const { data: courseData, error: courseError } = await supabase
-        .from('courses')
-        .select('*')
-        .order('display_order', { ascending: true, nullsFirst: false })
-        .order('id', { ascending: true });
+      // Fetch courses with LOCATION-SPECIFIC ordering from location_courses table
+      const { data: locationCoursesData, error: locationCoursesError } = await supabase
+        .from('location_courses')
+        .select(`
+          course_id,
+          display_order,
+          courses(id, name, category, expiry_months)
+        `)
+        .eq('location_id', selectedLocation)
+        .order('display_order', { ascending: true, nullsFirst: false });
 
-      if (courseError) {
-        console.warn('Error fetching courses:', courseError);
+      console.log('DEBUG: selectedLocation =', selectedLocation);
+      console.log('DEBUG: locationCoursesError =', locationCoursesError);
+      console.log('DEBUG: locationCoursesData =', locationCoursesData);
+      console.log('DEBUG: locationCoursesData length =', locationCoursesData?.length);
+
+      if (locationCoursesError) {
+        console.warn('Error fetching location courses:', locationCoursesError);
       }
 
-      // Map to ensure we have all expected fields
-      const mappedCourses = courseData?.map((course: any) => ({
-        id: course.id,
-        name: course.name,
-        category: course.category || undefined,
-        display_order: course.display_order,
-        expiry_months: course.expiry_months || 12,
+      // Map courses with location-specific ordering
+      const filteredCourses = locationCoursesData?.map((lc: any) => ({
+        id: lc.courses.id,
+        name: lc.courses.name,
+        category: lc.courses.category || undefined,
+        display_order: lc.display_order,
+        expiry_months: lc.courses.expiry_months !== null ? lc.courses.expiry_months : null,
+        never_expires: false, // Default to false since column doesn't exist
       })) || [];
 
-      console.log('Fetching training data - ALL records with pagination');
+      console.log(`Found ${filteredCourses.length} courses for location ${selectedLocation} with location-specific ordering`);
       
       // Fetch all training records by paginating through results
       let allTrainingData: any[] = [];
@@ -397,9 +418,16 @@ export default function TrainingMatrixPage() {
 
       console.log('Formatted staff for location:', { staffCount: formattedStaff.length });
 
-      // Detect staff dividers (section headers)
+      // Define divider keywords for detection
+      const dividerKeywords = [
+        'management', 'team leader', 'lead support', 'staff team', 'staff on probation', 
+        'inactive staff', 'teachers', 'teaching assistants', 'operations', 'sustainability',
+        'health and wellbeing', 'compliance', 'adult education', 'admin', 'hlta', 'forest',
+        'maternity', 'sick', 'on maternity', 'bank staff', 'sponsorship lead', 'workforce'
+      ];
+
+      // Detect staff dividers (section headers) - keeping CSV order
       const dividers = new Set<string>();
-      const dividerKeywords = ['management', 'team leader', 'lead support', 'staff team', 'staff on probation', 'inactive staff', 'notes', 'date valid'];
 
       formattedStaff.forEach(s => {
         if (dividerKeywords.some(keyword => s.name.toLowerCase().includes(keyword))) {
@@ -410,8 +438,13 @@ export default function TrainingMatrixPage() {
       setStaffDividers(dividers);
       setStaff(formattedStaff);
 
-      if (mappedCourses && mappedCourses.length > 0) {
-        setCourses(mappedCourses);
+      console.log('DEBUG: filteredCourses =', filteredCourses);
+      console.log('DEBUG: filteredCourses length =', filteredCourses?.length);
+      if (filteredCourses && filteredCourses.length > 0) {
+        setCourses(filteredCourses);
+        console.log('DEBUG: Courses set to state:', filteredCourses);
+      } else {
+        console.warn('DEBUG: No courses found!');
       }
 
       // Build matrix as plain object from the start
@@ -457,6 +490,12 @@ export default function TrainingMatrixPage() {
       console.error('Error fetching matrix data:', error);
     } finally {
       setLoading(false);
+      // Reset horizontal scroll to show first courses after data is loaded
+      setTimeout(() => {
+        if (tableScrollContainerRef.current) {
+          tableScrollContainerRef.current.scrollLeft = 0;
+        }
+      }, 50);
     }
   }
 
@@ -500,6 +539,7 @@ export default function TrainingMatrixPage() {
   function getDateColor(status: string) {
     switch (status) {
       case 'valid':
+      case 'no-expiry':
         return isDark ? 'bg-green-900 text-green-100' : 'bg-green-100 text-green-900';
       case 'expiring':
         return isDark ? 'bg-amber-900 text-amber-100' : 'bg-amber-100 text-amber-900';
@@ -507,6 +547,19 @@ export default function TrainingMatrixPage() {
         return isDark ? 'bg-red-900 text-red-100' : 'bg-red-100 text-red-900';
       default:
         return isDark ? 'bg-gray-700 text-gray-300' : 'bg-gray-100 text-gray-700';
+    }
+  }
+
+  function getStatusDisplay(status: string | null) {
+    switch (status) {
+      case 'booked':
+        return { label: 'Booked', color: isDark ? 'bg-blue-900 text-blue-100' : 'bg-blue-100 text-blue-900' };
+      case 'awaiting':
+        return { label: 'Awaiting Date', color: isDark ? 'bg-yellow-900 text-yellow-100' : 'bg-yellow-100 text-yellow-900' };
+      case 'na':
+        return { label: 'N/A', color: isDark ? 'bg-gray-700 text-gray-200' : 'bg-gray-200 text-gray-900' };
+      default:
+        return { label: null, color: '' };
     }
   }
 
@@ -927,7 +980,7 @@ export default function TrainingMatrixPage() {
           </div>
         ) : (
           <div className={`rounded-lg border ${isDark ? 'border-gray-700' : 'border-gray-200'} overflow-hidden shadow-lg`}>
-            <div className="overflow-x-auto overflow-y-auto h-[calc(100vh-280px)]">
+            <div ref={tableScrollContainerRef} className="overflow-x-auto overflow-y-auto h-[calc(100vh-280px)]">
               <table className={`w-full text-sm ${isDark ? 'bg-gray-800' : 'bg-white'}`}>
                 <thead className="sticky top-0 z-20">
                   {/* Category Row */}
@@ -1055,35 +1108,74 @@ export default function TrainingMatrixPage() {
                         className={`px-2 py-1 text-center text-xs cursor-pointer hover:opacity-80 ${isDark ? 'text-gray-400' : 'text-gray-600'} min-w-[140px] ${isDark ? 'bg-gray-600' : 'bg-gray-200'}`}
                       >
                         {editingHeader?.courseId === course.id && editingHeader?.type === 'expiry' ? (
-                          <input
-                            type="number"
-                            value={editHeaderValue}
-                            onChange={(e) => setEditHeaderValue(e.target.value)}
-                            onBlur={async () => {
-                              const months = parseInt(editHeaderValue) || 12;
-                              const updatedCourses = courses.map(c => c.id === course.id ? { ...c, expiry_months: months } : c);
-                              setCourses(updatedCourses);
-                              await saveCourseChanges(course.id, { expiry_months: months });
-                              await updateAllExpiriesForCourse(course.id, months);
-                              setEditingHeader(null);
-                            }}
-                            onKeyDown={async (e) => {
-                              if (e.key === 'Enter') {
-                                const months = parseInt(editHeaderValue) || 12;
-                                const updatedCourses = courses.map(c => c.id === course.id ? { ...c, expiry_months: months } : c);
-                                setCourses(updatedCourses);
-                                await saveCourseChanges(course.id, { expiry_months: months });
-                                await updateAllExpiriesForCourse(course.id, months);
+                          <div className="flex flex-col gap-2">
+                            <label className={`text-xs font-medium ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>
+                              <input
+                                type="checkbox"
+                                checked={course.never_expires || false}
+                                onChange={(e) => {
+                                  const updatedCourses = courses.map(c => c.id === course.id ? { ...c, never_expires: e.target.checked } : c);
+                                  setCourses(updatedCourses);
+                                }}
+                                className="mr-1"
+                              />
+                              Never expires
+                            </label>
+                            {!course.never_expires && (
+                              <input
+                                type="number"
+                                value={editHeaderValue}
+                                onChange={(e) => setEditHeaderValue(e.target.value)}
+                                onBlur={async () => {
+                                  const months = parseInt(editHeaderValue) || 12;
+                                  const updatedCourses = courses.map(c => c.id === course.id ? { ...c, expiry_months: months } : c);
+                                  setCourses(updatedCourses);
+                                  await saveCourseChanges(course.id, { expiry_months: months, never_expires: false });
+                                  await updateAllExpiriesForCourse(course.id, months, false);
+                                  setEditingHeader(null);
+                                }}
+                                onKeyDown={async (e) => {
+                                  if (e.key === 'Enter') {
+                                    const months = parseInt(editHeaderValue) || 12;
+                                    const updatedCourses = courses.map(c => c.id === course.id ? { ...c, expiry_months: months } : c);
+                                    setCourses(updatedCourses);
+                                    await saveCourseChanges(course.id, { expiry_months: months, never_expires: false });
+                                    await updateAllExpiriesForCourse(course.id, months, false);
+                                    setEditingHeader(null);
+                                  }
+                                  if (e.key === 'Escape') setEditingHeader(null);
+                                }}
+                                className={`w-full text-xs px-1 rounded border ${isDark ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-400 text-gray-900'}`}
+                                placeholder="months"
+                                autoFocus
+                              />
+                            )}
+                            {(course.never_expires || course.expiry_months === 9999) && (
+                              <button
+                                onClick={async () => {
+                                  const updatedCourses = courses.map(c => c.id === course.id ? { ...c, never_expires: false, expiry_months: 12 } : c);
+                                  setCourses(updatedCourses);
+                                  await saveCourseChanges(course.id, { never_expires: false, expiry_months: 12 });
+                                  setEditingHeader(null);
+                                }}
+                                className={`text-xs px-2 py-1 rounded ${isDark ? 'bg-gray-700 hover:bg-gray-600' : 'bg-gray-300 hover:bg-gray-400'} transition-colors`}
+                              >
+                                Change to months
+                              </button>
+                            )}
+                            <button
+                              onClick={async () => {
+                                await saveCourseChanges(course.id, { expiry_months: parseInt(editHeaderValue) || 12, never_expires: course.never_expires || false });
+                                await updateAllExpiriesForCourse(course.id, parseInt(editHeaderValue) || 12, course.never_expires || false);
                                 setEditingHeader(null);
-                              }
-                              if (e.key === 'Escape') setEditingHeader(null);
-                            }}
-                            className={`w-full text-xs px-1 rounded border ${isDark ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-400 text-gray-900'}`}
-                            placeholder="months"
-                            autoFocus
-                          />
+                              }}
+                              className={`text-xs px-2 py-1 rounded ${isDark ? 'bg-blue-700 hover:bg-blue-600' : 'bg-blue-500 hover:bg-blue-600'} text-white transition-colors`}
+                            >
+                              Save
+                            </button>
+                          </div>
                         ) : (
-                          formatExpiryDisplay(course.expiry_months)
+                          formatExpiryDisplay(course.expiry_months, course.never_expires)
                         )}
                       </th>
                     ))}
@@ -1139,8 +1231,10 @@ export default function TrainingMatrixPage() {
 
                           const cell = matrixData[staffMember.id]?.[course.id];
                           const isEditing = editingCell?.staffId === staffMember.id && editingCell?.courseId === course.id;
-                          const dateStatus = cell?.expiry_date ? getDateStatus(cell.expiry_date) : 'no-expiry';
+                          const isOneOff = course.never_expires || course.expiry_months === 9999 || course.expiry_months === null;
+                          const dateStatus = isOneOff ? 'no-expiry' : (cell?.expiry_date ? getDateStatus(cell.expiry_date) : 'no-expiry');
                           const dateColor = getDateColor(dateStatus);
+                          const statusDisplay = getStatusDisplay(cell?.status);
 
                           return (
                             <td
@@ -1152,6 +1246,7 @@ export default function TrainingMatrixPage() {
                                 if (canEditMatrix && !isEditing) {
                                   setEditingCell({ staffId: staffMember.id, courseId: course.id });
                                   setEditDate(cell?.completion_date || '');
+                                  setEditStatus(cell?.status as any || 'completed');
                                 }
                               }}
                             >
@@ -1159,16 +1254,37 @@ export default function TrainingMatrixPage() {
                                 <span className={`p-2 rounded ${isDark ? 'bg-blue-900/30' : 'bg-blue-100'} text-blue-600 text-xs font-medium`}>
                                   Editing...
                                 </span>
+                              ) : statusDisplay.label && !cell?.expiry_date ? (
+                                <div className={`p-2 rounded ${statusDisplay.color}`}>
+                                  <div className="font-semibold text-sm">{statusDisplay.label}</div>
+                                </div>
                               ) : cell?.completion_date ? (
                                 <div className={`p-2 rounded ${dateColor}`}>
                                   <div className="font-semibold">
                                     {new Date(cell.completion_date).toLocaleDateString('en-GB')}
                                   </div>
-                                  {cell.expiry_date && (
+                                  {!isOneOff && cell.expiry_date && (
                                     <div className="text-xs mt-1">
                                       Exp: {new Date(cell.expiry_date).toLocaleDateString('en-GB')}
                                     </div>
                                   )}
+                                  {isOneOff && (
+                                    <div className="text-xs mt-1 font-medium">
+                                      One-Off
+                                    </div>
+                                  )}
+                                  {!isOneOff && !cell.expiry_date && (
+                                    <div className="text-xs mt-1 font-medium">
+                                      (No expiry)
+                                    </div>
+                                  )}
+                                </div>
+                              ) : cell?.expiry_date ? (
+                                <div className={`p-2 rounded ${dateColor}`}>
+                                  <div className="font-semibold text-sm">{statusDisplay.label}</div>
+                                  <div className="text-xs mt-1">
+                                    Exp: {new Date(cell.expiry_date).toLocaleDateString('en-GB')}
+                                  </div>
                                 </div>
                               ) : (
                                 <div className={`text-gray-500 text-xs`}>—</div>
@@ -1188,29 +1304,92 @@ export default function TrainingMatrixPage() {
 
       {/* Modal - Rendered at top level */}
       {editingCell && (
-        <div className={`fixed inset-0 flex items-center justify-center z-50 ${isDark ? 'bg-black/50' : 'bg-black/30'}`} onClick={() => setEditingCell(null)}>
-          <div className={`rounded-lg p-6 shadow-2xl ${isDark ? 'bg-gray-800' : 'bg-white'} relative z-50`} onClick={(e) => e.stopPropagation()}>
-            <h3 className={`text-lg font-semibold mb-4 ${isDark ? 'text-white' : 'text-gray-900'}`}>Update Completion Date</h3>
-            <input
-              type="date"
-              value={editDate}
-              onChange={(e) => setEditDate(e.target.value)}
-              className={`w-full px-3 py-2 rounded border mb-4 ${isDark ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-300 text-gray-900'} text-sm`}
-              autoFocus
-            />
-            <p className={`text-xs mb-4 ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>Expiry date will be calculated automatically</p>
+        <div className={`fixed inset-0 flex items-center justify-center z-50 ${isDark ? 'bg-black/50' : 'bg-black/30'}`} onClick={() => {
+          setEditingCell(null);
+          setEditDate('');
+          setEditStatus(null);
+        }}>
+          <div className={`rounded-lg p-6 shadow-2xl ${isDark ? 'bg-gray-800' : 'bg-white'} relative z-50 w-96`} onClick={(e) => e.stopPropagation()}>
+            <h3 className={`text-lg font-semibold mb-4 ${isDark ? 'text-white' : 'text-gray-900'}`}>Update Training Record</h3>
+            
+            {/* Status Selection */}
+            <div className="mb-4">
+              <label className={`block text-sm font-medium mb-2 ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>Status</label>
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  onClick={() => setEditStatus('completed')}
+                  className={`px-3 py-2 rounded text-sm font-medium transition-colors ${
+                    editStatus === 'completed'
+                      ? isDark ? 'bg-green-600 text-white' : 'bg-green-500 text-white'
+                      : isDark ? 'bg-gray-700 text-gray-300 hover:bg-gray-600' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                  }`}
+                >
+                  In Date
+                </button>
+                <button
+                  onClick={() => setEditStatus('booked')}
+                  className={`px-3 py-2 rounded text-sm font-medium transition-colors ${
+                    editStatus === 'booked'
+                      ? isDark ? 'bg-blue-600 text-white' : 'bg-blue-500 text-white'
+                      : isDark ? 'bg-gray-700 text-gray-300 hover:bg-gray-600' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                  }`}
+                >
+                  Booked
+                </button>
+                <button
+                  onClick={() => setEditStatus('awaiting')}
+                  className={`px-3 py-2 rounded text-sm font-medium transition-colors ${
+                    editStatus === 'awaiting'
+                      ? isDark ? 'bg-yellow-600 text-white' : 'bg-yellow-500 text-white'
+                      : isDark ? 'bg-gray-700 text-gray-300 hover:bg-gray-600' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                  }`}
+                >
+                  Awaiting Date
+                </button>
+                <button
+                  onClick={() => setEditStatus('na')}
+                  className={`px-3 py-2 rounded text-sm font-medium transition-colors ${
+                    editStatus === 'na'
+                      ? isDark ? 'bg-gray-600 text-white' : 'bg-gray-400 text-white'
+                      : isDark ? 'bg-gray-700 text-gray-300 hover:bg-gray-600' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                  }`}
+                >
+                  N/A
+                </button>
+              </div>
+            </div>
+
+            {/* Completion Date - Only show for "Completed" status */}
+            {editStatus === 'completed' && (
+              <div className="mb-4">
+                <label className={`block text-sm font-medium mb-2 ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>Completion Date</label>
+                <input
+                  type="date"
+                  value={editDate}
+                  onChange={(e) => setEditDate(e.target.value)}
+                  className={`w-full px-3 py-2 rounded border ${isDark ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-300 text-gray-900'} text-sm`}
+                  autoFocus
+                />
+                <p className={`text-xs mt-2 ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>Expiry date will be calculated automatically</p>
+              </div>
+            )}
+
             <div className="flex gap-2">
               <button
                 onClick={() => {
-                  if (!editDate) {
-                    alert('Please select a date');
+                  if (editStatus === 'completed' && !editDate) {
+                    alert('Please select a completion date for this training');
+                    return;
+                  }
+                  if (!editStatus) {
+                    alert('Please select a status');
                     return;
                   }
                   const staffMember = staff.find(s => s.id === editingCell.staffId);
                   const course = courses.find(c => c.id === editingCell.courseId);
                   const cell = matrixData[editingCell.staffId]?.[editingCell.courseId];
                   if (staffMember && course) {
-                    handleSaveTraining(staffMember.id, course.id, cell?.training_id || null);
+                    handleSaveTraining(staffMember.id, course.id, cell?.training_id || null, editStatus === 'completed' ? editDate : null, editStatus);
                   }
                 }}
                 className="flex-1 px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 transition-colors duration-150 font-medium text-sm"
@@ -1218,7 +1397,11 @@ export default function TrainingMatrixPage() {
                 Save
               </button>
               <button
-                onClick={() => setEditingCell(null)}
+                onClick={() => {
+                  setEditingCell(null);
+                  setEditDate('');
+                  setEditStatus(null);
+                }}
                 className="flex-1 px-4 py-2 bg-gray-500 text-white rounded hover:bg-gray-600 transition-colors duration-150 font-medium text-sm"
               >
                 Cancel
@@ -1230,24 +1413,48 @@ export default function TrainingMatrixPage() {
     </div>
   );
 
-  async function updateAllExpiriesForCourse(courseId: string, newExpiryMonths: number) {
+  async function updateAllExpiriesForCourse(courseId: string, newExpiryMonths: number, neverExpires: boolean = false) {
     try {
-      // Get all training records for this course that have completion dates
-      const { data: trainings, error } = await supabase
-        .from('staff_training_matrix')
-        .select('id, completion_date')
-        .eq('course_id', courseId)
-        .not('completion_date', 'is', null);
+      // Get all training records for this course that have completion dates - WITH PAGINATION
+      let allTrainings: any[] = [];
+      let pageNum = 0;
+      const pageSize = 1000;
+      let hasMore = true;
 
-      if (error) throw error;
+      while (hasMore) {
+        const { data: trainingPage, error: pageError } = await supabase
+          .from('staff_training_matrix')
+          .select('id, completion_date')
+          .eq('course_id', courseId)
+          .not('completion_date', 'is', null)
+          .range(pageNum * pageSize, (pageNum + 1) * pageSize - 1);
 
-      if (trainings && trainings.length > 0) {
+        if (pageError) throw pageError;
+
+        if (!trainingPage || trainingPage.length === 0) {
+          hasMore = false;
+        } else {
+          allTrainings = allTrainings.concat(trainingPage);
+          pageNum++;
+          if (trainingPage.length < pageSize) {
+            hasMore = false;
+          }
+        }
+      }
+
+      console.log(`Updating ${allTrainings.length} training records for course ${courseId}`);
+
+      if (allTrainings && allTrainings.length > 0) {
         // Update each training record with new expiry date
-        const updates = trainings.map(training => {
-          const completionDate = new Date(training.completion_date);
-          const expiryDate = new Date(completionDate);
-          expiryDate.setMonth(expiryDate.getMonth() + newExpiryMonths);
-          const expiryDateString = expiryDate.toISOString().split('T')[0];
+        const updates = allTrainings.map(training => {
+          let expiryDateString: string | null = null;
+          
+          if (!neverExpires) {
+            const completionDate = new Date(training.completion_date);
+            const expiryDate = new Date(completionDate);
+            expiryDate.setMonth(expiryDate.getMonth() + newExpiryMonths);
+            expiryDateString = expiryDate.toISOString().split('T')[0];
+          }
 
           return supabase
             .from('staff_training_matrix')
@@ -1265,7 +1472,7 @@ export default function TrainingMatrixPage() {
     }
   }
 
-  async function handleSaveTraining(staffId: string, courseId: string, trainingId: string | null) {
+  async function handleSaveTraining(staffId: string, courseId: string, trainingId: string | null, completionDate: string | null = null, status: 'completed' | 'booked' | 'awaiting' | 'na' = 'completed') {
     try {
       // Verify selectedLocation is set - if not, this will cause the record to not appear on refresh
       if (!selectedLocation || selectedLocation.trim() === '') {
@@ -1273,22 +1480,27 @@ export default function TrainingMatrixPage() {
         return;
       }
 
-      // Find the course to get expiry_months
+      // Find the course to get expiry_months and never_expires
       const course = courses.find(c => c.id === courseId);
       const expiryMonths = course?.expiry_months || 12;
+      const neverExpires = course?.never_expires || false;
 
-      // Calculate expiry date: completion_date + expiry_months
-      const completionDate = new Date(editDate);
-      const expiryDate = new Date(completionDate);
-      expiryDate.setMonth(expiryDate.getMonth() + expiryMonths);
-      const expiryDateString = expiryDate.toISOString().split('T')[0]; // YYYY-MM-DD
+      // Calculate expiry date only if completed with a date
+      let expiryDateString: string | null = null;
+      if (status === 'completed' && completionDate && !neverExpires) {
+        const compDate = new Date(completionDate);
+        const expiryDate = new Date(compDate);
+        expiryDate.setMonth(expiryDate.getMonth() + expiryMonths);
+        expiryDateString = expiryDate.toISOString().split('T')[0]; // YYYY-MM-DD
+      }
 
       console.log('Saving training:', {
         staffId,
         courseId,
         trainingId,
-        completion_date: editDate,
+        completion_date: completionDate,
         expiry_date: expiryDateString,
+        status: status,
         completed_at_location_id: selectedLocation,
       });
 
@@ -1297,10 +1509,10 @@ export default function TrainingMatrixPage() {
       const upsertData: any = {
         staff_id: staffId,
         course_id: courseId,
-        completion_date: editDate,
+        completion_date: completionDate || null,
         expiry_date: expiryDateString,
         completed_at_location_id: selectedLocation,
-        status: 'completed',
+        status: status,
         updated_at: new Date().toISOString(),
       };
 

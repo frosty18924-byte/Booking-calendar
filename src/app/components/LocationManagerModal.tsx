@@ -44,7 +44,9 @@ export default function LocationManagerModal({ onClose }: { onClose: () => void 
 
   async function fetchData() {
     const { data: locData } = await supabase.from('locations').select('*').order('name');
-    setLocations(locData || []);
+    // Deduplicate locations by id to prevent duplicates in dropdown
+    const uniqueLocations = locData ? Array.from(new Map(locData.map((loc: any) => [loc.id, loc])).values()) : [];
+    setLocations(uniqueLocations);
     
     const { data: venueData } = await supabase.from('venues').select('*').order('name');
     setVenues(venueData || []);
