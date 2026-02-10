@@ -5,6 +5,7 @@ import { useState, useEffect, useRef } from 'react';
 import { supabase } from '@/lib/supabase';
 import { hasPermission } from '@/lib/permissions';
 import ThemeToggle from '@/app/components/ThemeToggle';
+import HomeButton from '@/app/components/HomeButton';
 
 interface TrainingRecord {
   id: string;
@@ -837,9 +838,10 @@ export default function TrainingMatrixPage() {
     <div className={`min-h-screen ${isDark ? 'bg-gray-900' : 'bg-gray-50'}`}>
       {/* Header with Theme Toggle */}
       <div className={`p-6 ${isDark ? 'bg-gray-800' : 'bg-white'} border-b ${isDark ? 'border-gray-700' : 'border-gray-200'}`}>
-        <div className="flex justify-center items-center mb-4 relative">
+        <div className="flex justify-between items-center mb-4">
+          <HomeButton isDark={isDark} />
           <h1 className={`text-3xl font-bold ${isDark ? 'text-white' : 'text-gray-900'}`}>Training Matrix</h1>
-          <div className="absolute right-0">
+          <div className="flex-shrink-0">
             <ThemeToggle />
           </div>
         </div>
