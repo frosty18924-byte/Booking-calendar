@@ -11,8 +11,8 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY
 );
 
-async function updateLocationCourseDeliveryTypes() {
-  console.log('\n🔄 Updating location_courses with delivery types from CSV files\n');
+async function reorderCoursesFromCSV() {
+  console.log('\n🔄 Reordering courses to match CSV file order\n');
 
   try {
     // Get all locations
@@ -48,15 +48,39 @@ async function updateLocationCourseDeliveryTypes() {
       const content = readFileSync(filePath, 'utf-8');
       const records = parse(content, { headers: false });
 
-      // Row 2 = section headers (e.g., "Careskills Wave 1", "GDPR 1", etc.)
-      // Row 3 onwards = course names and data
+      // Row 1 (index 0) = some metadata
+      // Row 2 (index 1) = section headers
+      // Row 3 onwards (index 2+) = course names in the first column, then data columns
+      
+      // We need to find which columns have course names
+      // Looking at rows 3+ to find the actual course name row
       if (records.length < 3) {
         console.log(`   ⚠️  CSV has less than 3 rows`);
         continue;
       }
 
-      const sectionHeadersRow = records[1]; // Row 2 (0-indexed as 1)
-      const courseNamesRow = records[2]; // Row 3 (0-indexed as 2)
+      // Row 2 has the section headers
+      const sectionHeadersRow = records[1];
+      
+      // Find the course names - they start from row 3 in the first column
+      // But we need to look at all columns to find where each course appears
+      const courseColumnMap = new Map(); // course name -> column index
+      
+      // Look through all rows to find course names
+      for (let rowIdx = 2; rowIdx < records.length; rowIdx++) {
+        const row = records[rowIdx];
+        for (let colIdx = 0; colIdx < row.length; colIdx++) {
+          const cellValue = row[colIdx]?.trim();
+          if (cellValue && cellValue.length > 0) {
+            // Skip empty and staff names
+            if (!courseColumnMap.has(cellValue)) {
+              courseColumnMap.set(cellValue, colIdx);
+            }
+          }
+        }
+      }
+
+      console.log(`   Found ${courseColumnMap.size} courses in CSV`);
 
       // Get courses for this location
       const { data: locationCourses, error: lcError } = await supabase
@@ -64,11 +88,9 @@ async function updateLocationCourseDeliveryTypes() {
         .select(`
           id,
           course_id,
-          display_order,
           courses(id, name)
         `)
-        .eq('location_id', location.id)
-        .order('display_order', { ascending: true });
+        .eq('location_id', location.id);
 
       if (lcError) {
         console.error(`   Error fetching courses for ${locationName}:`, lcError);
@@ -80,57 +102,38 @@ async function updateLocationCourseDeliveryTypes() {
         continue;
       }
 
-      console.log(`   Found ${locationCourses.length} courses`);
-
-      // Build a map of course names to section headers from CSV
-      const courseToHeaderMap = new Map();
-      for (let colIdx = 0; colIdx < courseNamesRow.length; colIdx++) {
-        const courseName = courseNamesRow[colIdx]?.trim();
-        const sectionHeader = sectionHeadersRow[colIdx]?.trim() || '';
-        if (courseName && courseName.length > 0) {
-          // Store mapping by course name (normalized) to section header
-          courseToHeaderMap.set(courseName.toLowerCase(), sectionHeader || 'Face to Face');
-        }
-      }
-
-      console.log(`   CSV has section headers for ${courseToHeaderMap.size} unique courses`);
-
-      // Update location_courses by matching course names to CSV columns
+      // Update display_order to match CSV column order
       let updated = 0;
-      let notFound = 0;
       for (const lc of locationCourses) {
-        const courseName = lc.courses?.name?.toLowerCase();
+        const courseName = lc.courses?.name;
         if (!courseName) continue;
 
-        const sectionHeader = courseToHeaderMap.get(courseName);
-        
-        if (!sectionHeader) {
-          notFound++;
+        const csvColumnIdx = courseColumnMap.get(courseName);
+        if (csvColumnIdx === undefined) {
+          console.log(`   ⚠️  Course not found in CSV: ${courseName}`);
           continue;
         }
 
+        // Update display_order to match CSV column position
         const { error: updateError } = await supabase
           .from('location_courses')
-          .update({ delivery_type: sectionHeader })
+          .update({ display_order: csvColumnIdx })
           .eq('id', lc.id);
 
         if (updateError) {
-          console.error(`   Error updating course ${lc.courses?.name}:`, updateError);
+          console.error(`   Error updating ${courseName}:`, updateError);
         } else {
           updated++;
         }
       }
 
-      console.log(`   ✅ Updated ${updated} courses with section headers from CSV`);
-      if (notFound > 0) {
-        console.log(`   ⚠️  ${notFound} courses not found in CSV (will keep current value)`);
-      }
+      console.log(`   ✅ Updated ${updated} courses to match CSV order`);
     }
 
-    console.log('\n✅ All location courses updated with delivery types from CSV files\n');
+    console.log('\n✅ All courses reordered to match CSV files\n');
   } catch (error) {
     console.error('Error:', error);
   }
 }
 
-updateLocationCourseDeliveryTypes();
+reorderCoursesFromCSV();
