@@ -102,6 +102,25 @@ export default function CourseExpiryChecker({ isDark }: { isDark: boolean }) {
     }
   }
 
+  function categorizeDeliveryType(courseName: string, deliveryType?: string): 'Atlas' | 'Online' | 'Face to Face' {
+    // If delivery type is explicitly set, use it for classification
+    const courseNameLower = courseName.toLowerCase();
+    const deliveryLower = (deliveryType || '').toLowerCase();
+
+    // Careskills courses are Atlas
+    if (courseNameLower.includes('careskills')) {
+      return 'Atlas';
+    }
+
+    // Check both course name and delivery type for Online
+    if (courseNameLower.includes('online') || deliveryLower.includes('online')) {
+      return 'Online';
+    }
+
+    // Everything else is Face to Face
+    return 'Face to Face';
+  }
+
   function initializeDates() {
     const today = new Date();
     const nextMonth = new Date();
@@ -478,7 +497,7 @@ export default function CourseExpiryChecker({ isDark }: { isDark: boolean }) {
                         {row.location}
                       </td>
                       <td className={`px-8 py-6 text-center whitespace-nowrap transition-colors duration-300 ${isDark ? 'text-gray-200' : 'text-gray-900'}`}>
-                        {row.delivery}
+                        {categorizeDeliveryType(row.course, row.delivery)}
                       </td>
                     </tr>
                   ))}

@@ -288,6 +288,7 @@ export default function TrainingMatrixPage() {
         .select(`
           course_id,
           display_order,
+          delivery_type,
           courses(id, name, category, expiry_months)
         `)
         .eq('location_id', selectedLocation)
@@ -306,7 +307,7 @@ export default function TrainingMatrixPage() {
       const filteredCourses = locationCoursesData?.map((lc: any) => ({
         id: lc.courses.id,
         name: lc.courses.name,
-        category: lc.courses.category || undefined,
+        category: lc.delivery_type || lc.courses.category || undefined,
         display_order: lc.display_order,
         expiry_months: lc.courses.expiry_months !== null ? lc.courses.expiry_months : null,
         never_expires: false, // Default to false since column doesn't exist
