@@ -501,7 +501,7 @@ export default function TrainingMatrixPage() {
     }
   }
 
-  async function saveCourseChanges(courseId: string, updates: Partial<Course>) {
+  async function saveCourseChanges(courseId: string, updates: Partial<Course>, skipRefresh = false) {
     try {
       console.log('Saving course changes:', { courseId, updates });
 
@@ -519,7 +519,11 @@ export default function TrainingMatrixPage() {
       }
 
       console.log('Course update successful:', result.data);
-      await fetchMatrixData();
+      
+      // Only refresh if it's not a header-only change
+      if (!skipRefresh) {
+        await fetchMatrixData();
+      }
     } catch (error) {
       const errorMsg = error instanceof Error ? error.message : String(error);
       console.error('Error saving course changes:', errorMsg);
@@ -1008,8 +1012,8 @@ export default function TrainingMatrixPage() {
                               // Update local state immediately for instant feedback
                               const updatedCourses = courses.map(c => c.id === course.id ? { ...c, category: editHeaderValue.trim() || undefined } : c);
                               setCourses(updatedCourses);
-                              // Save to database in background (no await, no refresh)
-                              saveCourseChanges(course.id, { category: editHeaderValue.trim() || undefined });
+                              // Save to database in background (no refresh for header changes)
+                              saveCourseChanges(course.id, { category: editHeaderValue.trim() || undefined }, true);
                               setEditingHeader(null);
                             }}
                             onKeyDown={(e) => {
@@ -1017,8 +1021,8 @@ export default function TrainingMatrixPage() {
                                 // Update local state immediately for instant feedback
                                 const updatedCourses = courses.map(c => c.id === course.id ? { ...c, category: editHeaderValue.trim() || undefined } : c);
                                 setCourses(updatedCourses);
-                                // Save to database in background (no await, no refresh)
-                                saveCourseChanges(course.id, { category: editHeaderValue.trim() || undefined });
+                                // Save to database in background (no refresh for header changes)
+                                saveCourseChanges(course.id, { category: editHeaderValue.trim() || undefined }, true);
                                 setEditingHeader(null);
                               }
                               if (e.key === 'Escape') setEditingHeader(null);
@@ -1062,6 +1066,7 @@ export default function TrainingMatrixPage() {
                               if (editHeaderValue.trim()) {
                                 const updatedCourses = courses.map(c => c.id === course.id ? { ...c, name: editHeaderValue.trim() } : c);
                                 setCourses(updatedCourses);
+                                saveCourseChanges(course.id, { name: editHeaderValue.trim() }, true);
                               }
                               setEditingHeader(null);
                             }}
@@ -1070,6 +1075,7 @@ export default function TrainingMatrixPage() {
                                 if (editHeaderValue.trim()) {
                                   const updatedCourses = courses.map(c => c.id === course.id ? { ...c, name: editHeaderValue.trim() } : c);
                                   setCourses(updatedCourses);
+                                  saveCourseChanges(course.id, { name: editHeaderValue.trim() }, true);
                                 }
                                 setEditingHeader(null);
                               }
