@@ -133,11 +133,16 @@ export default function CourseExpiryChecker({ isDark }: { isDark: boolean }) {
   }
 
   function buildFilterOptions(data: CourseData[]) {
+    // Categorize all delivery types to only show Atlas, Online, Face to Face
+    const categorizedDeliveries = new Set(
+      data.map(d => categorizeDeliveryType(d.course, d.delivery))
+    );
+    
     setFilterOptions({
       names: [...new Set(data.map(d => d.name))].sort(),
       courses: [...new Set(data.map(d => d.course))].sort(),
       locations: [...new Set(data.map(d => d.location))].sort(),
-      deliveries: [...new Set(data.map(d => d.delivery))].sort(),
+      deliveries: ['Atlas', 'Online', 'Face to Face'].filter(type => categorizedDeliveries.has(type)),
     });
   }
 
@@ -256,7 +261,8 @@ export default function CourseExpiryChecker({ isDark }: { isDark: boolean }) {
       filtered = filtered.filter(d => d.location === filters.location);
     }
     if (filters.delivery) {
-      filtered = filtered.filter(d => d.delivery === filters.delivery);
+      // Filter by categorized delivery type (Atlas, Online, Face to Face)
+      filtered = filtered.filter(d => categorizeDeliveryType(d.course, d.delivery) === filters.delivery);
     }
 
     setFilteredData(filtered);
