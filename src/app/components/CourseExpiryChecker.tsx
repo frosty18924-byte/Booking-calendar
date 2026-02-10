@@ -25,6 +25,8 @@ export default function CourseExpiryChecker({ isDark }: { isDark: boolean }) {
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
   const [user, setUser] = useState<any>(null);
+  const [selectedLocation, setSelectedLocation] = useState<string>('');
+  const [locations, setLocations] = useState<Array<{ id: string; name: string }>>([]);
 
   // Filters
   const [filters, setFilters] = useState({
@@ -45,6 +47,7 @@ export default function CourseExpiryChecker({ isDark }: { isDark: boolean }) {
   useEffect(() => {
     checkAuth();
     initializeDates();
+    fetchLocations();
   }, []);
 
   useEffect(() => {
@@ -65,6 +68,24 @@ export default function CourseExpiryChecker({ isDark }: { isDark: boolean }) {
       setUser(authUser);
     } catch (error) {
       console.error('Auth error:', error);
+    }
+  }
+
+  async function fetchLocations() {
+    try {
+      const { data, error } = await supabase
+        .from('locations')
+        .select('id, name')
+        .order('name', { ascending: true });
+
+      if (error) {
+        console.error('Error fetching locations:', error);
+        return;
+      }
+
+      setLocations(data || []);
+    } catch (error) {
+      console.error('Error in fetchLocations:', error);
     }
   }
 
@@ -99,8 +120,16 @@ export default function CourseExpiryChecker({ isDark }: { isDark: boolean }) {
     setActiveTab('expiring');
 
     try {
+      const params = new URLSearchParams({
+        startDate,
+        endDate,
+      });
+      if (selectedLocation) {
+        params.append('locationFilter', selectedLocation);
+      }
+
       const response = await fetch(
-        `/api/courses/expiring?startDate=${startDate}&endDate=${endDate}`
+        `/api/courses/expiring?${params.toString()}`
       );
 
       if (!response.ok) {
@@ -126,7 +155,13 @@ export default function CourseExpiryChecker({ isDark }: { isDark: boolean }) {
     setActiveTab('awaiting');
 
     try {
-      const response = await fetch('/api/courses/awaiting-training');
+      const params = new URLSearchParams();
+      if (selectedLocation) {
+        params.append('locationFilter', selectedLocation);
+      }
+
+      const url = `/api/courses/awaiting-training${params.toString() ? '?' + params.toString() : ''}`;
+      const response = await fetch(url);
 
       if (!response.ok) {
         throw new Error('Failed to fetch courses');
@@ -151,7 +186,13 @@ export default function CourseExpiryChecker({ isDark }: { isDark: boolean }) {
     setActiveTab('expired');
 
     try {
-      const response = await fetch('/api/courses/expired');
+      const params = new URLSearchParams();
+      if (selectedLocation) {
+        params.append('locationFilter', selectedLocation);
+      }
+
+      const url = `/api/courses/expired${params.toString() ? '?' + params.toString() : ''}`;
+      const response = await fetch(url);
 
       if (!response.ok) {
         throw new Error('Failed to fetch courses');
@@ -239,6 +280,27 @@ export default function CourseExpiryChecker({ isDark }: { isDark: boolean }) {
                     : 'bg-white border-gray-300 text-gray-900 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20'
                 }`}
               />
+            </div>
+            <div>
+              <label className={`block text-sm font-medium mb-2 transition-colors duration-300 ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>
+                Location (Optional)
+              </label>
+              <select
+                value={selectedLocation}
+                onChange={e => setSelectedLocation(e.target.value)}
+                className={`px-3 py-2 text-sm rounded border w-40 transition-colors duration-300 ${
+                  isDark
+                    ? 'bg-gray-700 border-gray-600 text-white focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20'
+                    : 'bg-white border-gray-300 text-gray-900 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20'
+                }`}
+              >
+                <option value="">All Locations</option>
+                {locations.map(loc => (
+                  <option key={loc.id} value={loc.id}>
+                    {loc.name}
+                  </option>
+                ))}
+              </select>
             </div>
           </div>
 
