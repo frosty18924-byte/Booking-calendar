@@ -36,7 +36,7 @@ export async function GET(request: NextRequest) {
         expiry_date,
         completed_at_location_id,
         profiles(full_name),
-        courses(name, category, expiry_months, never_expires),
+        courses(name, category, expiry_months),
         locations(name)
       `)
       .eq('status', 'awaiting'); // Get awaiting records

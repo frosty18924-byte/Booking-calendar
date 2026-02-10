@@ -89,6 +89,19 @@ export default function CourseExpiryChecker({ isDark }: { isDark: boolean }) {
     }
   }
 
+  function formatDate(dateString: string | null): string {
+    if (!dateString || dateString === '-') return '-';
+    try {
+      const date = new Date(dateString);
+      const day = String(date.getDate()).padStart(2, '0');
+      const month = String(date.getMonth() + 1).padStart(2, '0');
+      const year = date.getFullYear();
+      return `${day}-${month}-${year}`;
+    } catch {
+      return dateString;
+    }
+  }
+
   function initializeDates() {
     const today = new Date();
     const nextMonth = new Date();
@@ -420,22 +433,22 @@ export default function CourseExpiryChecker({ isDark }: { isDark: boolean }) {
         {allData.length > 0 && (
           <div className={`rounded-lg border overflow-hidden shadow-lg transition-colors duration-300 ${isDark ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'}`}>
             <div className="overflow-x-auto">
-              <table className="w-full">
+              <table className="w-full text-sm">
                 <thead className={`transition-colors duration-300 ${isDark ? 'bg-gray-700' : 'bg-gray-100'}`}>
                   <tr>
-                    <th className={`px-6 py-4 text-left font-semibold transition-colors duration-300 ${isDark ? 'text-gray-200' : 'text-gray-900'}`}>
+                    <th className={`px-8 py-6 text-center font-semibold transition-colors duration-300 ${isDark ? 'text-gray-200' : 'text-gray-900'}`}>
                       Staff Name
                     </th>
-                    <th className={`px-6 py-4 text-left font-semibold transition-colors duration-300 ${isDark ? 'text-gray-200' : 'text-gray-900'}`}>
+                    <th className={`px-8 py-6 text-center font-semibold transition-colors duration-300 ${isDark ? 'text-gray-200' : 'text-gray-900'}`}>
                       Course
                     </th>
-                    <th className={`px-6 py-4 text-center font-semibold transition-colors duration-300 ${isDark ? 'text-gray-200' : 'text-gray-900'}`}>
+                    <th className={`px-8 py-6 text-center font-semibold transition-colors duration-300 ${isDark ? 'text-gray-200' : 'text-gray-900'}`}>
                       {isExpiredView ? 'Status' : 'Expiry Date'}
                     </th>
-                    <th className={`px-6 py-4 text-left font-semibold transition-colors duration-300 ${isDark ? 'text-gray-200' : 'text-gray-900'}`}>
+                    <th className={`px-8 py-6 text-center font-semibold transition-colors duration-300 ${isDark ? 'text-gray-200' : 'text-gray-900'}`}>
                       Location
                     </th>
-                    <th className={`px-6 py-4 text-left font-semibold transition-colors duration-300 ${isDark ? 'text-gray-200' : 'text-gray-900'}`}>
+                    <th className={`px-8 py-6 text-center font-semibold transition-colors duration-300 ${isDark ? 'text-gray-200' : 'text-gray-900'}`}>
                       Delivery
                     </th>
                   </tr>
@@ -448,23 +461,23 @@ export default function CourseExpiryChecker({ isDark }: { isDark: boolean }) {
                         isDark ? 'border-gray-700 hover:bg-gray-700' : 'border-gray-200 hover:bg-gray-50'
                       }`}
                     >
-                      <td className={`px-6 py-4 transition-colors duration-300 ${isDark ? 'text-gray-200' : 'text-gray-900'}`}>
+                      <td className={`px-8 py-6 text-center whitespace-nowrap transition-colors duration-300 ${isDark ? 'text-gray-200' : 'text-gray-900'}`}>
                         {row.name}
                       </td>
-                      <td className={`px-6 py-4 transition-colors duration-300 ${isDark ? 'text-gray-200' : 'text-gray-900'}`}>
+                      <td className={`px-8 py-6 text-center whitespace-nowrap transition-colors duration-300 ${isDark ? 'text-gray-200' : 'text-gray-900'}`}>
                         {row.course}
                       </td>
-                      <td className={`px-6 py-4 text-center font-semibold ${
+                      <td className={`px-8 py-6 text-center whitespace-nowrap font-semibold ${
                         isExpiredView
                           ? `transition-colors duration-300 ${isDark ? 'text-red-400' : 'text-red-600'}`
                           : `transition-colors duration-300 ${isDark ? 'text-gray-200' : 'text-gray-900'}`
                       }`}>
-                        {isExpiredView ? row.expiredSince : (row.expiry || '-')}
+                        {isExpiredView ? row.expiredSince : formatDate(row.expiry)}
                       </td>
-                      <td className={`px-6 py-4 transition-colors duration-300 ${isDark ? 'text-gray-200' : 'text-gray-900'}`}>
+                      <td className={`px-8 py-6 text-center whitespace-nowrap transition-colors duration-300 ${isDark ? 'text-gray-200' : 'text-gray-900'}`}>
                         {row.location}
                       </td>
-                      <td className={`px-6 py-4 transition-colors duration-300 ${isDark ? 'text-gray-200' : 'text-gray-900'}`}>
+                      <td className={`px-8 py-6 text-center whitespace-nowrap transition-colors duration-300 ${isDark ? 'text-gray-200' : 'text-gray-900'}`}>
                         {row.delivery}
                       </td>
                     </tr>
