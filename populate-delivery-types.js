@@ -48,14 +48,14 @@ async function updateLocationCourseDeliveryTypes() {
       const content = readFileSync(filePath, 'utf-8');
       const records = parse(content, { headers: false });
 
-      // Row 2 = course names
+      // Row 2 = section headers (e.g., "Careskills Wave 1", "GDPR 1", etc.)
       // Row 3 = delivery types
-      if (records.length < 3) {
-        console.log(`   ⚠️  CSV has less than 3 rows`);
+      if (records.length < 2) {
+        console.log(`   ⚠️  CSV has less than 2 rows`);
         continue;
       }
 
-      const courseNamesRow = records[1]; // Row 2 (0-indexed as 1)
+      const sectionHeadersRow = records[1]; // Row 2 (0-indexed as 1)
       const deliveryTypesRow = records[2]; // Row 3 (0-indexed as 2)
 
       // Get courses for this location
@@ -64,6 +64,7 @@ async function updateLocationCourseDeliveryTypes() {
         .select(`
           id,
           course_id,
+          display_order,
           courses(id, name)
         `)
         .eq('location_id', location.id)
@@ -81,29 +82,20 @@ async function updateLocationCourseDeliveryTypes() {
 
       console.log(`   Found ${locationCourses.length} courses`);
 
-      // Build a map of course names to delivery types from CSV
-      const deliveryTypeMap = new Map();
-      for (let i = 0; i < courseNamesRow.length; i++) {
-        const courseName = courseNamesRow[i]?.trim();
-        const deliveryType = deliveryTypesRow[i]?.trim() || 'Face to Face';
-        if (courseName) {
-          deliveryTypeMap.set(courseName.toLowerCase(), deliveryType);
-        }
-      }
-
-      console.log(`   CSV has delivery type mappings for ${deliveryTypeMap.size} courses`);
-
-      // Update location_courses with delivery types
+      // Map display columns to section headers and delivery types from CSV
+      // Column index in CSV corresponds to course display order
       let updated = 0;
       for (const lc of locationCourses) {
-        const courseName = lc.courses?.name?.toLowerCase();
-        if (!courseName) continue;
+        const displayOrder = lc.display_order || 0;
+        const sectionHeader = sectionHeadersRow[displayOrder]?.trim() || '';
+        const deliveryType = deliveryTypesRow[displayOrder]?.trim() || 'Face to Face';
 
-        const deliveryType = deliveryTypeMap.get(courseName) || 'Face to Face';
+        // Use section header as the primary display value, with delivery type as fallback
+        const finalValue = sectionHeader || deliveryType || 'Face to Face';
 
         const { error: updateError } = await supabase
           .from('location_courses')
-          .update({ delivery_type: deliveryType })
+          .update({ delivery_type: finalValue })
           .eq('id', lc.id);
 
         if (updateError) {
@@ -113,7 +105,7 @@ async function updateLocationCourseDeliveryTypes() {
         }
       }
 
-      console.log(`   ✅ Updated ${updated} courses with delivery types`);
+      console.log(`   ✅ Updated ${updated} courses with section headers from CSV`);
     }
 
     console.log('\n✅ All location courses updated with delivery types from CSV files\n');
