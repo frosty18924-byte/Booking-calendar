@@ -288,7 +288,7 @@ export default function BookingModal({ event, onClose, onRefresh, onOpenChecklis
         <div style={{ backgroundColor: isDark ? '#0f172a' : '#f1f5f9' }} className="p-6 border-b text-center relative flex items-center justify-between">
           <div className="flex gap-2">
             <button 
-              onClick={onOpenChecklist}
+              onClick={() => onOpenChecklist?.()}
               style={{ backgroundColor: '#8b5cf6' }}
               className="text-white px-4 py-2 rounded-lg font-bold text-sm hover:opacity-90 transition-all"
             >

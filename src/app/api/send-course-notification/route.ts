@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { sendCourseScheduledEmail, sendBulkEmail } from '@/lib/email';
+import { sendBulkEmail } from '@/lib/email';
 import { createClient } from '@supabase/supabase-js';
 
 export async function POST(request: NextRequest) {
@@ -40,7 +40,7 @@ export async function POST(request: NextRequest) {
           <p>Hi,</p>
           <p>A new training course has been scheduled:</p>
           <div style="background-color: white; padding: 15px; border-radius: 8px; margin: 15px 0;">
-            <p style="margin: 5px 0;"><strong>📚 Course:</strong> ${event.courses?.name}</p>
+            <p style="margin: 5px 0;"><strong>📚 Course:</strong> ${(event.courses as any)?.name}</p>
             <p style="margin: 5px 0;"><strong>📅 Date:</strong> ${new Date(event.event_date).toLocaleDateString()}</p>
             <p style="margin: 5px 0;"><strong>⏰ Time:</strong> ${event.start_time} - ${event.end_time}</p>
             <p style="margin: 5px 0;"><strong>📍 Location:</strong> ${event.location}</p>
@@ -51,7 +51,7 @@ export async function POST(request: NextRequest) {
 
       const success = await sendBulkEmail(
         emails,
-        `New Course Scheduled: ${event.courses?.name}`,
+        `New Course Scheduled: ${(event.courses as any)?.name}`,
         htmlContent
       );
 

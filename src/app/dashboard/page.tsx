@@ -4,12 +4,18 @@ import { useRouter } from 'next/navigation';
 import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
 import ThemeToggle from '@/app/components/ThemeToggle';
+import AddStaffModal from '@/app/components/AddStaffModal';
+import DuplicateRemovalModal from '@/app/components/DuplicateRemovalModal';
+import { hasPermission } from '@/lib/permissions';
 
 export default function DashboardPage() {
   const router = useRouter();
   const [isDark, setIsDark] = useState(true);
   const [user, setUser] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [showAddStaffModal, setShowAddStaffModal] = useState(false);
+  const [showDuplicateRemoval, setShowDuplicateRemoval] = useState(false);
+  const [userRole, setUserRole] = useState<string | null>(null);
 
   useEffect(() => {
     checkAuth();
@@ -56,6 +62,7 @@ export default function DashboardPage() {
       }
 
       setUser(profile);
+      setUserRole(profile?.role_tier || null);
       setLoading(false);
     } catch (error) {
       console.error('Auth check error:', error);
@@ -95,6 +102,96 @@ export default function DashboardPage() {
 
       {/* Main Content */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+        {/* Admin Section - Only show if user has admin permissions */}
+        {hasPermission(userRole, 'STAFF_MANAGEMENT', 'canView') && (
+          <div className="mb-12">
+            <div className="mb-6">
+              <h2 className={`text-2xl font-bold transition-colors duration-300 ${isDark ? 'text-gray-100' : 'text-gray-900'}`}>
+                Admin
+              </h2>
+              <p className={`mt-2 transition-colors duration-300 ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
+                Manage staff and system settings
+              </p>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {/* Add Staff Card */}
+              <div
+                onClick={() => setShowAddStaffModal(true)}
+                className={`group cursor-pointer p-8 rounded-xl border-2 transition-all duration-300 hover:shadow-lg ${
+                  isDark
+                    ? 'bg-gray-800 border-gray-700 hover:border-blue-500 hover:bg-gray-750'
+                    : 'bg-white border-gray-200 hover:border-blue-500 hover:bg-blue-50'
+                }`}
+              >
+                <div className="text-5xl mb-4">👥</div>
+                <h3 className={`text-2xl font-bold mb-2 transition-colors duration-300 ${isDark ? 'text-white' : 'text-gray-900'}`}>
+                  Manage Staff
+                </h3>
+                <p className={`transition-colors duration-300 ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
+                  Create and manage staff accounts, assign them to locations
+                </p>
+                <div className="mt-6 flex items-center text-blue-600 dark:text-blue-400 group-hover:translate-x-1 transition-transform">
+                  <span className="font-semibold">Open</span>
+                  <svg className="w-5 h-5 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                  </svg>
+                </div>
+              </div>
+
+              {/* Clean Duplicates Card */}
+              <div
+                onClick={() => setShowDuplicateRemoval(true)}
+                className={`group cursor-pointer p-8 rounded-xl border-2 transition-all duration-300 hover:shadow-lg ${
+                  isDark
+                    ? 'bg-gray-800 border-gray-700 hover:border-red-500 hover:bg-gray-750'
+                    : 'bg-white border-gray-200 hover:border-red-500 hover:bg-red-50'
+                }`}
+              >
+                <div className="text-5xl mb-4">🧹</div>
+                <h3 className={`text-2xl font-bold mb-2 transition-colors duration-300 ${isDark ? 'text-white' : 'text-gray-900'}`}>
+                  Clean Duplicates
+                </h3>
+                <p className={`transition-colors duration-300 ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
+                  Remove duplicate staff entries and divider records
+                </p>
+                <div className="mt-6 flex items-center text-red-600 dark:text-red-400 group-hover:translate-x-1 transition-transform">
+                  <span className="font-semibold">Open</span>
+                  <svg className="w-5 h-5 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                  </svg>
+                </div>
+              </div>
+            </div>
+
+            {/* Add Staff Modal */}
+            {showAddStaffModal && (
+              <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+                <div className={`max-w-2xl w-full max-h-[90vh] overflow-y-auto rounded-lg ${isDark ? 'bg-gray-800' : 'bg-white'}`}>
+                  <AddStaffModal 
+                    onClose={() => setShowAddStaffModal(false)}
+                    onRefresh={() => {
+                      setShowAddStaffModal(false);
+                      // Optionally refresh dashboard data if needed
+                    }}
+                  />
+                </div>
+              </div>
+            )}
+
+            {/* Clean Duplicates Modal */}
+            {showDuplicateRemoval && (
+              <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+                <div className={`max-w-2xl w-full max-h-[90vh] overflow-y-auto rounded-lg ${isDark ? 'bg-gray-800' : 'bg-white'}`}>
+                  <DuplicateRemovalModal 
+                    onClose={() => setShowDuplicateRemoval(false)}
+                  />
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
         <div className="mb-8">
           <h2 className={`text-2xl font-bold transition-colors duration-300 ${isDark ? 'text-gray-100' : 'text-gray-900'}`}>
             Select an App
@@ -116,9 +213,6 @@ export default function DashboardPage() {
           >
             <div className="flex items-start justify-between mb-4">
               <div className="text-5xl">📊</div>
-              <div className={`px-3 py-1 rounded-full text-xs font-semibold transition-colors duration-300 ${isDark ? 'bg-purple-900 text-purple-200' : 'bg-purple-100 text-purple-800'}`}>
-                New
-              </div>
             </div>
             <h3 className={`text-2xl font-bold mb-2 transition-colors duration-300 ${isDark ? 'text-white' : 'text-gray-900'}`}>
               Training Matrix
@@ -145,9 +239,6 @@ export default function DashboardPage() {
           >
             <div className="flex items-start justify-between mb-4">
               <div className="text-5xl">📅</div>
-              <div className={`px-3 py-1 rounded-full text-xs font-semibold transition-colors duration-300 ${isDark ? 'bg-green-900 text-green-200' : 'bg-green-100 text-green-800'}`}>
-                New
-              </div>
             </div>
             <h3 className={`text-2xl font-bold mb-2 transition-colors duration-300 ${isDark ? 'text-white' : 'text-gray-900'}`}>
               Course Expiry Checker
@@ -174,9 +265,6 @@ export default function DashboardPage() {
           >
             <div className="flex items-start justify-between mb-4">
               <div className="text-5xl">📆</div>
-              <div className={`px-3 py-1 rounded-full text-xs font-semibold transition-colors duration-300 ${isDark ? 'bg-blue-900 text-blue-200' : 'bg-blue-100 text-blue-800'}`}>
-                Existing
-              </div>
             </div>
             <h3 className={`text-2xl font-bold mb-2 transition-colors duration-300 ${isDark ? 'text-white' : 'text-gray-900'}`}>
               Booking Calendar

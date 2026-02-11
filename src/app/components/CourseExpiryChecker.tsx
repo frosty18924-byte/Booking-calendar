@@ -103,12 +103,11 @@ export default function CourseExpiryChecker({ isDark }: { isDark: boolean }) {
   }
 
   function categorizeDeliveryType(courseName: string, deliveryType?: string): 'Atlas' | 'Online' | 'Face to Face' {
-    // If delivery type is explicitly set, use it for classification
     const courseNameLower = courseName.toLowerCase();
     const deliveryLower = (deliveryType || '').toLowerCase();
 
-    // Careskills courses are Atlas
-    if (courseNameLower.includes('careskills')) {
+    // Careskills courses are Atlas (check delivery_type first, as it's the primary source)
+    if (deliveryLower.includes('careskills')) {
       return 'Atlas';
     }
 
@@ -117,7 +116,7 @@ export default function CourseExpiryChecker({ isDark }: { isDark: boolean }) {
       return 'Online';
     }
 
-    // Everything else is Face to Face
+    // Everything else is Face to Face (includes Face to Face, Classroom, Internal, Accredited, Workshop, etc.)
     return 'Face to Face';
   }
 
@@ -142,7 +141,7 @@ export default function CourseExpiryChecker({ isDark }: { isDark: boolean }) {
       names: [...new Set(data.map(d => d.name))].sort(),
       courses: [...new Set(data.map(d => d.course))].sort(),
       locations: [...new Set(data.map(d => d.location))].sort(),
-      deliveries: ['Atlas', 'Online', 'Face to Face'].filter(type => categorizedDeliveries.has(type)),
+      deliveries: (['Atlas', 'Online', 'Face to Face'] as const).filter(type => categorizedDeliveries.has(type)),
     });
   }
 
@@ -263,6 +262,15 @@ export default function CourseExpiryChecker({ isDark }: { isDark: boolean }) {
     if (filters.delivery) {
       // Filter by categorized delivery type (Atlas, Online, Face to Face)
       filtered = filtered.filter(d => categorizeDeliveryType(d.course, d.delivery) === filters.delivery);
+    }
+
+    // Sort expired courses by expiry date (oldest first)
+    if (isExpiredView && filtered.length > 0) {
+      filtered = filtered.sort((a, b) => {
+        const dateA = new Date(a.expiry || '');
+        const dateB = new Date(b.expiry || '');
+        return dateA.getTime() - dateB.getTime();
+      });
     }
 
     setFilteredData(filtered);
@@ -468,7 +476,7 @@ export default function CourseExpiryChecker({ isDark }: { isDark: boolean }) {
                       Course
                     </th>
                     <th className={`px-8 py-6 text-center font-semibold transition-colors duration-300 ${isDark ? 'text-gray-200' : 'text-gray-900'}`}>
-                      {isExpiredView ? 'Status' : 'Expiry Date'}
+                      {isExpiredView ? 'Expired' : 'Expiry Date'}
                     </th>
                     <th className={`px-8 py-6 text-center font-semibold transition-colors duration-300 ${isDark ? 'text-gray-200' : 'text-gray-900'}`}>
                       Location

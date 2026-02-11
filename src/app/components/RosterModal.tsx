@@ -84,7 +84,7 @@ export default function RosterModal({ event, onClose, onRefresh, userRole = 'adm
           id: b.profile_id,
           full_name: profile?.full_name,
           home_house: profile?.home_house,
-          location: profile?.location,
+          location: (profile as any)?.location,
           attended_at: b.attended_at,
           is_late: b.is_late,
           absence_reason: b.absence_reason,

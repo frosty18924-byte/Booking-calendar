@@ -37,6 +37,7 @@ export default function BookingChecklistModal({
   const [invoiceNumber, setInvoiceNumber] = useState('');
   const [loading, setLoading] = useState(false);
   const [isDark, setIsDark] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     checkTheme();
@@ -62,6 +63,7 @@ export default function BookingChecklistModal({
 
   async function fetchChecklist() {
     try {
+      setError(null);
       console.log('Fetching checklist for booking:', bookingId);
       
       // Fetch or create checklist items
@@ -73,6 +75,8 @@ export default function BookingChecklistModal({
 
       if (fetchError) {
         console.error('Error fetching existing items:', fetchError);
+        setError(`Failed to fetch checklist items: ${fetchError.message}`);
+        return;
       }
       console.log('Existing items:', existingItems);
 
@@ -92,6 +96,8 @@ export default function BookingChecklistModal({
 
         if (insertError) {
           console.error('Error inserting items:', insertError);
+          setError(`Failed to create checklist items: ${insertError.message}`);
+          return;
         }
         console.log('New items created:', newItems);
         setChecklist(newItems || []);
@@ -108,6 +114,8 @@ export default function BookingChecklistModal({
 
       if (completionError) {
         console.error('Error fetching completions:', completionError);
+        setError(`Failed to fetch completions: ${completionError.message}`);
+        return;
       }
       console.log('Completions data:', completionData);
 
@@ -127,6 +135,7 @@ export default function BookingChecklistModal({
       }
     } catch (error: any) {
       console.error('Error in fetchChecklist:', error);
+      setError(error.message || 'An unexpected error occurred');
     }
   }
 
@@ -219,30 +228,56 @@ export default function BookingChecklistModal({
   const totalCount = checklist.length;
   const progressPercent = totalCount > 0 ? Math.round((completedCount / totalCount) * 100) : 0;
 
+  if (error) {
+    return (
+      <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-md flex items-center justify-center p-4 z-50">
+        <div style={{ backgroundColor: isDark ? '#1e293b' : '#ffffff', borderColor: isDark ? '#334155' : '#cbd5e1' }} className="rounded-3xl p-8 w-full max-w-2xl shadow-2xl border transition-colors duration-300">
+          <div className="flex justify-between items-center mb-6">
+            <h2 style={{ color: '#ef4444' }} className="text-2xl font-black uppercase tracking-tight">Error Loading Checklist</h2>
+            <button onClick={onClose} style={{ color: isDark ? '#94a3b8' : '#64748b' }} className="hover:text-red-500 text-2xl transition-colors">&times;</button>
+          </div>
+          <div style={{ backgroundColor: isDark ? '#0f172a' : '#f1f5f9', borderColor: '#ef4444' }} className="p-4 border-l-4 rounded">
+            <p style={{ color: isDark ? '#fca5a5' : '#dc2626' }} className="font-semibold">{error}</p>
+            <p style={{ color: isDark ? '#94a3b8' : '#64748b' }} className="text-sm mt-2">Please check your browser console for more details and contact support if the problem persists.</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-md flex items-center justify-center p-4 z-50">
       <div style={{ backgroundColor: isDark ? '#1e293b' : '#ffffff', borderColor: isDark ? '#334155' : '#cbd5e1' }} className="rounded-3xl p-8 w-full max-w-2xl shadow-2xl border transition-colors duration-300 max-h-[90vh] overflow-y-auto">
         <div className="flex justify-between items-center mb-6">
           <div>
             <h2 style={{ color: isDark ? '#f1f5f9' : '#1e293b' }} className="text-2xl font-black uppercase tracking-tight">Booking Checklist</h2>
-            <p style={{ color: isDark ? '#94a3b8' : '#64748b' }} className="text-sm mt-1">{completedCount} of {totalCount} completed</p>
+            <p style={{ color: isDark ? '#94a3b8' : '#64748b' }} className="text-sm mt-1">
+              {checklist.length === 0 ? 'Loading...' : `${completedCount} of ${totalCount} completed`}
+            </p>
           </div>
           <button onClick={onClose} style={{ color: isDark ? '#94a3b8' : '#64748b' }} className="hover:text-red-500 text-2xl transition-colors">&times;</button>
         </div>
 
-        {/* Progress Bar */}
-        <div style={{ backgroundColor: isDark ? '#0f172a' : '#f1f5f9', borderColor: isDark ? '#334155' : '#e2e8f0' }} className="rounded-full h-3 border mb-6 overflow-hidden">
-          <div 
-            style={{ backgroundColor: '#10b981', width: `${progressPercent}%` }}
-            className="h-full transition-all duration-300"
-          />
-        </div>
+        {checklist.length === 0 ? (
+          <div style={{ backgroundColor: isDark ? '#0f172a' : '#f1f5f9' }} className="p-8 rounded-xl text-center">
+            <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mb-4"></div>
+            <p style={{ color: isDark ? '#94a3b8' : '#64748b' }} className="text-sm">Loading checklist...</p>
+          </div>
+        ) : (
+          <>
+            {/* Progress Bar */}
+            <div style={{ backgroundColor: isDark ? '#0f172a' : '#f1f5f9', borderColor: isDark ? '#334155' : '#e2e8f0' }} className="rounded-full h-3 border mb-6 overflow-hidden">
+              <div 
+                style={{ backgroundColor: '#10b981', width: `${progressPercent}%` }}
+                className="h-full transition-all duration-300"
+              />
+            </div>
 
-        {/* Checklist Items */}
-        <div className="space-y-3">
-          {checklist.map((item) => {
-            const isCompleted = !!completions[item.id];
-            const completion = completions[item.id];
+            {/* Checklist Items */}
+            <div className="space-y-3">
+              {checklist.map((item) => {
+                const isCompleted = !!completions[item.id];
+                const completion = completions[item.id];
             const isInvoiceNumber = item.item_name === 'Invoice Number';
 
             return (
@@ -299,12 +334,14 @@ export default function BookingChecklistModal({
               </div>
             );
           })}
-        </div>
+            </div>
 
-        {userRole !== 'scheduler' && userRole !== 'admin' && (
-          <div style={{ backgroundColor: isDark ? '#0f172a' : '#f1f5f9', borderColor: isDark ? '#334155' : '#e2e8f0', color: isDark ? '#94a3b8' : '#64748b' }} className="mt-6 p-4 border rounded-xl text-center text-sm">
-            Only Schedulers and Admins can update this checklist
-          </div>
+            {userRole !== 'scheduler' && userRole !== 'admin' && (
+              <div style={{ backgroundColor: isDark ? '#0f172a' : '#f1f5f9', borderColor: isDark ? '#334155' : '#e2e8f0', color: isDark ? '#94a3b8' : '#64748b' }} className="mt-6 p-4 border rounded-xl text-center text-sm">
+                Only Schedulers and Admins can update this checklist
+              </div>
+            )}
+          </>
         )}
       </div>
     </div>

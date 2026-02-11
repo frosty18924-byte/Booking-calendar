@@ -39,14 +39,14 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Event not found' }, { status: 404 });
     }
 
-    console.log('Event found:', { date: event.event_date, course: event.courses?.name });
+    console.log('Event found:', { date: event.event_date, course: (event.courses as any)?.name });
 
     // Send email
     console.log('Sending email to:', staff.email);
     const success = await sendBookingEmail(
       staff.email,
       staff.full_name || 'Staff Member',
-      event.courses?.name || 'Unknown Course',
+      (event.courses as any)?.name || 'Unknown Course',
       event.event_date
     );
 

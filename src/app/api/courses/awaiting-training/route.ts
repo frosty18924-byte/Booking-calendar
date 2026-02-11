@@ -57,15 +57,18 @@ export async function GET(request: NextRequest) {
     }
 
     // Transform data
-    const formattedData: CourseData[] = (awaitingCourses || []).map(record => {
-      const isOneOff = !record.courses?.expiry_months || record.courses.expiry_months === 9999;
+    const formattedData: CourseData[] = (awaitingCourses || []).map((record: any) => {
+      const courses = record.courses as { name?: string; category?: string; expiry_months?: number } | null;
+      const profiles = record.profiles as { full_name?: string } | null;
+      const locations = record.locations as { name?: string } | null;
+      const isOneOff = !courses?.expiry_months || courses?.expiry_months === 9999;
       
       return {
-        name: record.profiles?.full_name || 'Unknown',
-        course: record.courses?.name || 'Unknown Course',
+        name: profiles?.full_name || 'Unknown',
+        course: courses?.name || 'Unknown Course',
         expiry: '-', // No expiry date for awaiting records
-        location: record.locations?.name || 'Unknown Location',
-        delivery: record.courses?.category || 'Standard',
+        location: locations?.name || 'Unknown Location',
+        delivery: courses?.category || 'Standard',
         awaitingTrainingDate: true,
         isOneOff,
       };

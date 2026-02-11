@@ -3,10 +3,8 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import ThemeToggle from '@/app/components/ThemeToggle';
-import AddStaffModal from '@/app/components/AddStaffModal';
 import CourseManagerModal from '@/app/components/CourseManagerModal';
 import LocationManagerModal from '@/app/components/LocationManagerModal';
-import DuplicateRemovalModal from '@/app/components/DuplicateRemovalModal';
 import { supabase } from '@/lib/supabase';
 
 export default function AdminPage() {
@@ -14,10 +12,8 @@ export default function AdminPage() {
   const [user, setUser] = useState<any>(null);
   const [isDark, setIsDark] = useState(true);
   const [loading, setLoading] = useState(true);
-  const [showStaffModal, setShowStaffModal] = useState(false);
   const [showCourseModal, setShowCourseModal] = useState(false);
   const [showLocationModal, setShowLocationModal] = useState(false);
-  const [showDuplicateRemoval, setShowDuplicateRemoval] = useState(false);
 
   useEffect(() => {
     checkAuth();
@@ -120,31 +116,12 @@ export default function AdminPage() {
           <ThemeToggle />
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-8">
-          {/* STAFF MANAGEMENT */}
-          <div style={{ backgroundColor: isDark ? '#1e293b' : '#ffffff', borderColor: isDark ? '#334155' : '#e2e8f0' }} className="p-6 sm:p-8 rounded-2xl sm:rounded-3xl border shadow-sm group hover:border-blue-500 transition-all cursor-pointer" onClick={() => setShowStaffModal(true)}>
-             <div className="text-4xl sm:text-6xl mb-4">👥</div>
-             <h3 style={{ color: isDark ? '#f1f5f9' : '#1e293b' }} className="text-lg sm:text-2xl font-bold mb-2">Staff Roster</h3>
-             <p style={{ color: isDark ? '#94a3b8' : '#64748b' }} className="text-xs sm:text-sm mb-4 sm:mb-6">Manage employee profiles and site permissions.</p>
-             <button 
-               onClick={(e) => {
-                 e.stopPropagation();
-                 setShowStaffModal(true);
-               }}
-               style={{ backgroundColor: '#2563eb' }} 
-               onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#1d4ed8'} 
-               onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#2563eb'} 
-               className="w-full py-2 sm:py-3 text-white font-bold rounded-xl transition-all text-sm hover:scale-105 active:scale-95 shadow-md hover:shadow-lg duration-200"
-             >
-               👥 Open Staffing
-             </button>
-          </div>
-
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-2 sm:gap-4">
           {/* LOCATIONS MANAGEMENT */}
-          <div style={{ backgroundColor: isDark ? '#1e293b' : '#ffffff', borderColor: isDark ? '#334155' : '#e2e8f0' }} className="p-6 sm:p-8 rounded-2xl sm:rounded-3xl border shadow-sm group hover:border-amber-500 transition-all cursor-pointer" onClick={() => setShowLocationModal(true)}>
-             <div className="text-4xl sm:text-6xl mb-4">📍</div>
-             <h3 style={{ color: isDark ? '#f1f5f9' : '#1e293b' }} className="text-lg sm:text-2xl font-bold mb-2">Manage Venues</h3>
-             <p style={{ color: isDark ? '#94a3b8' : '#64748b' }} className="text-xs sm:text-sm mb-4 sm:mb-6">Add and manage training locations.</p>
+          <div style={{ backgroundColor: isDark ? '#1e293b' : '#ffffff', borderColor: isDark ? '#334155' : '#e2e8f0' }} className="p-3 sm:p-4 rounded-lg border shadow-sm group hover:border-amber-500 transition-all cursor-pointer" onClick={() => setShowLocationModal(true)}>
+             <div className="text-2xl sm:text-3xl mb-2">📍</div>
+             <h3 style={{ color: isDark ? '#f1f5f9' : '#1e293b' }} className="text-sm sm:text-base font-bold mb-1">Manage Venues</h3>
+             <p style={{ color: isDark ? '#94a3b8' : '#64748b' }} className="text-xs mb-2">Add and manage training locations.</p>
              <button 
                onClick={(e) => {
                  e.stopPropagation();
@@ -153,17 +130,17 @@ export default function AdminPage() {
                style={{ backgroundColor: '#f59e0b' }} 
                onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#d97706'} 
                onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#f59e0b'} 
-               className="w-full py-2 sm:py-3 text-white font-bold rounded-xl transition-all text-sm hover:scale-105 active:scale-95 shadow-md hover:shadow-lg duration-200"
+               className="w-full py-1 sm:py-1.5 text-white font-bold rounded text-xs hover:scale-105 active:scale-95 shadow-md hover:shadow-lg duration-200"
              >
-               🏢 Open Venues
+               🏢 Manage
              </button>
           </div>
 
           {/* CATALOG MANAGEMENT */}
-          <div style={{ backgroundColor: isDark ? '#1e293b' : '#ffffff', borderColor: isDark ? '#334155' : '#e2e8f0' }} className="p-6 sm:p-8 rounded-2xl sm:rounded-3xl border shadow-sm group hover:border-purple-500 transition-all cursor-pointer" onClick={() => setShowCourseModal(true)}>
-             <div className="text-4xl sm:text-6xl mb-4">📚</div>
-             <h3 style={{ color: isDark ? '#f1f5f9' : '#1e293b' }} className="text-lg sm:text-2xl font-bold mb-2">Course Catalog</h3>
-             <p style={{ color: isDark ? '#94a3b8' : '#64748b' }} className="text-xs sm:text-sm mb-4 sm:mb-6">Create training types and set capacities.</p>
+          <div style={{ backgroundColor: isDark ? '#1e293b' : '#ffffff', borderColor: isDark ? '#334155' : '#e2e8f0' }} className="p-3 sm:p-4 rounded-lg border shadow-sm group hover:border-purple-500 transition-all cursor-pointer" onClick={() => setShowCourseModal(true)}>
+             <div className="text-2xl sm:text-3xl mb-2">📚</div>
+             <h3 style={{ color: isDark ? '#f1f5f9' : '#1e293b' }} className="text-sm sm:text-base font-bold mb-1">Course Catalog</h3>
+             <p style={{ color: isDark ? '#94a3b8' : '#64748b' }} className="text-xs mb-2">Create training types and set capacities.</p>
              <button 
                onClick={(e) => {
                  e.stopPropagation();
@@ -172,36 +149,17 @@ export default function AdminPage() {
                style={{ backgroundColor: '#a855f7' }} 
                onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#9333ea'} 
                onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#a855f7'} 
-               className="w-full py-2 sm:py-3 text-white font-bold rounded-xl transition-all text-sm hover:scale-105 active:scale-95 shadow-md hover:shadow-lg duration-200"
+               className="w-full py-1 sm:py-1.5 text-white font-bold rounded text-xs hover:scale-105 active:scale-95 shadow-md hover:shadow-lg duration-200"
              >
-               📖 Open Catalog
-             </button>
-          </div>
-
-          {/* DUPLICATE REMOVAL */}
-          <div style={{ backgroundColor: isDark ? '#1e293b' : '#ffffff', borderColor: isDark ? '#334155' : '#e2e8f0' }} className="p-6 sm:p-8 rounded-2xl sm:rounded-3xl border shadow-sm group hover:border-red-500 transition-all cursor-pointer" onClick={() => setShowDuplicateRemoval(true)}>
-             <div className="text-4xl sm:text-6xl mb-4">🧹</div>
-             <h3 style={{ color: isDark ? '#f1f5f9' : '#1e293b' }} className="text-lg sm:text-2xl font-bold mb-2">Clean Duplicates</h3>
-             <p style={{ color: isDark ? '#94a3b8' : '#64748b' }} className="text-xs sm:text-sm mb-4 sm:mb-6">Remove duplicate staff and dividers.</p>
-             <button 
-               onClick={(e) => {
-                 e.stopPropagation();
-                 setShowDuplicateRemoval(true);
-               }}
-               style={{ backgroundColor: '#ef4444' }} 
-               onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#dc2626'} 
-               onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#ef4444'} 
-               className="w-full py-2 sm:py-3 text-white font-bold rounded-xl transition-all text-sm hover:scale-105 active:scale-95 shadow-md hover:shadow-lg duration-200"
-             >
-               🧹 Clean Up
+               📖 Manage
              </button>
           </div>
 
           {/* ANALYTICS SHORTCUT */}
-          <div style={{ backgroundColor: isDark ? '#1e293b' : '#ffffff', borderColor: isDark ? '#334155' : '#e2e8f0' }} className="p-6 sm:p-8 rounded-2xl sm:rounded-3xl border shadow-sm group hover:border-emerald-500 transition-all cursor-pointer" onClick={() => router.push('/analytics')}>
-             <div className="text-4xl sm:text-6xl mb-4">📊</div>
-             <h3 style={{ color: isDark ? '#f1f5f9' : '#1e293b' }} className="text-lg sm:text-2xl font-bold mb-2">Intelligence Hub</h3>
-             <p style={{ color: isDark ? '#94a3b8' : '#64748b' }} className="text-xs sm:text-sm mb-4 sm:mb-6">View your historical performance dashboard.</p>
+          <div style={{ backgroundColor: isDark ? '#1e293b' : '#ffffff', borderColor: isDark ? '#334155' : '#e2e8f0' }} className="p-3 sm:p-4 rounded-lg border shadow-sm group hover:border-emerald-500 transition-all cursor-pointer" onClick={() => router.push('/analytics')}>
+             <div className="text-2xl sm:text-3xl mb-2">📊</div>
+             <h3 style={{ color: isDark ? '#f1f5f9' : '#1e293b' }} className="text-sm sm:text-base font-bold mb-1">Intelligence Hub</h3>
+             <p style={{ color: isDark ? '#94a3b8' : '#64748b' }} className="text-xs mb-2">View your performance dashboard.</p>
              <button 
               onClick={(e) => {
                 e.stopPropagation();
@@ -210,19 +168,17 @@ export default function AdminPage() {
               style={{ backgroundColor: '#10b981' }} 
               onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#059669'} 
               onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#10b981'} 
-              className="w-full py-2 sm:py-3 text-white font-bold rounded-xl transition-all text-sm hover:scale-105 active:scale-95 shadow-md hover:shadow-lg duration-200"
+              className="w-full py-1 sm:py-1.5 text-white font-bold rounded text-xs hover:scale-105 active:scale-95 shadow-md hover:shadow-lg duration-200"
              >
-               📊 View Dashboard
+               📊 View
              </button>
           </div>
         </div>
       </div>
 
       {/* MODALS */}
-      {showStaffModal && <AddStaffModal onClose={() => setShowStaffModal(false)} onRefresh={() => {}} />}
       {showCourseModal && <CourseManagerModal onClose={() => setShowCourseModal(false)} />}
       {showLocationModal && <LocationManagerModal onClose={() => setShowLocationModal(false)} />}
-      {showDuplicateRemoval && <DuplicateRemovalModal onClose={() => setShowDuplicateRemoval(false)} />}
     </main>
   );
 }

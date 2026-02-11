@@ -18,14 +18,12 @@ function createTransporter() {
     });
 
     return nodemailer.createTransport({
-      host: 'smtp.gmail.com',
-      port: 465,
-      secure: true,
+      service: 'gmail',
       auth: {
         user: process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL,
         xoauth2: jwtClient,
       },
-    });
+    } as any);
   } else {
     // Fallback to App Password authentication
     return nodemailer.createTransport({

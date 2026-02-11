@@ -37,7 +37,7 @@ export async function POST(request: NextRequest) {
     const success = await sendBookingCancellationEmail(
       staff.email,
       staff.full_name || 'Staff Member',
-      event.courses?.name || 'Unknown Course',
+      (event.courses as any)?.name || 'Unknown Course',
       event.event_date,
       reason
     );

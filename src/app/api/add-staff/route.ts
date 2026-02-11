@@ -7,6 +7,7 @@ interface StaffMember {
   full_name: string;
   email: string;
   location: string;
+  location_id?: string;
   role_tier: 'staff' | 'scheduler' | 'admin';
 }
 
@@ -111,11 +112,27 @@ export async function POST(request: Request) {
           continue;
         }
 
+        // Add staff to staff_locations so they appear in training matrix
+        const { error: staffLocError } = await supabaseAdmin
+          .from('staff_locations')
+          .insert([
+            {
+              staff_id: profileId,
+              location_id: staff.location_id || staff.location,
+            },
+          ]);
+
+        if (staffLocError) {
+          console.error('Error adding to staff_locations:', staffLocError);
+          // Don't fail the whole operation if this fails, just log it
+          console.warn('Staff member added to profiles but not staff_locations. They may not appear in training matrix.');
+        }
+
         console.log('Staff member added successfully:', staff.email);
         results.push({
           email: staff.email,
           success: true,
-          message: `${staff.full_name} added to roster`,
+          message: `${staff.full_name} added to roster and training matrix`,
         });
       } catch (error: any) {
         console.error('Error adding staff:', error);

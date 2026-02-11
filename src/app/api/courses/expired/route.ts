@@ -62,16 +62,19 @@ export async function GET(request: NextRequest) {
     // Transform data
     const formattedData: CourseData[] = (expiredCourses || [])
       .filter(record => record.expiry_date) // Only include records with expiry dates
-      .map(record => {
+      .map((record: any) => {
+        const courses = record.courses as { name?: string; category?: string } | null;
+        const profiles = record.profiles as { full_name?: string } | null;
+        const locations = record.locations as { name?: string } | null;
         const expiryDate = new Date(record.expiry_date);
         const daysExpired = Math.floor((today.getTime() - expiryDate.getTime()) / (1000 * 60 * 60 * 24));
         
         return {
-          name: record.profiles?.full_name || 'Unknown',
-          course: record.courses?.name || 'Unknown Course',
+          name: profiles?.full_name || 'Unknown',
+          course: courses?.name || 'Unknown Course',
           expiry: record.expiry_date,
-          location: record.locations?.name || 'Unknown Location',
-          delivery: record.courses?.category || 'Standard',
+          location: locations?.name || 'Unknown Location',
+          delivery: courses?.category || 'Standard',
           expiredSince: `${daysExpired} days ago`,
         };
       });

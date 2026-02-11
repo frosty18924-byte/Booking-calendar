@@ -874,12 +874,6 @@ export default function TrainingMatrixPage() {
             {/* Buttons Row - Centered */}
             {selectedLocation && (
               <div className="flex flex-wrap justify-center gap-2">
-                <button
-                  onClick={() => alert('Add new staff member functionality coming soon!')}
-                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors duration-200 text-sm font-medium"
-                >
-                  + Add Staff
-                </button>
                 {canEditMatrix && (
                   <>
                     {!showAddCourse ? (

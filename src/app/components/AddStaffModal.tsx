@@ -120,10 +120,15 @@ export default function AddStaffModal({ onClose, onRefresh }: { onClose: () => v
         setEditingId(null);
       } else {
         // For new users, use the API endpoint to create auth user and profile
+        // Find the location name from the selected location ID
+        const selectedLocation = locations.find(loc => loc.id === formData.home_house);
+        const locationName = selectedLocation?.name || formData.home_house;
+
         const payload = {
           full_name: formData.full_name,
           email: formData.email,
-          location: formData.home_house,
+          location: locationName,
+          location_id: formData.home_house,
           role_tier: formData.role_tier,
           ...(formData.password && { password: formData.password })
         };
@@ -426,7 +431,8 @@ Charlie Scheduler,charlie@example.com,Banks House,manager`;
       email: staff.email,
       home_house: staff.location || '',
       role_tier: staff.role_tier || 'staff',
-      managed_houses: staff.managed_houses || []
+      managed_houses: staff.managed_houses || [],
+      password: ''
     });
   };
 
@@ -690,7 +696,7 @@ Charlie Scheduler,charlie@example.com,Banks House,manager`;
                     onChange={e => setFormData({...formData, home_house: e.target.value})}
                   >
                     <option value="">Select Location...</option>
-                    {locations.map(loc => <option key={loc.id} value={loc.name}>{loc.name}</option>)}
+                    {locations.map(loc => <option key={loc.id} value={loc.id}>{loc.name}</option>)}
                   </select>
                 </div>
               )}

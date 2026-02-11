@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
-import CourseOverrideModal from './CourseOverrideModal.tsx';
+import CourseOverrideModal from './CourseOverrideModal';
 
 export default function CourseManagerModal({ onClose }: { onClose: () => void }) {
   const [courses, setCourses] = useState<any[]>([]);
