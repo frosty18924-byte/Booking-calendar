@@ -81,7 +81,15 @@ export default function AddStaffModal({ onClose, onRefresh }: { onClose: () => v
     const uniqueLocations = locData ? Array.from(new Map(locData.map((loc: any) => [loc.id, loc])).values()) : [];
     setLocations(uniqueLocations);
     const { data: staffData } = await supabase.from('profiles').select('*').eq('is_deleted', false).order('full_name');
-    setAllStaff(staffData || []);
+    
+    // Filter out dividers - entries that contain divider keywords
+    const dividerKeywords = ['maternity', '—', '---', 'section', 'staff only', 'volunteers', 'team', 'department'];
+    const filteredStaff = (staffData || []).filter(staff => {
+      const name = (staff.full_name || '').toLowerCase();
+      return !dividerKeywords.some(keyword => name.includes(keyword));
+    });
+    
+    setAllStaff(filteredStaff);
   }
 
   const handleSave = async (e: React.FormEvent) => {
@@ -104,11 +112,19 @@ export default function AddStaffModal({ onClose, onRefresh }: { onClose: () => v
 
     try {
       if (editingId) {
+        // Get the current staff data to check if location changed
+        const currentStaff = allStaff.find(s => s.id === editingId);
+        const locationChanged = currentStaff && currentStaff.location !== formData.home_house;
+        
+        // Find the location name from the selected location ID
+        const selectedLocation = locations.find(loc => loc.id === formData.home_house);
+        const locationName = selectedLocation?.name || formData.home_house;
+        
         // Map home_house to location for database update
         const updateData = {
           full_name: formData.full_name,
           email: formData.email,
-          location: formData.home_house,
+          location: locationName,
           role_tier: formData.role_tier,
           managed_houses: formData.managed_houses
         };
@@ -116,6 +132,38 @@ export default function AddStaffModal({ onClose, onRefresh }: { onClose: () => v
         const { error, data } = await supabase.from('profiles').update(updateData).eq('id', editingId).select();
         console.log('Update result:', { error, data });
         if (error) throw error;
+        
+        // If location changed, also update staff_locations table so they move on the matrix
+        if (locationChanged && formData.home_house) {
+          console.log('Location changed, updating staff_locations...');
+          
+          // First, remove from old location(s) 
+          const { error: deleteError } = await supabase
+            .from('staff_locations')
+            .delete()
+            .eq('staff_id', editingId);
+          
+          if (deleteError) {
+            console.error('Error removing from old staff_locations:', deleteError);
+          }
+          
+          // Then add to new location
+          const { error: insertError } = await supabase
+            .from('staff_locations')
+            .insert({
+              staff_id: editingId,
+              location_id: formData.home_house,
+              display_order: 9999 // Put at end of list
+            });
+          
+          if (insertError) {
+            console.error('Error adding to staff_locations:', insertError);
+            console.warn('Profile updated but staff_locations may not be correct. Staff may not appear on new location matrix.');
+          } else {
+            console.log('Staff_locations updated successfully');
+          }
+        }
+        
         alert('✅ Staff member updated successfully');
         setEditingId(null);
       } else {

@@ -1316,16 +1316,27 @@ export default function TrainingMatrixPage() {
                                 <span className={`p-2 rounded ${isDark ? 'bg-blue-900/30' : 'bg-blue-100'} text-blue-600 text-xs font-medium`}>
                                   Editing...
                                 </span>
-                              ) : statusDisplay.label && !cell?.expiry_date && !cell?.completion_date ? (
+                              ) : cell?.status === 'booked' ? (
                                 <div className={`p-2 rounded ${statusDisplay.color}`}>
-                                  <div className="font-semibold text-sm">{statusDisplay.label}</div>
+                                  <div className="font-semibold text-sm">Booked</div>
+                                  {cell?.expiry_date && (
+                                    <div className="text-xs mt-1">
+                                      Exp: {new Date(cell.expiry_date).toLocaleDateString('en-GB')}
+                                    </div>
+                                  )}
                                 </div>
-                              ) : statusDisplay.label && cell?.expiry_date && !cell?.completion_date ? (
-                                <div className={`p-2 rounded ${dateColor}`}>
-                                  <div className="font-semibold text-sm">{statusDisplay.label}</div>
-                                  <div className="text-xs mt-1">
-                                    Exp: {new Date(cell.expiry_date).toLocaleDateString('en-GB')}
-                                  </div>
+                              ) : cell?.status === 'awaiting' ? (
+                                <div className={`p-2 rounded ${statusDisplay.color}`}>
+                                  <div className="font-semibold text-sm">Awaiting Date</div>
+                                  {cell?.expiry_date && (
+                                    <div className="text-xs mt-1">
+                                      Exp: {new Date(cell.expiry_date).toLocaleDateString('en-GB')}
+                                    </div>
+                                  )}
+                                </div>
+                              ) : cell?.status === 'na' ? (
+                                <div className={`p-2 rounded ${statusDisplay.color}`}>
+                                  <div className="font-semibold text-sm">N/A</div>
                                 </div>
                               ) : cell?.completion_date ? (
                                 <div className={`p-2 rounded ${dateColor}`}>
