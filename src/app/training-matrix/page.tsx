@@ -171,12 +171,23 @@ export default function TrainingMatrixPage() {
     try {
       setLoading(true);
 
-      // First, fetch all staff from staff_locations (without is_deleted filter - we'll filter in code)
+      // Fetch dividers from location_matrix_dividers table
+      const { data: dividersData, error: dividersError } = await supabase
+        .from('location_matrix_dividers')
+        .select('id, name, display_order')
+        .eq('location_id', selectedLocation)
+        .order('display_order', { ascending: true });
+
+      if (dividersError) {
+        console.warn('Error fetching dividers:', dividersError);
+      }
+
+      // First, fetch all staff from staff_locations with display_order
       const { data: staffLocationsData, error: staffLocationsError } = await supabase
         .from('staff_locations')
-        .select('staff_id, profiles(id, full_name, is_deleted)')
+        .select('staff_id, display_order, profiles(id, full_name, is_deleted)')
         .eq('location_id', selectedLocation)
-        .order('created_at', { ascending: true });
+        .order('display_order', { ascending: true, nullsFirst: false });
 
       if (staffLocationsError) {
         console.warn('Error fetching staff from staff_locations:', staffLocationsError);
@@ -282,14 +293,13 @@ export default function TrainingMatrixPage() {
         profiles: { id: s.id, full_name: s.full_name }
       }));
 
-      // Fetch courses with LOCATION-SPECIFIC ordering from location_courses table
+      // Fetch courses with LOCATION-SPECIFIC ordering from location_training_courses table
       const { data: locationCoursesData, error: locationCoursesError } = await supabase
-        .from('location_courses')
+        .from('location_training_courses')
         .select(`
-          course_id,
+          training_course_id,
           display_order,
-          delivery_type,
-          courses(id, name, category, expiry_months)
+          training_courses(id, name, expiry_months, never_expires)
         `)
         .eq('location_id', selectedLocation)
         .order('display_order', { ascending: true, nullsFirst: false });
@@ -305,15 +315,45 @@ export default function TrainingMatrixPage() {
 
       // Map courses with location-specific ordering
       const filteredCourses = locationCoursesData?.map((lc: any) => ({
-        id: lc.courses.id,
-        name: lc.courses.name,
-        category: lc.delivery_type || lc.courses.category || undefined,
+        id: lc.training_courses.id,
+        name: lc.training_courses.name,
+        category: undefined, // category column doesn't exist in table
         display_order: lc.display_order,
-        expiry_months: lc.courses.expiry_months !== null ? lc.courses.expiry_months : null,
-        never_expires: false, // Default to false since column doesn't exist
+        expiry_months: lc.training_courses.expiry_months !== null ? lc.training_courses.expiry_months : null,
+        never_expires: lc.training_courses.never_expires || false,
       })) || [];
 
       console.log(`Found ${filteredCourses.length} courses for location ${selectedLocation} with location-specific ordering`);
+
+      // Build mapping of Careskills course IDs to base course IDs
+      // This allows records stored under "(Careskills)" variants to show in the base course column
+      const { data: allCoursesForMapping } = await supabase
+        .from('training_courses')
+        .select('id, name');
+      
+      const careskillsToBaseMap = new Map<string, string>();
+      if (allCoursesForMapping) {
+        const baseCourses = new Map<string, string>();
+        
+        // First, index all base courses (without Careskills suffix)
+        allCoursesForMapping.forEach((c: any) => {
+          if (!c.name.includes('(Careskills)')) {
+            baseCourses.set(c.name.toLowerCase().trim(), c.id);
+          }
+        });
+        
+        // Then, map Careskills courses to their base equivalents
+        allCoursesForMapping.forEach((c: any) => {
+          if (c.name.includes('(Careskills)')) {
+            const baseName = c.name.replace(' (Careskills)', '').toLowerCase().trim();
+            const baseId = baseCourses.get(baseName);
+            if (baseId) {
+              careskillsToBaseMap.set(c.id, baseId);
+            }
+          }
+        });
+        console.log(`Mapped ${careskillsToBaseMap.size} Careskills courses to base courses`);
+      }
       
       // Fetch all training records by paginating through results
       let allTrainingData: any[] = [];
@@ -410,35 +450,42 @@ export default function TrainingMatrixPage() {
         }
       }
 
-      const formattedStaff = allStaffProfiles
+      // Build staff list with display_order from staff_locations
+      const staffWithOrder = allStaffProfiles
         .filter((s: any) => s.profiles && !s.profiles.full_name?.toLowerCase().includes('deleted'))
-        .map((s: any) => ({
-          id: s.profiles.id,
-          name: s.profiles.full_name,
+        .map((s: any) => {
+          // Find display_order from staffLocationsData
+          const staffLoc = activeStaffLocationsData?.find((sl: any) => sl.staff_id === s.profiles.id);
+          return {
+            id: s.profiles.id,
+            name: s.profiles.full_name,
+            location_id: selectedLocation,
+            display_order: staffLoc?.display_order || 9999,
+            isDivider: false,
+          };
+        });
+
+      // Add dividers from the database
+      const dividerItems = (dividersData || [])
+        .filter((d: any) => d.name !== 'Staff Name') // Filter out "Staff Name" header
+        .map((d: any) => ({
+          id: `divider-${d.id}`,
+          name: d.name,
           location_id: selectedLocation,
+          display_order: d.display_order,
+          isDivider: true,
         }));
 
-      console.log('Formatted staff for location:', { staffCount: formattedStaff.length });
+      // Merge staff and dividers, sort by display_order
+      const combinedList = [...staffWithOrder, ...dividerItems]
+        .sort((a, b) => (a.display_order || 9999) - (b.display_order || 9999));
 
-      // Define divider keywords for detection
-      const dividerKeywords = [
-        'management', 'team leader', 'lead support', 'staff team', 'staff on probation', 
-        'inactive staff', 'teachers', 'teaching assistants', 'operations', 'sustainability',
-        'health and wellbeing', 'compliance', 'adult education', 'admin', 'hlta', 'forest',
-        'maternity', 'sick', 'on maternity', 'bank staff', 'sponsorship lead', 'workforce'
-      ];
+      console.log('Formatted staff for location:', { staffCount: staffWithOrder.length, dividerCount: dividerItems.length });
 
-      // Detect staff dividers (section headers) - keeping CSV order
-      const dividers = new Set<string>();
-
-      formattedStaff.forEach(s => {
-        if (dividerKeywords.some(keyword => s.name.toLowerCase().includes(keyword))) {
-          dividers.add(s.id);
-        }
-      });
-
-      setStaffDividers(dividers);
-      setStaff(formattedStaff);
+      // Set divider IDs for styling
+      const dividerIds = new Set<string>(dividerItems.map((d: any) => d.id));
+      setStaffDividers(dividerIds);
+      setStaff(combinedList);
 
       console.log('DEBUG: filteredCourses =', filteredCourses);
       console.log('DEBUG: filteredCourses length =', filteredCourses?.length);
@@ -463,21 +510,33 @@ export default function TrainingMatrixPage() {
 
       // Add training data
       let addedCount = 0;
+      let mappedCount = 0;
       trainingData?.forEach((t: any) => {
         // Filter by location on client side
         if (t.completed_at_location_id === selectedLocation) {
           if (plainMatrix[t.staff_id]) {
             addedCount++;
-            plainMatrix[t.staff_id][t.course_id] = {
-              completion_date: t.completion_date,
-              expiry_date: t.expiry_date,
-              training_id: t.id,
-              status: t.status,
-            };
+            
+            // Check if this is a Careskills course that should be mapped to a base course
+            const effectiveCourseId = careskillsToBaseMap.get(t.course_id) || t.course_id;
+            if (effectiveCourseId !== t.course_id) {
+              mappedCount++;
+            }
+            
+            // Only add if we don't already have data for this cell, or if existing data is empty
+            const existingCell = plainMatrix[t.staff_id][effectiveCourseId];
+            if (!existingCell || (!existingCell.completion_date && t.completion_date)) {
+              plainMatrix[t.staff_id][effectiveCourseId] = {
+                completion_date: t.completion_date,
+                expiry_date: t.expiry_date,
+                training_id: t.id,
+                status: t.status,
+              };
+            }
           }
         }
       });
-      console.log(`Added ${addedCount} training records to matrix`);
+      console.log(`Added ${addedCount} training records to matrix (${mappedCount} mapped from Careskills variants)`);
 
       console.log('Final matrix data:', Object.keys(plainMatrix).length, 'staff with data');
       // Count total cells
@@ -1257,9 +1316,16 @@ export default function TrainingMatrixPage() {
                                 <span className={`p-2 rounded ${isDark ? 'bg-blue-900/30' : 'bg-blue-100'} text-blue-600 text-xs font-medium`}>
                                   Editing...
                                 </span>
-                              ) : statusDisplay.label && !cell?.expiry_date ? (
+                              ) : statusDisplay.label && !cell?.expiry_date && !cell?.completion_date ? (
                                 <div className={`p-2 rounded ${statusDisplay.color}`}>
                                   <div className="font-semibold text-sm">{statusDisplay.label}</div>
+                                </div>
+                              ) : statusDisplay.label && cell?.expiry_date && !cell?.completion_date ? (
+                                <div className={`p-2 rounded ${dateColor}`}>
+                                  <div className="font-semibold text-sm">{statusDisplay.label}</div>
+                                  <div className="text-xs mt-1">
+                                    Exp: {new Date(cell.expiry_date).toLocaleDateString('en-GB')}
+                                  </div>
                                 </div>
                               ) : cell?.completion_date ? (
                                 <div className={`p-2 rounded ${dateColor}`}>
@@ -1488,6 +1554,9 @@ export default function TrainingMatrixPage() {
       const expiryMonths = course?.expiry_months || 12;
       const neverExpires = course?.never_expires || false;
 
+      const existingCell = matrixData[staffId]?.[courseId];
+      let effectiveCompletionDate = completionDate;
+
       // Calculate expiry date only if completed with a date
       let expiryDateString: string | null = null;
       if (status === 'completed' && completionDate && !neverExpires) {
@@ -1495,6 +1564,12 @@ export default function TrainingMatrixPage() {
         const expiryDate = new Date(compDate);
         expiryDate.setMonth(expiryDate.getMonth() + expiryMonths);
         expiryDateString = expiryDate.toISOString().split('T')[0]; // YYYY-MM-DD
+      } else if (status === 'booked' && existingCell?.expiry_date) {
+        // Preserve existing expiry when switching to booked
+        expiryDateString = existingCell.expiry_date;
+        if (!effectiveCompletionDate && existingCell.completion_date) {
+          effectiveCompletionDate = existingCell.completion_date;
+        }
       }
 
       console.log('Saving training:', {
@@ -1512,7 +1587,7 @@ export default function TrainingMatrixPage() {
       const upsertData: any = {
         staff_id: staffId,
         course_id: courseId,
-        completion_date: completionDate || null,
+        completion_date: effectiveCompletionDate || null,
         expiry_date: expiryDateString,
         completed_at_location_id: selectedLocation,
         status: status,
