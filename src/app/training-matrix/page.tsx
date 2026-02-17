@@ -1,11 +1,18 @@
 'use client';
 
-import { useRouter } from 'next/navigation';
 import { useState, useEffect, useRef } from 'react';
+import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import { hasPermission } from '@/lib/permissions';
 import ThemeToggle from '@/app/components/ThemeToggle';
 import HomeButton from '@/app/components/HomeButton';
+import { parseFirstThreeRowsFromCsvString, CsvHeaderRows } from './csvHeaderUtils';
+
+// Helper to get CSV URL for a location name (public folder)
+function getCsvUrlForLocation(locationName: string): string {
+  // e.g. 'Banks House School' => '/csv-import/Banks House School Training Matrix - Staff Matrix.csv'
+  return `/csv-import/${locationName} Training Matrix - Staff Matrix.csv`;
+}
 
 interface TrainingRecord {
   id: string;
@@ -39,6 +46,10 @@ interface MatrixCell {
   status: string | null;
 }
 
+function normalizeCourseName(name: string): string {
+  return name.replace(/\s+/g, ' ').trim().toLowerCase();
+}
+
 export default function TrainingMatrixPage() {
   const router = useRouter();
   const [user, setUser] = useState<any>(null);
@@ -66,6 +77,35 @@ export default function TrainingMatrixPage() {
   const [editHeaderValue, setEditHeaderValue] = useState<string>('');
   const [showReorderCourses, setShowReorderCourses] = useState(false);
   const [courseOrderInput, setCourseOrderInput] = useState('');
+
+  function getCategoryOverrides(locationId: string): Record<string, string> {
+    if (typeof window === 'undefined') return {};
+    try {
+      const raw = window.localStorage.getItem('matrix_category_overrides_v1');
+      if (!raw) return {};
+      const parsed = JSON.parse(raw) as Record<string, Record<string, string>>;
+      return parsed[locationId] || {};
+    } catch {
+      return {};
+    }
+  }
+
+  function saveCategoryOverride(locationId: string, courseId: string, value: string) {
+    if (typeof window === 'undefined') return;
+    try {
+      const raw = window.localStorage.getItem('matrix_category_overrides_v1');
+      const parsed = raw ? JSON.parse(raw) as Record<string, Record<string, string>> : {};
+      if (!parsed[locationId]) parsed[locationId] = {};
+      if (value.trim()) {
+        parsed[locationId][courseId] = value.trim();
+      } else {
+        delete parsed[locationId][courseId];
+      }
+      window.localStorage.setItem('matrix_category_overrides_v1', JSON.stringify(parsed));
+    } catch (error) {
+      console.warn('Could not save category override:', error);
+    }
+  }
 
   function formatExpiryDisplay(months?: number, neverExpires?: boolean): string {
     // Check if course never expires (9999 months, neverExpires flag, or null months)
@@ -103,12 +143,70 @@ export default function TrainingMatrixPage() {
   }, [user, userRole]);
 
   useEffect(() => {
-    if (selectedLocation) {
-      fetchMatrixData();
-    }
-  }, [selectedLocation]);
+    if (!selectedLocation) return;
+    fetchMatrixData();
+    // After fetching matrix data, check if there are any courses for this location
+    (async () => {
+      const { data: locationCourses, error } = await supabase
+        .from('location_training_courses')
+        .select('training_course_id')
+        .eq('location_id', selectedLocation);
+      if (error) {
+        console.warn('Error checking location courses:', error);
+        return;
+      }
+      if (!locationCourses || locationCourses.length === 0) {
+        // No courses in DB for this location, import from CSV
+        const locationObj = locations.find(l => l.id === selectedLocation);
+        if (locationObj && locationObj.name) {
+          const csvUrl = getCsvUrlForLocation(locationObj.name);
+          try {
+            const res = await fetch(csvUrl);
+            if (!res.ok) throw new Error('CSV not found');
+            const csvContent = await res.text();
+            const csvHeaders: CsvHeaderRows = parseFirstThreeRowsFromCsvString(csvContent);
+            // Insert each course into training_courses and location_training_courses
+            for (let idx = 0; idx < csvHeaders.courseNameRow.length; idx++) {
+              const name = csvHeaders.courseNameRow[idx]?.trim();
+              if (!name) continue;
+              // Insert or upsert course
+              const { data: course, error: courseError } = await supabase
+                .from('training_courses')
+                .upsert([
+                  {
+                    name,
+                    expiry_months: parseInt(csvHeaders.expiryRow[idx]) || 12,
+                    never_expires: csvHeaders.expiryRow[idx]?.toLowerCase().includes('one-off') || false,
+                  },
+                ], { onConflict: 'name' })
+                .select()
+                .single();
+              if (courseError) {
+                console.warn('Error upserting course', name, courseError);
+                continue;
+              }
+              // Insert into location_training_courses
+              await supabase
+                .from('location_training_courses')
+                .upsert([
+                  {
+                    location_id: selectedLocation,
+                    training_course_id: course.id,
+                    display_order: idx + 1,
+                  },
+                ], { onConflict: 'location_id,training_course_id' });
+            }
+            // After import, re-fetch matrix data to show DB-backed courses
+            fetchMatrixData();
+          } catch (e) {
+            console.warn('Could not import CSV headers for location', locationObj.name, e);
+          }
+        }
+      }
+    })();
+  }, [selectedLocation, locations]);
 
-  async function checkAuth() {
+  const checkAuth = async (): Promise<void> => {
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) {
@@ -121,16 +219,16 @@ export default function TrainingMatrixPage() {
       console.error('Auth check error:', error);
       router.push('/login');
     }
-  }
+  };
 
-  function checkTheme() {
+  const checkTheme = (): void => {
     if (typeof window !== 'undefined') {
       const isDarkMode = document.documentElement.classList.contains('dark');
       setIsDark(isDarkMode);
     }
-  }
+  };
 
-  async function fetchLocations() {
+  const fetchLocations = async (): Promise<void> => {
     try {
       if (!hasPermission(userRole, 'ADMIN_DASHBOARD', 'canView')) {
         const { data, error } = await supabase
@@ -293,16 +391,38 @@ export default function TrainingMatrixPage() {
         profiles: { id: s.id, full_name: s.full_name }
       }));
 
-      // Fetch courses with LOCATION-SPECIFIC ordering from location_training_courses table
-      const { data: locationCoursesData, error: locationCoursesError } = await supabase
+      // Fetch courses with LOCATION-SPECIFIC ordering from location_training_courses table.
+      // Some DB environments don't have `training_courses.category`, so fallback to a schema without it.
+      let locationCoursesData: any[] | null = null;
+      let locationCoursesError: any = null;
+
+      const withCategoryRes = await supabase
         .from('location_training_courses')
         .select(`
           training_course_id,
           display_order,
-          training_courses(id, name, expiry_months, never_expires)
+          training_courses(id, name, category, expiry_months, never_expires)
         `)
         .eq('location_id', selectedLocation)
         .order('display_order', { ascending: true, nullsFirst: false });
+
+      locationCoursesData = withCategoryRes.data;
+      locationCoursesError = withCategoryRes.error;
+
+      if (locationCoursesError?.code === '42703') {
+        const withoutCategoryRes = await supabase
+          .from('location_training_courses')
+          .select(`
+            training_course_id,
+            display_order,
+            training_courses(id, name, expiry_months, never_expires)
+          `)
+          .eq('location_id', selectedLocation)
+          .order('display_order', { ascending: true, nullsFirst: false });
+
+        locationCoursesData = withoutCategoryRes.data;
+        locationCoursesError = withoutCategoryRes.error;
+      }
 
       console.log('DEBUG: selectedLocation =', selectedLocation);
       console.log('DEBUG: locationCoursesError =', locationCoursesError);
@@ -314,14 +434,59 @@ export default function TrainingMatrixPage() {
       }
 
       // Map courses with location-specific ordering
-      const filteredCourses = locationCoursesData?.map((lc: any) => ({
-        id: lc.training_courses.id,
-        name: lc.training_courses.name,
-        category: undefined, // category column doesn't exist in table
-        display_order: lc.display_order,
-        expiry_months: lc.training_courses.expiry_months !== null ? lc.training_courses.expiry_months : null,
-        never_expires: lc.training_courses.never_expires || false,
-      })) || [];
+      let filteredCourses = (locationCoursesData || [])
+        .map((lc: any) => {
+          const joinedCourse = Array.isArray(lc.training_courses) ? lc.training_courses[0] : lc.training_courses;
+          if (!joinedCourse) return null;
+
+          return {
+            id: joinedCourse.id,
+            name: joinedCourse.name,
+            category: joinedCourse.category || undefined,
+            display_order: lc.display_order,
+            expiry_months: joinedCourse.expiry_months !== null ? joinedCourse.expiry_months : null,
+            never_expires: joinedCourse.never_expires || false,
+          };
+        })
+        .filter(Boolean) as Course[];
+
+      // Pull category/header labels from CSV top row for this location.
+      // DB schema currently doesn't hold per-location training course category headers.
+      const selectedLocationObj = locations.find(l => l.id === selectedLocation);
+      if (selectedLocationObj?.name) {
+        try {
+          const csvUrl = getCsvUrlForLocation(selectedLocationObj.name);
+          const res = await fetch(csvUrl);
+          if (res.ok) {
+            const csvContent = await res.text();
+            const csvHeaders: CsvHeaderRows = parseFirstThreeRowsFromCsvString(csvContent);
+            const csvCategoryByCourseName = new Map<string, string>();
+
+            for (let idx = 1; idx < csvHeaders.courseNameRow.length; idx++) {
+              const courseName = csvHeaders.courseNameRow[idx]?.trim();
+              if (!courseName) continue;
+              const category = csvHeaders.categoryRow[idx]?.trim() || '';
+              if (category) {
+                csvCategoryByCourseName.set(normalizeCourseName(courseName), category);
+              }
+            }
+
+            filteredCourses = filteredCourses.map(course => ({
+              ...course,
+              category: course.category || csvCategoryByCourseName.get(normalizeCourseName(course.name)) || undefined,
+            }));
+          }
+        } catch (error) {
+          console.warn('Could not load CSV category headers:', error);
+        }
+      }
+
+      // Apply manual per-location overrides after CSV defaults.
+      const categoryOverrides = getCategoryOverrides(selectedLocation);
+      filteredCourses = filteredCourses.map(course => ({
+        ...course,
+        category: categoryOverrides[course.id] ?? course.category,
+      }));
 
       console.log(`Found ${filteredCourses.length} courses for location ${selectedLocation} with location-specific ordering`);
 
@@ -903,7 +1068,7 @@ export default function TrainingMatrixPage() {
       {/* Header with Theme Toggle */}
       <div className={`p-6 ${isDark ? 'bg-gray-800' : 'bg-white'} border-b ${isDark ? 'border-gray-700' : 'border-gray-200'}`}>
         <div className="flex justify-between items-center mb-4">
-          <HomeButton isDark={isDark} />
+          <HomeButton />
           <h1 className={`text-3xl font-bold ${isDark ? 'text-white' : 'text-gray-900'}`}>Training Matrix</h1>
           <div className="flex-shrink-0">
             <ThemeToggle />
@@ -1038,13 +1203,17 @@ export default function TrainingMatrixPage() {
           <div className={`text-center py-12 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
             No data available for this location
           </div>
+        ) : courses.length === 0 ? (
+          <div className={`text-center py-12 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
+            No courses configured for this location yet.
+          </div>
         ) : (
           <div className={`rounded-lg border ${isDark ? 'border-gray-700' : 'border-gray-200'} overflow-hidden shadow-lg`}>
             <div ref={tableScrollContainerRef} className="overflow-x-auto overflow-y-auto h-[calc(100vh-280px)]">
               <table className={`w-full text-sm ${isDark ? 'bg-gray-800' : 'bg-white'}`}>
                 <thead className="sticky top-0 z-20">
                   {/* Category Row */}
-                  <tr style={{ position: 'sticky', top: '0px', zIndex: 20 }} className={`${isDark ? 'bg-gray-600' : 'bg-gray-200'} border-b ${isDark ? 'border-gray-500' : 'border-gray-300'}`}>
+                  <tr style={{ position: 'sticky', top: '0px', zIndex: 20 }} className={`h-8 ${isDark ? 'bg-gray-600' : 'bg-gray-200'} border-b ${isDark ? 'border-gray-500' : 'border-gray-300'}`}>
                     <th className={`px-4 py-1 text-left font-semibold text-xs sticky left-0 z-30 ${isDark ? 'bg-gray-600' : 'bg-gray-200'} min-w-[200px]`}>
                     </th>
                     {courses.map((course) => (
@@ -1062,20 +1231,22 @@ export default function TrainingMatrixPage() {
                             value={editHeaderValue}
                             onChange={(e) => setEditHeaderValue(e.target.value)}
                             onBlur={() => {
+                              const newCategory = editHeaderValue.trim() || undefined;
                               // Update local state immediately for instant feedback
-                              const updatedCourses = courses.map(c => c.id === course.id ? { ...c, category: editHeaderValue.trim() || undefined } : c);
+                              const updatedCourses = courses.map(c => c.id === course.id ? { ...c, category: newCategory } : c);
                               setCourses(updatedCourses);
-                              // Save to database in background (no refresh for header changes)
-                              saveCourseChanges(course.id, { category: editHeaderValue.trim() || undefined }, true);
+                              // Persist category header override per location.
+                              saveCategoryOverride(selectedLocation, course.id, newCategory || '');
                               setEditingHeader(null);
                             }}
                             onKeyDown={(e) => {
                               if (e.key === 'Enter') {
+                                const newCategory = editHeaderValue.trim() || undefined;
                                 // Update local state immediately for instant feedback
-                                const updatedCourses = courses.map(c => c.id === course.id ? { ...c, category: editHeaderValue.trim() || undefined } : c);
+                                const updatedCourses = courses.map(c => c.id === course.id ? { ...c, category: newCategory } : c);
                                 setCourses(updatedCourses);
-                                // Save to database in background (no refresh for header changes)
-                                saveCourseChanges(course.id, { category: editHeaderValue.trim() || undefined }, true);
+                                // Persist category header override per location.
+                                saveCategoryOverride(selectedLocation, course.id, newCategory || '');
                                 setEditingHeader(null);
                               }
                               if (e.key === 'Escape') setEditingHeader(null);
@@ -1090,7 +1261,7 @@ export default function TrainingMatrixPage() {
                     ))}
                   </tr>
                   {/* Course Name Row */}
-                  <tr style={{ position: 'sticky', top: '32px', zIndex: 20 }} className={`${isDark ? 'bg-gray-600' : 'bg-gray-200'} border-b ${isDark ? 'border-gray-500' : 'border-gray-300'}`}>
+                  <tr style={{ position: 'sticky', top: '32px', zIndex: 20 }} className={`h-8 ${isDark ? 'bg-gray-600' : 'bg-gray-200'} border-b ${isDark ? 'border-gray-500' : 'border-gray-300'}`}>
                     <th className={`px-4 py-1 text-left font-semibold text-xs sticky left-0 z-30 ${isDark ? 'bg-gray-600' : 'bg-gray-200'} min-w-[200px]`}>
                       Staff Member
                     </th>
@@ -1140,7 +1311,7 @@ export default function TrainingMatrixPage() {
                         ) : (
                           <div className="flex items-center justify-center gap-1">
                             <span className="text-gray-500">⋮⋮</span>
-                            <span className="break-words text-xs leading-tight">{course.name}</span>
+                            <span className="block max-w-[110px] truncate text-xs leading-tight" title={course.name}>{course.name}</span>
                             <button
                               onClick={(e) => {
                                 e.stopPropagation();
@@ -1157,7 +1328,7 @@ export default function TrainingMatrixPage() {
                     ))}
                   </tr>
                   {/* Expiry Time Row */}
-                  <tr style={{ position: 'sticky', top: '64px', zIndex: 20 }} className={`${isDark ? 'bg-gray-600' : 'bg-gray-200'} border-b ${isDark ? 'border-gray-500' : 'border-gray-300'}`}>
+                  <tr style={{ position: 'sticky', top: '64px', zIndex: 20 }} className={`h-8 ${isDark ? 'bg-gray-600' : 'bg-gray-200'} border-b ${isDark ? 'border-gray-500' : 'border-gray-300'}`}>
                     <th className={`px-4 py-1 text-left font-semibold text-xs sticky left-0 z-30 ${isDark ? 'bg-gray-600' : 'bg-gray-200'} min-w-[200px]`}>
                     </th>
                     {courses.map((course) => (

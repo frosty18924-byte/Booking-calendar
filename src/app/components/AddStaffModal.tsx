@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import UniformButton from './UniformButton';
 import { supabase } from '@/lib/supabase';
 import { hasPermission } from '@/lib/permissions';
 
@@ -114,7 +115,9 @@ export default function AddStaffModal({ onClose, onRefresh }: { onClose: () => v
       if (editingId) {
         // Get the current staff data to check if location changed
         const currentStaff = allStaff.find(s => s.id === editingId);
-        const locationChanged = currentStaff && currentStaff.location !== formData.home_house;
+        // Compare by finding the current location ID from the name
+        const currentLocationId = locations.find(loc => loc.name === currentStaff?.location)?.id;
+        const locationChanged = currentLocationId !== formData.home_house;
         
         // Find the location name from the selected location ID
         const selectedLocation = locations.find(loc => loc.id === formData.home_house);
@@ -474,10 +477,12 @@ Charlie Scheduler,charlie@example.com,Banks House,manager`;
 
   const handleEdit = (staff: any) => {
     setEditingId(staff.id);
+    // Find location ID from location name
+    const locationId = locations.find(loc => loc.name === staff.location)?.id || '';
     setFormData({
       full_name: staff.full_name,
       email: staff.email,
-      home_house: staff.location || '',
+      home_house: locationId,
       role_tier: staff.role_tier || 'staff',
       managed_houses: staff.managed_houses || [],
       password: ''
@@ -557,13 +562,13 @@ Charlie Scheduler,charlie@example.com,Banks House,manager`;
           <h2 style={{ color: isDark ? '#f1f5f9' : '#1e293b' }} className="text-2xl font-black uppercase tracking-tight mb-4">Access Denied</h2>
           <p style={{ color: isDark ? '#94a3b8' : '#64748b' }} className="mb-2">Your Role: <span style={{ color: '#2563eb' }} className="font-bold">{userRole || 'Unknown'}</span></p>
           <p style={{ color: isDark ? '#94a3b8' : '#64748b' }} className="mb-6">You do not have permission to manage staff members.</p>
-          <button 
-            onClick={onClose} 
-            style={{ backgroundColor: '#dc2626' }}
-            className="w-full py-3 text-white font-bold rounded-xl"
+          <UniformButton
+            variant="danger"
+            className="w-full py-3 font-bold rounded-xl"
+            onClick={onClose}
           >
             Close
-          </button>
+          </UniformButton>
         </div>
       </div>
     );
@@ -578,7 +583,15 @@ Charlie Scheduler,charlie@example.com,Banks House,manager`;
             <h2 style={{ color: isDark ? '#f1f5f9' : '#1e293b' }} className="text-2xl font-black uppercase tracking-tight">
               Bulk Upload Staff
             </h2>
-            <button onClick={() => setShowBulkUpload(false)} style={{ color: isDark ? '#94a3b8' : '#64748b' }} className="hover:text-red-500 text-2xl transition-colors">&times;</button>
+            <UniformButton
+              variant="icon"
+              className="hover:text-red-500 text-2xl transition-colors"
+              style={{ color: isDark ? '#94a3b8' : '#64748b' }}
+              onClick={() => setShowBulkUpload(false)}
+              aria-label="Close"
+            >
+              &times;
+            </UniformButton>
           </div>
 
           <div className="space-y-4">
@@ -615,23 +628,23 @@ Charlie Scheduler,charlie@example.com,Banks House,manager`;
               </ul>
             </div>
 
-            <button 
-              onClick={downloadTemplate}
+            <UniformButton
+              variant="primary"
+              className="w-full py-3 font-bold rounded-xl"
               style={{ backgroundColor: '#6366f1' }}
-              onMouseEnter={(e) => e.currentTarget.style.opacity = '0.9'}
-              onMouseLeave={(e) => e.currentTarget.style.opacity = '1'}
-              className="w-full py-3 text-white font-bold rounded-xl transition-all"
+              onClick={downloadTemplate}
             >
               📥 Download Template
-            </button>
+            </UniformButton>
 
-            <button 
-              onClick={() => setShowBulkUpload(false)}
+            <UniformButton
+              variant="secondary"
+              className="w-full py-3 font-bold rounded-xl"
               style={{ backgroundColor: isDark ? '#334155' : '#cbd5e1', color: isDark ? '#f1f5f9' : '#1e293b' }}
-              className="w-full py-3 font-bold rounded-xl transition-all"
+              onClick={() => setShowBulkUpload(false)}
             >
               Close
-            </button>
+            </UniformButton>
           </div>
         </div>
       </div>
@@ -647,16 +660,23 @@ Charlie Scheduler,charlie@example.com,Banks House,manager`;
             {editingId ? 'Edit Staff Member' : 'Add Staff Member'}
           </h2>
           <div className="flex gap-2">
-            <button 
+            <UniformButton
+              variant="secondary"
+              className="px-4 py-2 rounded-lg font-bold text-xs uppercase transition-all hover:scale-105 active:scale-95 shadow-md hover:shadow-lg duration-200"
+              style={{ backgroundColor: '#f59e0b', color: '#fff' }}
               onClick={() => setShowBulkUpload(true)}
-              style={{ backgroundColor: '#f59e0b' }}
-              onMouseEnter={(e) => e.currentTarget.style.opacity = '0.9'}
-              onMouseLeave={(e) => e.currentTarget.style.opacity = '1'}
-              className="text-white px-4 py-2 rounded-lg font-bold text-xs uppercase transition-all hover:scale-105 active:scale-95 shadow-md hover:shadow-lg duration-200"
             >
               📤 Bulk Upload
-            </button>
-            <button onClick={onClose} style={{ color: isDark ? '#94a3b8' : '#64748b' }} className="hover:text-red-500 text-2xl transition-colors hover:scale-125 active:scale-100 duration-200">✕</button>
+            </UniformButton>
+            <UniformButton
+              variant="icon"
+              className="hover:text-red-500 text-2xl transition-colors hover:scale-125 active:scale-100 duration-200"
+              style={{ color: isDark ? '#94a3b8' : '#64748b' }}
+              onClick={onClose}
+              aria-label="Close"
+            >
+              ✕
+            </UniformButton>
           </div>
         </div>
 
@@ -850,26 +870,31 @@ Charlie Scheduler,charlie@example.com,Banks House,manager`;
                             </div>
 
                             <div className="flex gap-2">
-                              <button 
-                                onClick={() => handleEdit(staff)} 
-                                className="flex-1 p-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-[9px] font-bold transition-all hover:scale-105 active:scale-95 shadow-md hover:shadow-lg duration-200"
+                              <UniformButton
+                                variant="primary"
+                                className="flex-1 p-2 text-[9px] font-bold transition-all hover:scale-105 active:scale-95 shadow-md hover:shadow-lg duration-200"
+                                style={{ backgroundColor: '#2563eb', color: '#fff' }}
+                                onClick={() => handleEdit(staff)}
                               >
                                 ✏️ Edit
-                              </button>
+                              </UniformButton>
                               {(staff.role_tier === 'manager' || staff.role_tier === 'scheduler' || staff.role_tier === 'admin') && (
-                                <button 
-                                  onClick={() => handleSendPasswordReset(staff.email, staff.full_name)} 
-                                  className="flex-1 p-2 bg-green-600 hover:bg-green-700 text-white rounded-lg text-[9px] font-bold transition-all hover:scale-105 active:scale-95 shadow-md hover:shadow-lg duration-200"
+                                <UniformButton
+                                  variant="secondary"
+                                  className="flex-1 p-2 text-[9px] font-bold transition-all hover:scale-105 active:scale-95 shadow-md hover:shadow-lg duration-200"
+                                  style={{ backgroundColor: '#10b981', color: '#fff' }}
+                                  onClick={() => handleSendPasswordReset(staff.email, staff.full_name)}
                                 >
                                   🔗 Send Link
-                                </button>
+                                </UniformButton>
                               )}
-                              <button 
-                                onClick={() => handleDeleteStaff(staff.id)} 
-                                className="flex-1 p-2 bg-red-600 hover:bg-red-700 text-white rounded-lg text-[9px] font-bold transition-all hover:scale-105 active:scale-95 shadow-md hover:shadow-lg duration-200"
+                              <UniformButton
+                                variant="danger"
+                                className="flex-1 p-2 text-[9px] font-bold transition-all hover:scale-105 active:scale-95 shadow-md hover:shadow-lg duration-200"
+                                onClick={() => handleDeleteStaff(staff.id)}
                               >
                                 🗑️ Delete
-                              </button>
+                              </UniformButton>
                             </div>
                           </div>
                         );

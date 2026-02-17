@@ -1,36 +1,35 @@
-import fs from 'fs';
-import path from 'path';
-import { parse as csvParse } from 'csv-parse/sync';
+const fs = require('fs');
+const content = fs.readFileSync('/Users/matthewfrost/training-portal/csv-import/Armfield House Training Matrix - Staff Matrix.csv', 'utf-8');
 
-const CSV_FOLDER = '/Users/matthewfrost/training-portal/csv-import';
-const csvFile = 'Armfield House Training Matrix - Staff Matrix.csv';
-const filePath = path.join(CSV_FOLDER, csvFile);
-const csvContent = fs.readFileSync(filePath, 'utf-8');
+const lines = content.split('\n');
 
-const records = csvParse(csvContent, { relax: false });
+const DIVIDER_LABELS = ['team leaders', 'team leader', 'lead support', 'management', 'support workers'];
 
-console.log(`\n📊 CSV ANALYSIS: Armfield House\n`);
-console.log(`Total rows: ${records.length}\n`);
+function isDividerRow(name) {
+  const lower = name.toLowerCase().trim();
+  return DIVIDER_LABELS.some(d => lower === d);
+}
 
-// Find course row (has many columns)
-let courseRowIdx = -1;
-for (let i = 0; i < Math.min(10, records.length); i++) {
-  const colCount = records[i].filter(c => c && c.trim()).length;
-  console.log(`Row ${i}: ${colCount} non-empty cols - First cell: "${(records[i][0] || '').substring(0, 30)}"`);
-  if (colCount > 10) {
-    courseRowIdx = i;
+let staffCount = 0;
+let dividerCount = 0;
+
+for (let i = 40; i < 90 && i < lines.length; i++) {
+  const cells = lines[i].split(',');
+  const first = cells[0] ? cells[0].trim() : '';
+  
+  if (!first) continue;
+  
+  const hasDate = cells.slice(1, 10).some(c => c && c.match(/\d{1,2}\/\d{1,2}\/\d{2,4}/));
+  
+  if (isDividerRow(first)) {
+    console.log('DIVIDER at line', i+1, ':', first);
+    dividerCount++;
+  } else if (hasDate || first.split(' ').length >= 2) {
+    staffCount++;
   }
 }
 
-console.log(`\n📌 Course row: ${courseRowIdx}`);
-const courseRow = records[courseRowIdx];
-console.log(`Columns 0-10: ${courseRow.slice(0, 11).map((c, i) => `${i}:"${(c || '').trim().substring(0, 15)}"`).join(' | ')}`);
-
-console.log(`\n👥 Staff rows (starting from row ${courseRowIdx + 3}):`);
-for (let i = courseRowIdx + 3; i < Math.min(courseRowIdx + 8, records.length); i++) {
-  const staffName = (records[i][0] || '').trim();
-  const dataCount = records[i].slice(1).filter(c => c && c.trim()).length;
-  console.log(`  Row ${i}: "${staffName}" (${dataCount} data cells)`);
-}
+console.log('\nFound', dividerCount, 'dividers');
+console.log('Found', staffCount, 'staff rows');
 
 console.log('\n');

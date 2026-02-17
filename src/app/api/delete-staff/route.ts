@@ -36,12 +36,12 @@ export async function POST(request: Request) {
     }
 
     // For roster-only staff (no auth account), just soft delete the profile
-    console.log('Attempting to soft delete profile for:', staffId);
+    console.log('Attempting to delete staff member:', staffId, email);
     
-    // First verify the profile exists
+    // First verify the profile exists and get its auth status
     const { data: profileExists } = await supabaseAdmin
       .from('profiles')
-      .select('id')
+      .select('id, role_tier')
       .eq('id', staffId);
     
     console.log('Profile exists:', profileExists && profileExists.length > 0);
@@ -56,8 +56,41 @@ export async function POST(request: Request) {
       );
     }
 
-    // Soft delete: anonymize and mark as deleted for historical analytics
-    console.log('Attempting to soft delete profile with id:', staffId);
+    // Delete the auth user account if it exists (for manager/scheduler/admin users)
+    const profile = profileExists[0];
+    if (profile.role_tier !== 'staff') {
+      console.log('Attempting to delete auth user for:', email);
+      try {
+        const { data: authUsersData, error: authError } = await supabaseAdmin.auth.admin.listUsers({
+          page: 1,
+          perPage: 1000,
+        });
+
+        if (authError) {
+          console.log('Unable to list auth users:', authError.message);
+        } else {
+          const authUser = authUsersData.users.find(
+            user => user.email?.toLowerCase() === email.toLowerCase()
+          );
+
+          if (!authUser) {
+            console.log('Auth user not found (might be staff member with no login)');
+          } else {
+            const { error: deleteAuthError } = await supabaseAdmin.auth.admin.deleteUser(authUser.id);
+            if (deleteAuthError) {
+              console.error('Error deleting auth user:', deleteAuthError);
+            } else {
+              console.log('Auth user deleted successfully');
+            }
+          }
+        }
+      } catch (authErr) {
+        console.error('Error during auth deletion:', authErr);
+      }
+    }
+
+    // Soft delete the profile: anonymize and mark as deleted for historical analytics
+    console.log('Soft deleting profile with id:', staffId);
     
     const { error: profileError } = await supabaseAdmin
       .from('profiles')

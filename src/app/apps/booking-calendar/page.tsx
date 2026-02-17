@@ -22,14 +22,14 @@ export default function BookingCalendarPage() {
     return () => window.removeEventListener('themeChange', handleThemeChange);
   }, []);
 
-  function checkTheme() {
+  const checkTheme = (): void => {
     if (typeof window !== 'undefined') {
       const isDarkMode = document.documentElement.classList.contains('dark');
       setIsDark(isDarkMode);
     }
   }
 
-  async function checkAuth() {
+  const checkAuth = async (): Promise<void> => {
     try {
       const {
         data: { user },
@@ -46,7 +46,7 @@ export default function BookingCalendarPage() {
 
   return (
     <div className={`min-h-screen transition-colors duration-500 ${isDark ? 'dark' : ''}`}>
-      <HomeButton isDark={isDark} />
+      <HomeButton />
       <div className="relative">
         <CalendarPage />
       </div>

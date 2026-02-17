@@ -44,7 +44,7 @@ async function setCourseDisplayOrderByLocation() {
 
   // Load reference data
   const { data: locations } = await supabase.from('locations').select('id, name');
-  const { data: courses } = await supabase.from('courses').select('id, name');
+  const { data: courses } = await supabase.from('training_courses').select('id, name, careskills_name');
 
   const locationMap = {};
   locations?.forEach(loc => {
@@ -53,7 +53,10 @@ async function setCourseDisplayOrderByLocation() {
 
   const courseMap = {};
   courses?.forEach(course => {
-    courseMap[course.name] = course.id;
+    courseMap[course.name.trim().toLowerCase()] = course.id;
+    if (course.careskills_name) {
+      courseMap[course.careskills_name.trim().toLowerCase()] = course.id;
+    }
   });
 
   // Process each CSV to extract course order
@@ -74,26 +77,29 @@ async function setCourseDisplayOrderByLocation() {
       const filePath = path.join(CSV_FOLDER, csvFile);
       const csvContent = fs.readFileSync(filePath, 'utf-8');
       
-      const records = csvParse(csvContent, { relax: false });
+      const records = csvParse(csvContent, { relax_column_count: true });
 
-      // Find "Staff Name" row (row 2, index 2)
-      let staffNameRowIndex = 2;
-      let courseNames = [];
+      // Find "Staff Name" row (header row)
+      const staffNameRowIndex = records.findIndex(row => {
+        const firstCell = String(row?.[0] || '').trim().toLowerCase();
+        return firstCell.includes('staff name') || firstCell.includes("learner's name") || firstCell === 'learner name';
+      });
 
-      if (records[staffNameRowIndex]?.[0] === 'Staff Name') {
-        courseNames = records[staffNameRowIndex].slice(1)
-          .map(c => (c || '').trim())
-          .filter(c => c && c.length > 0);
-      } else {
+      if (staffNameRowIndex === -1) {
         console.log(`⚠️ Unexpected structure in ${locationName}`);
         continue;
       }
 
+      const courseNames = records[staffNameRowIndex].slice(1)
+        .map(c => (c || '').toString().trim())
+        .filter(c => c && c.length > 0);
+
       // Store the course order for this location
       locationCourseOrder[locationId] = {};
       courseNames.forEach((courseName, index) => {
-        if (courseMap[courseName]) {
-          locationCourseOrder[locationId][courseMap[courseName]] = index + 1;
+        const courseId = courseMap[courseName.toLowerCase()];
+        if (courseId) {
+          locationCourseOrder[locationId][courseId] = index + 1;
         }
       });
 
@@ -104,8 +110,8 @@ async function setCourseDisplayOrderByLocation() {
     }
   }
 
-  // Now update location_courses with display_order for each location
-  console.log('\nUpdating location_courses with location-specific display orders...\n');
+  // Now update location_training_courses with display_order for each location
+  console.log('\nUpdating location_training_courses with location-specific display orders...\n');
 
   for (const locationId of Object.keys(locationCourseOrder)) {
     const courseOrders = locationCourseOrder[locationId];
@@ -114,10 +120,12 @@ async function setCourseDisplayOrderByLocation() {
       const displayOrder = courseOrders[courseId];
       
       const { error } = await supabase
-        .from('location_courses')
-        .update({ display_order: displayOrder })
-        .eq('location_id', locationId)
-        .eq('course_id', courseId);
+        .from('location_training_courses')
+        .upsert({
+          location_id: locationId,
+          training_course_id: courseId,
+          display_order: displayOrder
+        }, { onConflict: 'location_id,training_course_id' });
 
       if (error) {
         console.error(`Error updating location ${locationId}, course ${courseId}:`, error.message);

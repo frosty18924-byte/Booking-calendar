@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
+import Icon from './Icon';
 
 export default function LocationManagerModal({ onClose }: { onClose: () => void }) {
   const [locations, setLocations] = useState<any[]>([]);
@@ -170,7 +171,9 @@ export default function LocationManagerModal({ onClose }: { onClose: () => void 
       <div style={{ backgroundColor: isDark ? '#1e293b' : '#ffffff', borderColor: isDark ? '#334155' : '#cbd5e1' }} className="rounded-3xl p-8 w-full max-w-2xl shadow-2xl border transition-colors duration-300">
         <div className="flex justify-between items-center mb-6">
           <h2 style={{ color: isDark ? '#f1f5f9' : '#1e293b' }} className="text-2xl font-black uppercase tracking-tight">Manage Locations & Venues</h2>
-          <button onClick={onClose} style={{ color: isDark ? '#94a3b8' : '#64748b' }} className="hover:text-red-500 text-2xl transition-colors">&times;</button>
+          <button onClick={onClose} style={{ color: isDark ? '#94a3b8' : '#64748b' }} className="hover:text-red-500 text-2xl transition-colors" aria-label="Close">
+            <Icon name="close" className="w-6 h-6" />
+          </button>
         </div>
 
         {/* TAB NAVIGATION */}

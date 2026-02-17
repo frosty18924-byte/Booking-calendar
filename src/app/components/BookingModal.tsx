@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
 import { hasPermission } from '@/lib/permissions';
+import UniformButton from './UniformButton';
 
 interface BookingModalProps {
   event: any;
@@ -307,17 +308,35 @@ export default function BookingModal({ event, onClose, onRefresh, onOpenChecklis
             <h2 style={{ color: isDark ? '#f1f5f9' : '#1e293b' }} className="text-xl font-black uppercase">{event.courses?.name}</h2>
             <p style={{ color: isDark ? '#94a3b8' : '#64748b' }} className="text-[10px] font-bold uppercase">{event.event_date}</p>
           </div>
-          <button onClick={onClose} className="text-2xl font-light" style={{ color: isDark ? '#94a3b8' : '#64748b' }}>&times;</button>
+          <UniformButton
+            variant="icon"
+            className="text-2xl font-light"
+            style={{ color: isDark ? '#94a3b8' : '#64748b' }}
+            onClick={onClose}
+            aria-label="Close"
+          >
+            &times;
+          </UniformButton>
         </div>
 
         {/* Tabs */}
         <div style={{ backgroundColor: isDark ? '#1e293b' : '#f1f5f9' }} className="flex p-1.5 m-6 rounded-2xl gap-1.5">
-          <button onClick={() => setActiveTab('booking')} style={{ backgroundColor: activeTab === 'booking' ? '#2563eb' : 'transparent', color: activeTab === 'booking' ? '#ffffff' : (isDark ? '#94a3b8' : '#64748b') }} className="flex-1 py-2 text-xs font-black uppercase rounded-xl transition-all">
+          <UniformButton
+            variant={activeTab === 'booking' ? 'primary' : 'secondary'}
+            className={`flex-1 py-2 text-xs font-black uppercase rounded-xl transition-all ${activeTab === 'booking' ? '' : ''}`}
+            style={{ backgroundColor: activeTab === 'booking' ? '#2563eb' : 'transparent', color: activeTab === 'booking' ? '#ffffff' : (isDark ? '#94a3b8' : '#64748b') }}
+            onClick={() => setActiveTab('booking')}
+          >
             Add Staff ({staff.length})
-          </button>
-          <button onClick={() => setActiveTab('roster')} style={{ backgroundColor: activeTab === 'roster' ? '#2563eb' : 'transparent', color: activeTab === 'roster' ? '#ffffff' : (isDark ? '#94a3b8' : '#64748b') }} className="flex-1 py-2 text-xs font-black uppercase rounded-xl transition-all">
+          </UniformButton>
+          <UniformButton
+            variant={activeTab === 'roster' ? 'primary' : 'secondary'}
+            className={`flex-1 py-2 text-xs font-black uppercase rounded-xl transition-all ${activeTab === 'roster' ? '' : ''}`}
+            style={{ backgroundColor: activeTab === 'roster' ? '#2563eb' : 'transparent', color: activeTab === 'roster' ? '#ffffff' : (isDark ? '#94a3b8' : '#64748b') }}
+            onClick={() => setActiveTab('roster')}
+          >
             Roster ({roster.length})
-          </button>
+          </UniformButton>
         </div>
 
         <div className="px-8 pb-8 flex-1 overflow-y-auto">

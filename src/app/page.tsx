@@ -1,8 +1,11 @@
 'use client';
+
 import { useState, useEffect } from 'react';
+import Icon from '@/app/components/Icon';
 import { useRouter } from 'next/navigation';
 import { format, startOfMonth, endOfMonth, startOfWeek, endOfWeek, eachDayOfInterval, isSameDay, isSameMonth, subMonths, addMonths } from 'date-fns';
 import ScheduleModal from '@/app/components/ScheduleModal';
+import UniformButton from '@/app/components/UniformButton';
 import BookingModal from '@/app/components/BookingModal';
 import BookingChecklistModal from '@/app/components/BookingChecklistModal';
 import ThemeToggle from '@/app/components/ThemeToggle';
@@ -218,19 +221,43 @@ export default function CalendarPage() {
               </select>
 
               <div className="flex items-center gap-1 md:gap-6">
-                <button onClick={() => setCurrentMonth(subMonths(currentMonth, 1))} className="cursor-pointer text-lg md:text-2xl font-bold hover:scale-150 active:scale-100 transition-transform duration-200">⬅️</button>
+                <UniformButton
+                  variant="icon"
+                  className="text-lg md:text-2xl font-bold hover:scale-150 active:scale-100 transition-transform duration-200"
+                  onClick={() => setCurrentMonth(subMonths(currentMonth, 1))}
+                  aria-label="Previous Month"
+                >
+                  <Icon name="back" className="w-6 h-6" />
+                </UniformButton>
                 <h2 style={{ color: isDark ? '#f1f5f9' : '#1e293b' }} className="text-xs md:text-2xl font-black uppercase min-w-[80px] md:min-w-[200px] text-center whitespace-nowrap">{format(currentMonth, 'MMM yyyy')}</h2>
-                <button onClick={() => setCurrentMonth(addMonths(currentMonth, 1))} className="cursor-pointer text-lg md:text-2xl font-bold hover:scale-150 active:scale-100 transition-transform duration-200">➡️</button>
-                <button onClick={() => setCurrentMonth(new Date())} className="cursor-pointer bg-slate-500 hover:bg-slate-600 text-white px-1 md:px-3 py-1 md:py-2 rounded-lg font-bold text-[7px] md:text-[10px] uppercase transition-all hover:shadow-md active:scale-95 duration-200" title="Go back to today">
+                <UniformButton
+                  variant="icon"
+                  className="text-lg md:text-2xl font-bold hover:scale-150 active:scale-100 transition-transform duration-200"
+                  onClick={() => setCurrentMonth(addMonths(currentMonth, 1))}
+                  aria-label="Next Month"
+                >
+                  <Icon name="chevron-right" className="w-6 h-6" />
+                </UniformButton>
+                
+                <UniformButton
+                  variant="secondary"
+                  className="px-1 md:px-3 py-1 md:py-2 rounded-lg font-bold text-[7px] md:text-[10px] uppercase transition-all hover:shadow-md active:scale-95 duration-200"
+                  onClick={() => setCurrentMonth(new Date())}
+                  title="Go back to today"
+                >
                   📅 Today
-                </button>
+                </UniformButton>
               </div>
 
               <div className="flex justify-end">
                 {canSchedule && (
-                  <button onClick={() => setShowSchedule(true)} className="cursor-pointer bg-blue-600 text-white px-2 md:px-6 py-1 md:py-3 rounded-lg md:rounded-2xl font-black text-[7px] md:text-[10px] uppercase shadow-xl hover:bg-blue-700 hover:shadow-2xl hover:scale-105 active:scale-95 transition-all duration-200">
+                  <UniformButton
+                    variant="primary"
+                    className="px-2 md:px-6 py-1 md:py-3 rounded-lg md:rounded-2xl font-black text-[7px] md:text-[10px] uppercase shadow-xl hover:shadow-2xl hover:scale-105 active:scale-95 transition-all duration-200"
+                    onClick={() => setShowSchedule(true)}
+                  >
                     ➕ Schedule
-                  </button>
+                  </UniformButton>
                 )}
               </div>
             </div>

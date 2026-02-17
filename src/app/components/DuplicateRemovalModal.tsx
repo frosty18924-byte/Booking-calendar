@@ -1,6 +1,8 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import Icon from './Icon';
+import UniformButton from './UniformButton';
 import { supabase } from '@/lib/supabase';
 
 interface DuplicateStaff {
@@ -276,8 +278,9 @@ export default function DuplicateRemovalModal({ onClose }: { onClose: () => void
             onClick={onClose}
             style={{ color: isDark ? '#94a3b8' : '#64748b' }}
             className="hover:text-red-500 text-2xl transition-colors"
+            aria-label="Close"
           >
-            &times;
+            <Icon name="close" className="w-6 h-6" />
           </button>
         </div>
 
@@ -454,25 +457,25 @@ export default function DuplicateRemovalModal({ onClose }: { onClose: () => void
           }}
           className="border-t p-6 flex gap-3 justify-end"
         >
-          <button
+          <UniformButton
+            variant="secondary"
             onClick={onClose}
-            style={{ backgroundColor: isDark ? '#334155' : '#e2e8f0' }}
             className="px-6 py-2 rounded-xl font-bold transition-all hover:scale-105 active:scale-95"
+            style={{ backgroundColor: isDark ? '#334155' : '#e2e8f0' }}
           >
             Cancel
-          </button>
-          <button
+          </UniformButton>
+          <UniformButton
+            variant="danger"
             onClick={() =>
               activeTab === 'staff' ? removeSelectedStaff() : removeSelectedDividers()
             }
             disabled={selectedForRemoval.size === 0 || removalInProgress}
-            style={{
-              backgroundColor: selectedForRemoval.size === 0 ? '#9ca3af' : '#ef4444',
-            }}
             className="px-6 py-2 rounded-xl font-bold text-white transition-all hover:scale-105 active:scale-95 disabled:cursor-not-allowed"
+            style={{ backgroundColor: selectedForRemoval.size === 0 ? '#9ca3af' : '#ef4444' }}
           >
             {removalInProgress ? '🔄 Removing...' : `🗑️  Remove ${selectedForRemoval.size}`}
-          </button>
+          </UniformButton>
         </div>
       </div>
     </div>

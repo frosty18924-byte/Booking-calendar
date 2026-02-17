@@ -1,34 +1,42 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import Icon from './Icon';
+import type { IconName } from './Icon';
 import { usePathname, useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 
 export default function AppSidebar({ isDark }: { isDark: boolean }) {
-  const pathname = usePathname();
+  const pathname = usePathname() ?? '';
   const router = useRouter();
   const [showMobileSidebar, setShowMobileSidebar] = useState(false);
   const [isCollapsed, setIsCollapsed] = useState(true);
 
-  const apps = [
+  const apps: Array<{
+    id: string;
+    label: string;
+    icon: IconName;
+    path: string;
+    description: string;
+  }> = [
     {
       id: 'dashboard',
       label: 'Dashboard',
-      icon: '🏠',
+      icon: 'home',
       path: '/dashboard',
       description: 'Back to app selection',
     },
     {
       id: 'expiry-checker',
       label: 'Course Expiry',
-      icon: '📅',
+      icon: 'chevron-right',
       path: '/apps/expiry-checker',
       description: 'Track course certifications',
     },
     {
       id: 'booking-calendar',
       label: 'Booking Calendar',
-      icon: '📆',
+      icon: 'chevron-right',
       path: '/apps/booking-calendar',
       description: 'Schedule & manage bookings',
     },
@@ -90,18 +98,16 @@ export default function AppSidebar({ isDark }: { isDark: boolean }) {
                 isDark ? 'text-gray-400 hover:text-gray-200' : 'text-gray-600 hover:text-gray-900'
               }`}
               title={isCollapsed ? 'Expand' : 'Collapse'}
+              aria-label={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
             >
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={isCollapsed ? 'M9 5l7 7-7 7' : 'M15 19l-7-7 7-7'} />
-              </svg>
+              <Icon name="chevron-right" className={`w-5 h-5 transition-transform duration-200 ${isCollapsed ? '' : 'rotate-180'}`} />
             </button>
             <button
               onClick={() => setShowMobileSidebar(false)}
               className="p-1 rounded lg:hidden"
+              aria-label="Close sidebar"
             >
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-              </svg>
+              <Icon name="close" className="w-5 h-5" />
             </button>
           </div>
         </div>
@@ -126,7 +132,7 @@ export default function AppSidebar({ isDark }: { isDark: boolean }) {
                   : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
               }`}
             >
-              <span className="text-xl">{app.icon}</span>
+              <span className="text-xl"><Icon name={app.icon} className="w-6 h-6" /></span>
               {!isCollapsed && (
                 <div className="text-left flex-1">
                   <p className="font-semibold text-sm">{app.label}</p>
@@ -148,7 +154,7 @@ export default function AppSidebar({ isDark }: { isDark: boolean }) {
             }`}
             title={isCollapsed ? 'Sign Out' : ''}
           >
-            <span className="text-xl">🚪</span>
+            <span className="text-xl"><Icon name="logout" className="w-6 h-6" /></span>
             {!isCollapsed && <span className="font-semibold text-sm">Sign Out</span>}
           </button>
         </div>
@@ -162,10 +168,9 @@ export default function AppSidebar({ isDark }: { isDark: boolean }) {
             isDark ? 'bg-blue-600 hover:bg-blue-700' : 'bg-blue-600 hover:bg-blue-700'
           } text-white`}
           title="Open sidebar"
+          aria-label="Open sidebar"
         >
-          <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
-          </svg>
+          <Icon name="menu" className="w-6 h-6" />
         </button>
       )}
     </>

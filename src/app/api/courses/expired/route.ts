@@ -39,7 +39,7 @@ export async function GET(request: NextRequest) {
         status,
         completed_at_location_id,
         profiles(full_name),
-        courses(name, category),
+        training_courses(name),
         locations(name)
       `)
       .lt('expiry_date', todayStr); // expiry_date is before today
@@ -63,7 +63,7 @@ export async function GET(request: NextRequest) {
     const formattedData: CourseData[] = (expiredCourses || [])
       .filter(record => record.expiry_date) // Only include records with expiry dates
       .map((record: any) => {
-        const courses = record.courses as { name?: string; category?: string } | null;
+        const course = record.training_courses as { name?: string } | null;
         const profiles = record.profiles as { full_name?: string } | null;
         const locations = record.locations as { name?: string } | null;
         const expiryDate = new Date(record.expiry_date);
@@ -71,10 +71,10 @@ export async function GET(request: NextRequest) {
         
         return {
           name: profiles?.full_name || 'Unknown',
-          course: courses?.name || 'Unknown Course',
+          course: course?.name || 'Unknown Course',
           expiry: record.expiry_date,
           location: locations?.name || 'Unknown Location',
-          delivery: courses?.category || 'Standard',
+          delivery: 'Standard',
           expiredSince: `${daysExpired} days ago`,
         };
       });

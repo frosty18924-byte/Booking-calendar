@@ -1,9 +1,10 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import ThemeToggle from '@/app/components/ThemeToggle';
+import Icon from '@/app/components/Icon';
 
 export default function AnalyticsDashboard() {
   const router = useRouter();
@@ -39,13 +40,13 @@ export default function AnalyticsDashboard() {
     return () => window.removeEventListener('themeChange', handleThemeChange);
   }, []);
 
-  function checkTheme() {
+  const checkTheme = (): void => {
     if (typeof window !== 'undefined') {
       const theme = localStorage.getItem('theme');
       const isDarkMode = theme === 'dark' || (!theme && window.matchMedia('(prefers-color-scheme: dark)').matches);
       setIsDark(isDarkMode);
     }
-  }
+  };
 
   async function checkAuth() {
     try {
@@ -323,8 +324,9 @@ export default function AnalyticsDashboard() {
             onClick={() => router.push('/')}
             style={{ color: isDark ? '#94a3b8' : '#475569' }}
             className="p-2 hover:opacity-80 rounded-lg font-bold text-2xl hover:scale-125 active:scale-100 transition-transform duration-200"
+            aria-label="Back"
           >
-            ⬅️
+            <Icon name="back" className="w-6 h-6" />
           </button>
           <h1 style={{ color: isDark ? '#f1f5f9' : '#1e293b' }} className="text-3xl font-black uppercase tracking-tighter">Intelligence Hub</h1>
           <ThemeToggle />

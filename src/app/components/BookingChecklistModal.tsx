@@ -2,6 +2,8 @@
 
 import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
+import UniformButton from './UniformButton';
+import Icon from './Icon';
 
 const CHECKLIST_ITEMS = [
   'Invoice Number',
@@ -234,7 +236,15 @@ export default function BookingChecklistModal({
         <div style={{ backgroundColor: isDark ? '#1e293b' : '#ffffff', borderColor: isDark ? '#334155' : '#cbd5e1' }} className="rounded-3xl p-8 w-full max-w-2xl shadow-2xl border transition-colors duration-300">
           <div className="flex justify-between items-center mb-6">
             <h2 style={{ color: '#ef4444' }} className="text-2xl font-black uppercase tracking-tight">Error Loading Checklist</h2>
-            <button onClick={onClose} style={{ color: isDark ? '#94a3b8' : '#64748b' }} className="hover:text-red-500 text-2xl transition-colors">&times;</button>
+            <UniformButton
+              variant="icon"
+              className="hover:text-red-500 text-2xl transition-colors"
+              style={{ color: isDark ? '#94a3b8' : '#64748b' }}
+              onClick={onClose}
+              aria-label="Close"
+            >
+              <Icon name="close" className="w-6 h-6" />
+            </UniformButton>
           </div>
           <div style={{ backgroundColor: isDark ? '#0f172a' : '#f1f5f9', borderColor: '#ef4444' }} className="p-4 border-l-4 rounded">
             <p style={{ color: isDark ? '#fca5a5' : '#dc2626' }} className="font-semibold">{error}</p>
@@ -255,7 +265,15 @@ export default function BookingChecklistModal({
               {checklist.length === 0 ? 'Loading...' : `${completedCount} of ${totalCount} completed`}
             </p>
           </div>
-          <button onClick={onClose} style={{ color: isDark ? '#94a3b8' : '#64748b' }} className="hover:text-red-500 text-2xl transition-colors">&times;</button>
+          <UniformButton
+            variant="icon"
+            className="hover:text-red-500 text-2xl transition-colors"
+            style={{ color: isDark ? '#94a3b8' : '#64748b' }}
+            onClick={onClose}
+            aria-label="Close"
+          >
+            <Icon name="close" className="w-6 h-6" />
+          </UniformButton>
         </div>
 
         {checklist.length === 0 ? (

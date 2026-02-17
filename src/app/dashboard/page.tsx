@@ -1,12 +1,13 @@
 'use client';
 
-import { useRouter } from 'next/navigation';
 import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
+import { hasPermission } from '@/lib/permissions';
 import ThemeToggle from '@/app/components/ThemeToggle';
 import AddStaffModal from '@/app/components/AddStaffModal';
 import DuplicateRemovalModal from '@/app/components/DuplicateRemovalModal';
-import { hasPermission } from '@/lib/permissions';
+import AtlasImportModal from '@/app/components/AtlasImportModal';
 
 export default function DashboardPage() {
   const router = useRouter();
@@ -15,6 +16,7 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(true);
   const [showAddStaffModal, setShowAddStaffModal] = useState(false);
   const [showDuplicateRemoval, setShowDuplicateRemoval] = useState(false);
+  const [showAtlasModal, setShowAtlasModal] = useState(false);
   const [userRole, setUserRole] = useState<string | null>(null);
 
   useEffect(() => {
@@ -31,14 +33,14 @@ export default function DashboardPage() {
     return () => window.removeEventListener('themeChange', handleThemeChange);
   }, []);
 
-  function checkTheme() {
+  const checkTheme = (): void => {
     if (typeof window !== 'undefined') {
       const isDarkMode = document.documentElement.classList.contains('dark');
       setIsDark(isDarkMode);
     }
-  }
+  };
 
-  async function checkAuth() {
+  const checkAuth = async (): Promise<void> => {
     try {
       const {
         data: { user: authUser },
@@ -156,6 +158,30 @@ export default function DashboardPage() {
                   Remove duplicate staff entries and divider records
                 </p>
                 <div className="mt-6 flex items-center text-red-600 dark:text-red-400 group-hover:translate-x-1 transition-transform">
+                  <span className="font-semibold">Open</span>
+                  <svg className="w-5 h-5 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                  </svg>
+                </div>
+              </div>
+
+              {/* Atlas Sync Card */}
+              <div
+                onClick={() => setShowAtlasModal(true)}
+                className={`group cursor-pointer p-8 rounded-xl border-2 transition-all duration-300 hover:shadow-lg ${
+                  isDark
+                    ? 'bg-gray-800 border-gray-700 hover:border-blue-500 hover:bg-gray-750'
+                    : 'bg-white border-gray-200 hover:border-blue-500 hover:bg-blue-50'
+                }`}
+              >
+                <div className="text-5xl mb-4">📥</div>
+                <h3 className={`text-2xl font-bold mb-2 transition-colors duration-300 ${isDark ? 'text-white' : 'text-gray-900'}`}>
+                  Atlas Sync
+                </h3>
+                <p className={`transition-colors duration-300 ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
+                  Import Careskills completion dates from Atlas Excel files
+                </p>
+                <div className="mt-6 flex items-center text-blue-600 dark:text-blue-400 group-hover:translate-x-1 transition-transform">
                   <span className="font-semibold">Open</span>
                   <svg className="w-5 h-5 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
@@ -281,6 +307,29 @@ export default function DashboardPage() {
           </div>
         </div>
       </div>
+
+      {/* Atlas Import Modal */}
+      {showAtlasModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className={`max-w-2xl w-full max-h-[90vh] overflow-y-auto rounded-lg ${isDark ? 'bg-gray-800' : 'bg-white'}`}>
+            <AtlasImportModal 
+              onClose={() => setShowAtlasModal(false)}
+            />
+            <div className="p-6 border-t" style={{ borderColor: isDark ? '#374151' : '#e5e7eb' }}>
+              <button
+                onClick={() => setShowAtlasModal(false)}
+                className={`w-full py-3 rounded-lg font-semibold transition-colors duration-300 ${
+                  isDark
+                    ? 'bg-gray-700 hover:bg-gray-600 text-white'
+                    : 'bg-gray-200 hover:bg-gray-300 text-gray-900'
+                }`}
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

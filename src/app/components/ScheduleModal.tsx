@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
+import Icon from './Icon';
 
 export default function ScheduleModal({ onClose, onRefresh }: { onClose: () => void, onRefresh: () => void }) {
   const [courses, setCourses] = useState<any[]>([]);
@@ -21,8 +22,24 @@ export default function ScheduleModal({ onClose, onRefresh }: { onClose: () => v
     checkTheme();
     async function fetchData() {
       // Promise.all ensures both tables load before rendering
+      const catalogNames = [
+        'Team Teach Level 2',
+        'Team Teach Refresher',
+        'Emergency first aid at work',
+        'Fire Safety',
+        'Medication Management',
+        'Edpilepsy awareness',
+        'Essential Autism',
+        'Communication',
+        'RSHE',
+        'Team Teach Advanced',
+        'Oral Health',
+        'Safeguaring adults',
+        'Advance Medication and Audits',
+        'STAR'
+      ];
       const [coursesRes, venuesRes] = await Promise.all([
-        supabase.from('courses').select('*').order('name'),
+        supabase.from('courses').select('*').in('name', catalogNames).order('name'),
         supabase.from('venues').select('*').order('name')
       ]);
       setCourses(coursesRes.data || []);
@@ -102,7 +119,9 @@ export default function ScheduleModal({ onClose, onRefresh }: { onClose: () => v
         
         <div style={{ backgroundColor: isDark ? '#0f172a' : '#f1f5f9', borderColor: isDark ? '#334155' : '#e2e8f0' }} className="p-8 border-b flex justify-between items-center">
           <h2 style={{ color: isDark ? '#f1f5f9' : '#1e293b' }} className="text-xl font-black uppercase tracking-tight">Schedule Session</h2>
-          <button onClick={onClose} style={{ color: isDark ? '#94a3b8' : '#64748b' }} className="hover:text-red-500 text-3xl font-light transition-colors">&times;</button>
+          <button onClick={onClose} style={{ color: isDark ? '#94a3b8' : '#64748b' }} className="hover:text-red-500 text-3xl font-light transition-colors" aria-label="Close">
+            <Icon name="close" className="w-6 h-6" />
+          </button>
         </div>
 
         <form onSubmit={handleSubmit} className="p-8 space-y-6">

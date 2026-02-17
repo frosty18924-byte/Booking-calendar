@@ -2,10 +2,10 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import { supabase } from '@/lib/supabase';
 import ThemeToggle from '@/app/components/ThemeToggle';
 import CourseManagerModal from '@/app/components/CourseManagerModal';
 import LocationManagerModal from '@/app/components/LocationManagerModal';
-import { supabase } from '@/lib/supabase';
 
 export default function AdminPage() {
   const router = useRouter();
@@ -39,15 +39,15 @@ export default function AdminPage() {
     return () => window.removeEventListener('themeChange', handleThemeChange);
   }, []);
 
-  function checkTheme() {
+  const checkTheme = (): void => {
     if (typeof window !== 'undefined') {
       const theme = localStorage.getItem('theme');
       const isDarkMode = theme === 'dark' || (!theme && window.matchMedia('(prefers-color-scheme: dark)').matches);
       setIsDark(isDarkMode);
     }
-  }
+  };
 
-  async function checkAuth() {
+  const checkAuth = async (): Promise<void> => {
     try {
       const { data: { user: currentUser } } = await supabase.auth.getUser();
       if (!currentUser) {

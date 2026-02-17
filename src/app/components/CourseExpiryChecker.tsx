@@ -1,6 +1,10 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import Icon from './Icon';
+import UniformButton from './UniformButton';
+
+// Import the useMatrixHeaders hook (already defined at the bottom of this file)
 import { supabase } from '@/lib/supabase';
 
 interface CourseData {
@@ -27,6 +31,8 @@ export default function CourseExpiryChecker({ isDark }: { isDark: boolean }) {
   const [user, setUser] = useState<any>(null);
   const [selectedLocation, setSelectedLocation] = useState<string>('');
   const [locations, setLocations] = useState<Array<{ id: string; name: string }>>([]);
+  // Get matrix headers for the selected location (must be after selectedLocation is defined)
+  const matrixHeaders = useMatrixHeaders(selectedLocation);
 
   // Filters
   const [filters, setFilters] = useState({
@@ -54,7 +60,7 @@ export default function CourseExpiryChecker({ isDark }: { isDark: boolean }) {
     applyFilters();
   }, [allData, filters]);
 
-  async function checkAuth() {
+  const checkAuth = async (): Promise<void> => {
     try {
       const {
         data: { user: authUser },
@@ -248,7 +254,7 @@ export default function CourseExpiryChecker({ isDark }: { isDark: boolean }) {
   }
 
   function applyFilters() {
-    let filtered = allData;
+    let filtered = [...allData];
 
     if (filters.name) {
       filtered = filtered.filter(d => d.name === filters.name);
@@ -283,8 +289,9 @@ export default function CourseExpiryChecker({ isDark }: { isDark: boolean }) {
       {/* Header */}
       <div className={`border-b transition-colors duration-300 ${isDark ? 'border-gray-800 bg-gray-800' : 'border-gray-200 bg-white'}`}>
         <div className="px-4 sm:px-6 lg:px-8 py-10 max-w-7xl mx-auto text-center">
-          <h1 className={`text-4xl font-bold transition-colors duration-300 ${isDark ? 'text-white' : 'text-gray-900'}`}>
-            📅 Course Expiry Checker
+          <h1 className={`text-4xl font-bold flex items-center justify-center gap-3 transition-colors duration-300 ${isDark ? 'text-white' : 'text-gray-900'}`}>
+            <Icon name="chevron-right" className="w-8 h-8 text-blue-500" />
+            Course Expiry Checker
           </h1>
           <p className={`mt-3 text-lg transition-colors duration-300 ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
             Track staff training certifications and expiry dates
@@ -351,27 +358,30 @@ export default function CourseExpiryChecker({ isDark }: { isDark: boolean }) {
           </div>
 
           <div className="flex flex-col sm:flex-row gap-3 justify-center">
-            <button
+            <UniformButton
+              variant="primary"
+              className="px-6 py-3"
               onClick={fetchExpiringCourses}
               disabled={loading}
-              className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-all duration-300 font-medium shadow-md hover:shadow-lg"
             >
               🔍 Search Expiring
-            </button>
-            <button
+            </UniformButton>
+            <UniformButton
+              variant="secondary"
+              className="px-6 py-3 bg-yellow-600 hover:bg-yellow-700 text-white"
               onClick={fetchAwaitingTraining}
               disabled={loading}
-              className="px-6 py-3 bg-yellow-600 text-white rounded-lg hover:bg-yellow-700 disabled:opacity-50 transition-all duration-300 font-medium shadow-md hover:shadow-lg"
             >
               ⏳ Awaiting Training
-            </button>
-            <button
+            </UniformButton>
+            <UniformButton
+              variant="danger"
+              className="px-6 py-3"
               onClick={fetchExpiredCourses}
               disabled={loading}
-              className="px-6 py-3 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50 transition-all duration-300 font-medium shadow-md hover:shadow-lg"
             >
               ⚠️ Expired Courses
-            </button>
+            </UniformButton>
           </div>
         </div>
 
@@ -468,53 +478,51 @@ export default function CourseExpiryChecker({ isDark }: { isDark: boolean }) {
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead className={`transition-colors duration-300 ${isDark ? 'bg-gray-700' : 'bg-gray-100'}`}>
+                  {/* Matrix headers row - show all headers from mapping */}
                   <tr>
-                    <th className={`px-8 py-6 text-center font-semibold transition-colors duration-300 ${isDark ? 'text-gray-200' : 'text-gray-900'}`}>
-                      Staff Name
-                    </th>
-                    <th className={`px-8 py-6 text-center font-semibold transition-colors duration-300 ${isDark ? 'text-gray-200' : 'text-gray-900'}`}>
-                      Course
-                    </th>
-                    <th className={`px-8 py-6 text-center font-semibold transition-colors duration-300 ${isDark ? 'text-gray-200' : 'text-gray-900'}`}>
-                      {isExpiredView ? 'Expired' : 'Expiry Date'}
-                    </th>
-                    <th className={`px-8 py-6 text-center font-semibold transition-colors duration-300 ${isDark ? 'text-gray-200' : 'text-gray-900'}`}>
-                      Location
-                    </th>
-                    <th className={`px-8 py-6 text-center font-semibold transition-colors duration-300 ${isDark ? 'text-gray-200' : 'text-gray-900'}`}>
-                      Delivery
-                    </th>
+                    <th></th>
+                    {matrixHeaders.map((header, idx) => (
+                      <th key={idx} className={`px-8 py-3 text-center font-semibold transition-colors duration-300 ${isDark ? 'text-blue-200' : 'text-blue-900'}`}>{header || 'Face to Face'}</th>
+                    ))}
+                    {/* Fill remaining columns if fewer headers than columns */}
+                    {Array(Math.max(0, 4 - matrixHeaders.length)).fill('').map((_, idx) => (
+                      <th key={`empty-${idx}`}></th>
+                    ))}
+                  </tr>
+                  {/* Standard table headers row */}
+                  <tr>
+                    <th className={`px-8 py-6 text-center font-semibold transition-colors duration-300 ${isDark ? 'text-gray-200' : 'text-gray-900'}`}>Staff Name</th>
+                    <th className={`px-8 py-6 text-center font-semibold transition-colors duration-300 ${isDark ? 'text-gray-200' : 'text-gray-900'}`}>Course</th>
+                    <th className={`px-8 py-6 text-center font-semibold transition-colors duration-300 ${isDark ? 'text-gray-200' : 'text-gray-900'}`}>{isExpiredView ? 'Expired' : 'Expiry Date'}</th>
+                    <th className={`px-8 py-6 text-center font-semibold transition-colors duration-300 ${isDark ? 'text-gray-200' : 'text-gray-900'}`}>Location</th>
+                    <th className={`px-8 py-6 text-center font-semibold transition-colors duration-300 ${isDark ? 'text-gray-200' : 'text-gray-900'}`}>Delivery</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {filteredData.map((row, idx) => (
-                    <tr
-                      key={idx}
-                      className={`border-t transition-colors duration-300 ${
-                        isDark ? 'border-gray-700 hover:bg-gray-700' : 'border-gray-200 hover:bg-gray-50'
-                      }`}
-                    >
-                      <td className={`px-8 py-6 text-center whitespace-nowrap transition-colors duration-300 ${isDark ? 'text-gray-200' : 'text-gray-900'}`}>
-                        {row.name}
-                      </td>
-                      <td className={`px-8 py-6 text-center whitespace-nowrap transition-colors duration-300 ${isDark ? 'text-gray-200' : 'text-gray-900'}`}>
-                        {row.course}
-                      </td>
-                      <td className={`px-8 py-6 text-center whitespace-nowrap font-semibold ${
-                        isExpiredView
-                          ? `transition-colors duration-300 ${isDark ? 'text-red-400' : 'text-red-600'}`
-                          : `transition-colors duration-300 ${isDark ? 'text-gray-200' : 'text-gray-900'}`
-                      }`}>
-                        {isExpiredView ? row.expiredSince : formatDate(row.expiry)}
-                      </td>
-                      <td className={`px-8 py-6 text-center whitespace-nowrap transition-colors duration-300 ${isDark ? 'text-gray-200' : 'text-gray-900'}`}>
-                        {row.location}
-                      </td>
-                      <td className={`px-8 py-6 text-center whitespace-nowrap transition-colors duration-300 ${isDark ? 'text-gray-200' : 'text-gray-900'}`}>
-                        {categorizeDeliveryType(row.course, row.delivery)}
-                      </td>
+                  {filteredData.length > 0 ? (
+                    filteredData.map((row, idx) => (
+                      <tr
+                        key={idx}
+                        className={`border-t transition-colors duration-300 ${isDark ? 'border-gray-700 hover:bg-gray-700' : 'border-gray-200 hover:bg-gray-50'}`}
+                      >
+                        <td className={`px-8 py-6 text-center whitespace-nowrap transition-colors duration-300 ${isDark ? 'text-gray-200' : 'text-gray-900'}`}>{row.name}</td>
+                        <td className={`px-8 py-6 text-center whitespace-nowrap transition-colors duration-300 ${isDark ? 'text-gray-200' : 'text-gray-900'}`}>{row.course}</td>
+                        <td className={`px-8 py-6 text-center whitespace-nowrap font-semibold ${
+                          isExpiredView
+                            ? `transition-colors duration-300 ${isDark ? 'text-red-400' : 'text-red-600'}`
+                            : `transition-colors duration-300 ${isDark ? 'text-gray-200' : 'text-gray-900'}`
+                        }`}>
+                          {isExpiredView ? row.expiredSince : formatDate(row.expiry)}
+                        </td>
+                        <td className={`px-8 py-6 text-center whitespace-nowrap transition-colors duration-300 ${isDark ? 'text-gray-200' : 'text-gray-900'}`}>{row.location}</td>
+                        <td className={`px-8 py-6 text-center whitespace-nowrap transition-colors duration-300 ${isDark ? 'text-gray-200' : 'text-gray-900'}`}>{categorizeDeliveryType(row.course, row.delivery)}</td>
+                      </tr>
+                    ))
+                  ) : (
+                    <tr>
+                      <td colSpan={5} className={`px-8 py-6 text-center transition-colors duration-300 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>No data available</td>
                     </tr>
-                  ))}
+                  )}
                 </tbody>
               </table>
             </div>
@@ -534,4 +542,30 @@ export default function CourseExpiryChecker({ isDark }: { isDark: boolean }) {
       </div>
     </div>
   );
+}
+
+import { useCallback } from 'react';
+
+function useMatrixHeaders(location: string) {
+  const [headers, setHeaders] = useState<string[]>([]);
+
+  const fetchHeaders = useCallback(async () => {
+    if (!location) {
+      setHeaders(['Face to Face']);
+      return;
+    }
+    try {
+      const res = await fetch(`/api/matrix-headers?location=${encodeURIComponent(location)}`);
+      const data = await res.json();
+      setHeaders(data.headers || ['Face to Face']);
+    } catch {
+      setHeaders(['Face to Face']);
+    }
+  }, [location]);
+
+  useEffect(() => {
+    fetchHeaders();
+  }, [fetchHeaders]);
+
+  return headers;
 }

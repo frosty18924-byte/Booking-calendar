@@ -36,7 +36,7 @@ export async function GET(request: NextRequest) {
         expiry_date,
         completed_at_location_id,
         profiles(full_name),
-        courses(name, category, expiry_months),
+        training_courses(name, expiry_months, never_expires),
         locations(name)
       `)
       .eq('status', 'awaiting'); // Get awaiting records
@@ -58,17 +58,17 @@ export async function GET(request: NextRequest) {
 
     // Transform data
     const formattedData: CourseData[] = (awaitingCourses || []).map((record: any) => {
-      const courses = record.courses as { name?: string; category?: string; expiry_months?: number } | null;
+      const course = record.training_courses as { name?: string; expiry_months?: number; never_expires?: boolean } | null;
       const profiles = record.profiles as { full_name?: string } | null;
       const locations = record.locations as { name?: string } | null;
-      const isOneOff = !courses?.expiry_months || courses?.expiry_months === 9999;
+      const isOneOff = course?.never_expires || !course?.expiry_months || course?.expiry_months === 9999;
       
       return {
         name: profiles?.full_name || 'Unknown',
-        course: courses?.name || 'Unknown Course',
+        course: course?.name || 'Unknown Course',
         expiry: '-', // No expiry date for awaiting records
         location: locations?.name || 'Unknown Location',
-        delivery: courses?.category || 'Standard',
+        delivery: 'Standard',
         awaitingTrainingDate: true,
         isOneOff,
       };

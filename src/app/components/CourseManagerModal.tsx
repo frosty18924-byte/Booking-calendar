@@ -3,6 +3,8 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
 import CourseOverrideModal from './CourseOverrideModal';
+import UniformButton from './UniformButton';
+import Icon from './Icon';
 
 export default function CourseManagerModal({ onClose }: { onClose: () => void }) {
   const [courses, setCourses] = useState<any[]>([]);
@@ -156,7 +158,15 @@ export default function CourseManagerModal({ onClose }: { onClose: () => void })
           <h2 style={{ color: isDark ? '#f1f5f9' : '#1e293b' }} className="text-2xl font-black uppercase tracking-tight">
             {editingId ? 'Edit Course' : 'Course Catalog'}
           </h2>
-          <button onClick={onClose} style={{ color: isDark ? '#94a3b8' : '#64748b' }} className="hover:text-red-500 text-2xl transition-colors">&times;</button>
+          <UniformButton
+            variant="icon"
+            className="hover:text-red-500 text-2xl transition-colors"
+            style={{ color: isDark ? '#94a3b8' : '#64748b' }}
+            onClick={onClose}
+            aria-label="Close"
+          >
+            <Icon name="close" className="w-6 h-6" />
+          </UniformButton>
         </div>
 
         {/* ADD/EDIT FORM */}
@@ -191,25 +201,25 @@ export default function CourseManagerModal({ onClose }: { onClose: () => void })
           </div>
 
           <div className="flex gap-3">
-            <button 
+            <UniformButton
+              variant="primary"
               type="submit"
               disabled={loading}
-              style={{ backgroundColor: '#a855f7' }}
-              onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#9333ea'}
-              onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#a855f7'}
-              className="flex-1 text-white py-3 rounded-xl font-bold shadow-lg transition-all disabled:opacity-50 hover:scale-105 active:scale-95 duration-200"
+              className="flex-1 py-3 rounded-xl font-bold shadow-lg transition-all disabled:opacity-50 hover:scale-105 active:scale-95 duration-200"
+              style={{ backgroundColor: '#a855f7', color: '#fff' }}
             >
               {loading ? 'Processing...' : editingId ? '💾 Save Changes' : '➕ Add Course'}
-            </button>
+            </UniformButton>
             {editingId && (
-              <button
+              <UniformButton
+                variant="secondary"
                 type="button"
                 onClick={handleCancel}
-                style={{ backgroundColor: isDark ? '#334155' : '#cbd5e1', color: isDark ? '#f1f5f9' : '#1e293b' }}
                 className="px-6 py-3 rounded-xl font-bold transition-all hover:scale-105 active:scale-95 shadow-md duration-200"
+                style={{ backgroundColor: isDark ? '#334155' : '#cbd5e1', color: isDark ? '#f1f5f9' : '#1e293b' }}
               >
                 Cancel ✕
-              </button>
+              </UniformButton>
             )}
           </div>
         </form>
@@ -228,44 +238,40 @@ export default function CourseManagerModal({ onClose }: { onClose: () => void })
                     <p style={{ color: isDark ? '#94a3b8' : '#64748b' }} className="text-[10px] font-black uppercase tracking-widest mt-1">Max Capacity: <span style={{ color: '#a855f7' }} className="font-black">{course.max_attendees} Attendees</span></p>
                   </div>
                   <div className="flex gap-2">
-                    <button 
+                    <UniformButton
+                      variant="secondary"
+                      className="p-3 rounded-lg font-bold transition-all"
+                      style={{ backgroundColor: '#f59e0b', color: '#fff' }}
                       onClick={() => handleOpenOverride(course)}
-                      style={{ backgroundColor: '#f59e0b' }}
-                      onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#d97706'}
-                      onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#f59e0b'}
-                      className="p-3 text-white rounded-lg font-bold transition-all"
                       title="Set date-specific capacity overrides"
                     >
                       📅
-                    </button>
-                    <button 
+                    </UniformButton>
+                    <UniformButton
+                      variant="primary"
+                      className="p-3 rounded-lg font-bold transition-all hover:scale-110 active:scale-95 shadow-md hover:shadow-lg duration-200"
+                      style={{ backgroundColor: '#2563eb', color: '#fff' }}
                       onClick={() => handleEdit(course)}
-                      style={{ backgroundColor: '#2563eb' }}
-                      onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#1d4ed8'}
-                      onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#2563eb'}
-                      className="p-3 text-white rounded-lg font-bold transition-all hover:scale-110 active:scale-95 shadow-md hover:shadow-lg duration-200"
                     >
                       ✏️
-                    </button>
-                    <button 
+                    </UniformButton>
+                    <UniformButton
+                      variant="secondary"
+                      className="p-3 rounded-lg font-bold transition-all hover:scale-110 active:scale-95 shadow-md hover:shadow-lg duration-200"
+                      style={{ backgroundColor: '#f97316', color: '#fff' }}
                       onClick={() => handleCancelCourse(course.id, course.name)}
-                      style={{ backgroundColor: '#f97316' }}
-                      onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#ea580c'}
-                      onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#f97316'}
-                      className="p-3 text-white rounded-lg font-bold transition-all hover:scale-110 active:scale-95 shadow-md hover:shadow-lg duration-200"
                       title="Cancel this course and remove all participants"
                     >
                       ❌
-                    </button>
-                    <button 
+                    </UniformButton>
+                    <UniformButton
+                      variant="danger"
+                      className="p-3 rounded-lg font-bold transition-all hover:scale-110 active:scale-95 shadow-md hover:shadow-lg duration-200"
+                      style={{ backgroundColor: '#dc2626', color: '#fff' }}
                       onClick={() => handleDelete(course.id)}
-                      style={{ backgroundColor: '#dc2626' }}
-                      onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#b91c1c'}
-                      onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#dc2626'}
-                      className="p-3 text-white rounded-lg font-bold transition-all hover:scale-110 active:scale-95 shadow-md hover:shadow-lg duration-200"
                     >
                       🗑️
-                    </button>
+                    </UniformButton>
                   </div>
                 </div>
               ))
