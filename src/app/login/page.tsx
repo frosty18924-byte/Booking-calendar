@@ -1,11 +1,20 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { login } from './actions';
 
 export default function SignInPage() {
+  const searchParams = useSearchParams();
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState('');
+
+  useEffect(() => {
+    const error = searchParams?.get('error');
+    if (error === 'account_deleted') {
+      setMessage('Your account has been deactivated. Please contact an administrator.');
+    }
+  }, [searchParams]);
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -13,15 +22,19 @@ export default function SignInPage() {
     setMessage('');
 
     const formData = new FormData(event.currentTarget);
-    const result = await login(formData); // Call the server action
+    try {
+      const result = await login(formData); // Call the server action
 
-    if (result?.error) {
-      setMessage(result.error);
+      if (result?.error) {
+        setMessage(result.error);
+      } else {
+        // On success, server action redirects to dashboard.
+        setMessage('Signing you in...');
+      }
+    } catch (error: any) {
+      setMessage(error?.message || 'Unable to sign in right now.');
+    } finally {
       setLoading(false);
-    } else {
-      // If successful, the server action handles the redirect.
-      // We might want to show a success message briefly, but usually redirect is immediate.
-      setMessage('Success! Redirecting...');
     }
   }
 

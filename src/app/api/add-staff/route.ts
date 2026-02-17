@@ -9,6 +9,7 @@ interface StaffMember {
   location: string;
   location_id?: string;
   role_tier: 'staff' | 'scheduler' | 'manager' | 'admin';
+  password?: string;
 }
 
 const isUuid = (value: string): boolean =>
@@ -132,8 +133,35 @@ export async function POST(request: Request) {
           continue;
         }
 
-        // Generate a roster-only profile ID (UUID)
-        const profileId = crypto.randomUUID();
+        // Staff are roster-only. Non-staff require a real auth account for login.
+        let profileId = crypto.randomUUID();
+        let createdAuthUserId: string | null = null;
+        const providedPassword = (staff.password || '').trim();
+        const needsLogin = staff.role_tier !== 'staff';
+
+        if (needsLogin) {
+          const initialPassword = providedPassword || `Temp-${crypto.randomUUID()}Aa1!`;
+          const { data: createdAuth, error: createAuthError } = await supabaseAdmin.auth.admin.createUser({
+            email: emailToCheck,
+            password: initialPassword,
+            email_confirm: true,
+            user_metadata: {
+              full_name: staff.full_name,
+            },
+          });
+
+          if (createAuthError || !createdAuth?.user?.id) {
+            results.push({
+              email: staff.email,
+              success: false,
+              error: `Failed to create login account: ${createAuthError?.message || 'Unknown auth error'}`,
+            });
+            continue;
+          }
+
+          createdAuthUserId = createdAuth.user.id;
+          profileId = createdAuth.user.id;
+        }
         
         console.log('Creating roster-only profile for:', staff.email, 'with ID:', profileId);
         
@@ -147,7 +175,7 @@ export async function POST(request: Request) {
               email: emailToCheck,
               location: normalizedLocationName,
               role_tier: staff.role_tier,
-              password_needs_change: false,
+              password_needs_change: needsLogin,
               is_deleted: false,
             },
           ])
@@ -155,6 +183,9 @@ export async function POST(request: Request) {
 
         if (profileError) {
           console.error('Profile creation error:', profileError);
+          if (createdAuthUserId) {
+            await supabaseAdmin.auth.admin.deleteUser(createdAuthUserId);
+          }
           results.push({
             email: staff.email,
             success: false,
@@ -179,11 +210,38 @@ export async function POST(request: Request) {
           console.warn('Staff member added to profiles but not staff_locations. They may not appear in training matrix.');
         }
 
+        // For login-enabled users with no provided password, send password setup link.
+        if (needsLogin && !providedPassword) {
+          try {
+            const { data: linkData, error: linkError } = await supabaseAdmin.auth.admin.generateLink({
+              type: 'magiclink',
+              email: emailToCheck,
+              options: {
+                redirectTo: `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/auth/callback`,
+              },
+            });
+
+            if (!linkError && linkData?.properties?.action_link) {
+              await sendPasswordResetEmail(
+                emailToCheck,
+                staff.full_name,
+                linkData.properties.action_link
+              );
+            } else {
+              console.warn('Could not generate password setup link:', linkError?.message);
+            }
+          } catch (linkErr) {
+            console.warn('Could not send password setup email:', linkErr);
+          }
+        }
+
         console.log('Staff member added successfully:', staff.email);
         results.push({
           email: staff.email,
           success: true,
-          message: `${staff.full_name} added to roster and training matrix`,
+          message: needsLogin
+            ? `${staff.full_name} created with login access`
+            : `${staff.full_name} added to roster and training matrix`,
         });
       } catch (error: any) {
         console.error('Error adding staff:', error);
