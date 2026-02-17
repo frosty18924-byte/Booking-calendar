@@ -3,7 +3,6 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
-import ThemeToggle from '@/app/components/ThemeToggle';
 import CourseManagerModal from '@/app/components/CourseManagerModal';
 import LocationManagerModal from '@/app/components/LocationManagerModal';
 
@@ -63,17 +62,6 @@ export default function AdminPage() {
     }
   }
 
-  async function handleSignOut() {
-    try {
-      const { error } = await supabase.auth.signOut();
-      if (error) throw error;
-      setUser(null);
-      router.push('/login');
-    } catch (err) {
-      console.error("Error signing out:", err);
-    }
-  }
-
   if (loading) {
     return (
       <main style={{ backgroundColor: isDark ? '#0f172a' : '#f1f5f9', minHeight: '100vh' }} className="p-8 transition-colors duration-300 flex items-center justify-center">
@@ -85,25 +73,14 @@ export default function AdminPage() {
   return (
     <main style={{ backgroundColor: isDark ? '#0f172a' : '#f1f5f9', minHeight: '100vh' }} className="transition-colors duration-300 p-3 sm:p-4 md:p-8">
       <div className="max-w-6xl mx-auto">
-        {/* User info and sign out bar */}
+        {/* User info */}
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8 px-2 sm:px-4">
           <div className="text-xs sm:text-sm font-semibold" style={{ color: isDark ? '#cbd5e1' : '#475569' }}>
             {user ? `Logged in as: ${user.email}` : 'Not logged in'}
           </div>
-          {user && (
-            <button 
-              onClick={handleSignOut} 
-              style={{ backgroundColor: '#dc2626' }} 
-              onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#b91c1c'} 
-              onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#dc2626'} 
-              className="text-white px-4 sm:px-6 py-2 rounded-2xl font-black text-[8px] sm:text-xs uppercase tracking-widest shadow-lg transition-all cursor-pointer w-full sm:w-auto text-center"
-            >
-              Sign Out
-            </button>
-          )}
         </div>
 
-        {/* Header row with back button, title, and dark mode toggle */}
+        {/* Header row with back button and title */}
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8 sm:mb-12 px-2 sm:px-4">
           <button 
             onClick={() => router.push('/')}
@@ -113,7 +90,7 @@ export default function AdminPage() {
             ←
           </button>
           <h1 style={{ color: isDark ? '#f1f5f9' : '#1e293b' }} className="text-xl sm:text-2xl md:text-3xl font-black uppercase tracking-tighter">Admin Control Centre</h1>
-          <ThemeToggle />
+          <div />
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-2 sm:gap-4">

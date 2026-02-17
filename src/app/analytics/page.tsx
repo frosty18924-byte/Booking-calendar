@@ -3,7 +3,6 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
-import ThemeToggle from '@/app/components/ThemeToggle';
 import Icon from '@/app/components/Icon';
 
 export default function AnalyticsDashboard() {
@@ -182,17 +181,6 @@ export default function AnalyticsDashboard() {
     }
   }
 
-  async function handleSignOut() {
-    try {
-      const { error } = await supabase.auth.signOut();
-      if (error) throw error;
-      setUser(null);
-      router.push('/login');
-    } catch (err) {
-      console.error("Error signing out:", err);
-    }
-  }
-
   const processStats = () => {
     try {
       const stats: any = {};
@@ -300,25 +288,14 @@ export default function AnalyticsDashboard() {
   return (
     <main className="min-h-screen transition-colors duration-300 p-4 md:p-8" style={{ backgroundColor: isDark ? '#0f172a' : '#f1f5f9' }}>
       <div className="max-w-7xl mx-auto">
-        {/* User info and sign out */}
+        {/* User info */}
         <div className="flex justify-between items-center mb-8 px-4">
           <div className="text-sm font-semibold" style={{ color: isDark ? '#cbd5e1' : '#475569' }}>
             {user ? `Logged in as: ${user.email}` : 'Not logged in'}
           </div>
-          {user && (
-            <button 
-              onClick={handleSignOut} 
-              style={{ backgroundColor: '#dc2626' }} 
-              onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#b91c1c'} 
-              onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#dc2626'} 
-              className="text-white px-6 py-2 rounded-2xl font-black text-xs uppercase tracking-widest shadow-lg transition-all cursor-pointer hover:scale-105 active:scale-95 hover:shadow-xl duration-200"
-            >
-              🚪 Sign Out
-            </button>
-          )}
         </div>
 
-        {/* Header row with back button, title, and theme toggle */}
+        {/* Header row with back button and title */}
         <div className="flex justify-between items-center mb-8 px-4">
           <button 
             onClick={() => router.push('/')}
@@ -329,7 +306,7 @@ export default function AnalyticsDashboard() {
             <Icon name="back" className="w-6 h-6" />
           </button>
           <h1 style={{ color: isDark ? '#f1f5f9' : '#1e293b' }} className="text-3xl font-black uppercase tracking-tighter">Intelligence Hub</h1>
-          <ThemeToggle />
+          <div />
         </div>
 
         {/* TOP FILTER BAR */}

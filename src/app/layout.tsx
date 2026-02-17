@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
+import GlobalTopControls from '@/app/components/GlobalTopControls';
 
 export const metadata: Metadata = {
   title: "Cascade Training Portal",
@@ -27,6 +28,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         `}} />
       </head>
       <body className="font-sans antialiased bg-white text-slate-900 dark:bg-[#0f172a] dark:text-white min-h-screen">
+        <GlobalTopControls />
         {children}
       </body>
     </html>
