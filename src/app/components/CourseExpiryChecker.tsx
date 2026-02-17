@@ -564,12 +564,11 @@ function useMatrixHeaders(location: string) {
   const [headerData, setHeaderData] = useState<MatrixHeaderData>({ headers: ['Face to Face'], atlasCourses: [] });
 
   const fetchHeaders = useCallback(async () => {
-    if (!location) {
-      setHeaderData({ headers: ['Face to Face'], atlasCourses: [] });
-      return;
-    }
     try {
-      const res = await fetch(`/api/matrix-headers?location=${encodeURIComponent(location)}`);
+      const endpoint = location
+        ? `/api/matrix-headers?location=${encodeURIComponent(location)}`
+        : '/api/matrix-headers';
+      const res = await fetch(endpoint);
       const data = await res.json();
       setHeaderData({
         headers: data.headers || ['Face to Face'],

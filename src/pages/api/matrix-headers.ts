@@ -18,6 +18,10 @@ const locationToCsv: { [key: string]: string } = {
   'Felix House': 'Felix House Training Matrix - Staff Matrix.csv',
 };
 
+function normalizeKey(value: string): string {
+  return value.replace(/\s+/g, ' ').trim().toLowerCase();
+}
+
 function cleanCell(value: string): string {
   return value.replace(/\s+/g, ' ').trim();
 }
@@ -118,15 +122,43 @@ function parseHeaderRows(csvContent: string): { headers: string[]; atlasCourses:
   return { headers, atlasCourses };
 }
 
+function readHeaderRowsFromCsv(csvFile: string): { headers: string[]; atlasCourses: string[] } {
+  const csvPath = path.join(process.cwd(), 'csv-import', csvFile);
+  const csvContent = fs.readFileSync(csvPath, 'utf8');
+  return parseHeaderRows(csvContent);
+}
+
 export default function handler(req: NextApiRequest, res: NextApiResponse) {
   const { location } = req.query;
-  const csvFile = locationToCsv[location as string];
+
+  // If no location is provided, return an atlas-course union across all location CSVs.
+  if (!location || typeof location !== 'string' || !location.trim()) {
+    try {
+      const allCsvFiles = [...new Set(Object.values(locationToCsv))];
+      const atlasSet = new Set<string>();
+
+      for (const csvFile of allCsvFiles) {
+        const { atlasCourses } = readHeaderRowsFromCsv(csvFile);
+        for (const course of atlasCourses) {
+          atlasSet.add(course);
+        }
+      }
+
+      return res.status(200).json({
+        headers: ['Face to Face'],
+        atlasCourses: [...atlasSet].sort((a, b) => a.localeCompare(b)),
+      });
+    } catch (_err) {
+      return res.status(200).json({ headers: ['Face to Face'], atlasCourses: [] });
+    }
+  }
+
+  const requestedLocation = normalizeKey(location);
+  const csvFile = Object.entries(locationToCsv).find(([locationName]) => normalizeKey(locationName) === requestedLocation)?.[1];
   if (!csvFile) return res.status(404).json({ headers: ['Face to Face'], atlasCourses: [] });
 
-  const csvPath = path.join(process.cwd(), 'csv-import', csvFile);
   try {
-    const csvContent = fs.readFileSync(csvPath, 'utf8');
-    const { headers, atlasCourses } = parseHeaderRows(csvContent);
+    const { headers, atlasCourses } = readHeaderRowsFromCsv(csvFile);
     return res.status(200).json({ headers, atlasCourses });
   } catch (_err) {
     return res.status(200).json({ headers: ['Face to Face'], atlasCourses: [] });
