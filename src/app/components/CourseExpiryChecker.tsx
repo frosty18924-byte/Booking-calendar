@@ -284,8 +284,8 @@ export default function CourseExpiryChecker({ isDark }: { isDark: boolean }) {
       filtered = filtered.filter(d => categorizeDeliveryType(d.course, d.delivery) === filters.delivery);
     }
 
-    // Sort expired courses by expiry date (oldest first)
-    if (isExpiredView && filtered.length > 0) {
+    // Sort expiring/expired courses by expiry date (nearest/oldest first)
+    if ((activeTab === 'expiring' || isExpiredView) && filtered.length > 0) {
       filtered = filtered.sort((a, b) => {
         const dateA = new Date(a.expiry || '');
         const dateB = new Date(b.expiry || '');
@@ -381,8 +381,8 @@ export default function CourseExpiryChecker({ isDark }: { isDark: boolean }) {
               🔍 Search Expiring
             </UniformButton>
             <UniformButton
-              variant="secondary"
-              className="px-6 py-3 bg-yellow-600 hover:bg-yellow-700 text-white"
+              variant="primary"
+              className="px-6 py-3 bg-yellow-500 hover:bg-yellow-600 active:bg-yellow-700 dark:bg-yellow-500 dark:hover:bg-yellow-600 dark:active:bg-yellow-700 text-slate-900"
               onClick={fetchAwaitingTraining}
               disabled={loading}
             >
