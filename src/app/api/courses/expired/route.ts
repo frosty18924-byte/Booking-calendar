@@ -13,6 +13,13 @@ interface CourseData {
   expiredSince?: string;
 }
 
+function isDeletedProfile(profile: { full_name?: string; is_deleted?: boolean } | null): boolean {
+  if (!profile) return false;
+  if (profile.is_deleted) return true;
+  const name = (profile.full_name || '').trim().toLowerCase();
+  return name === 'deleted user' || name.startsWith('deleted-') || name.includes('deleted-duplicate');
+}
+
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
@@ -38,7 +45,7 @@ export async function GET(request: NextRequest) {
         expiry_date,
         status,
         completed_at_location_id,
-        profiles(full_name),
+        profiles(full_name, is_deleted),
         training_courses(name),
         locations(name)
       `)
@@ -61,10 +68,11 @@ export async function GET(request: NextRequest) {
 
     // Transform data
     const formattedData: CourseData[] = (expiredCourses || [])
+      .filter((record: any) => !isDeletedProfile(record.profiles as { full_name?: string; is_deleted?: boolean } | null))
       .filter(record => record.expiry_date) // Only include records with expiry dates
       .map((record: any) => {
         const course = record.training_courses as { name?: string } | null;
-        const profiles = record.profiles as { full_name?: string } | null;
+        const profiles = record.profiles as { full_name?: string; is_deleted?: boolean } | null;
         const locations = record.locations as { name?: string } | null;
         const expiryDate = new Date(record.expiry_date);
         const daysExpired = Math.floor((today.getTime() - expiryDate.getTime()) / (1000 * 60 * 60 * 24));

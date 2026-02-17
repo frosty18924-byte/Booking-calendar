@@ -14,6 +14,13 @@ interface CourseData {
   isOneOff?: boolean;
 }
 
+function isDeletedProfile(profile: { full_name?: string; is_deleted?: boolean } | null): boolean {
+  if (!profile) return false;
+  if (profile.is_deleted) return true;
+  const name = (profile.full_name || '').trim().toLowerCase();
+  return name === 'deleted user' || name.startsWith('deleted-') || name.includes('deleted-duplicate');
+}
+
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
@@ -44,7 +51,7 @@ export async function GET(request: NextRequest) {
         expiry_date,
         status,
         completed_at_location_id,
-        profiles(full_name),
+        profiles(full_name, is_deleted),
         training_courses(name, expiry_months, never_expires),
         locations(name)
       `)
@@ -69,9 +76,10 @@ export async function GET(request: NextRequest) {
 
     // Transform data
     const formattedData: CourseData[] = (expiringCourses || [])
+      .filter((record: any) => !isDeletedProfile(record.profiles as { full_name?: string; is_deleted?: boolean } | null))
       .map((record: any) => {
         const course = record.training_courses as { name?: string; expiry_months?: number; never_expires?: boolean } | null;
-        const profiles = record.profiles as { full_name?: string } | null;
+        const profiles = record.profiles as { full_name?: string; is_deleted?: boolean } | null;
         const locations = record.locations as { name?: string } | null;
         const isOneOff = course?.never_expires || !course?.expiry_months || course?.expiry_months === 9999;
         const expiryDate = new Date(record.expiry_date);
