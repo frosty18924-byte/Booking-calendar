@@ -19,6 +19,11 @@ interface CourseData {
   expiredSince?: string;
 }
 
+interface MatrixHeaderData {
+  headers: string[];
+  atlasCourses: string[];
+}
+
 export default function CourseExpiryChecker({ isDark }: { isDark: boolean }) {
   const [allData, setAllData] = useState<CourseData[]>([]);
   const [filteredData, setFilteredData] = useState<CourseData[]>([]);
@@ -31,8 +36,9 @@ export default function CourseExpiryChecker({ isDark }: { isDark: boolean }) {
   const [user, setUser] = useState<any>(null);
   const [selectedLocation, setSelectedLocation] = useState<string>('');
   const [locations, setLocations] = useState<Array<{ id: string; name: string }>>([]);
-  // Get matrix headers for the selected location (must be after selectedLocation is defined)
-  const matrixHeaders = useMatrixHeaders(selectedLocation);
+  const selectedLocationName = locations.find(loc => loc.id === selectedLocation)?.name || '';
+  // Get matrix headers + atlas course mapping for the selected location
+  const matrixHeaderData = useMatrixHeaders(selectedLocationName);
 
   // Filters
   const [filters, setFilters] = useState({
@@ -111,6 +117,14 @@ export default function CourseExpiryChecker({ isDark }: { isDark: boolean }) {
   function categorizeDeliveryType(courseName: string, deliveryType?: string): 'Atlas' | 'Online' | 'Face to Face' {
     const courseNameLower = courseName.toLowerCase();
     const deliveryLower = (deliveryType || '').toLowerCase();
+    const isAtlasFromMatrixHeader = matrixHeaderData.atlasCourses.some(
+      atlasCourse => atlasCourse.trim().toLowerCase() === courseNameLower.trim()
+    );
+
+    // If this course is under a Careskills header in the matrix, treat as Atlas.
+    if (isAtlasFromMatrixHeader) {
+      return 'Atlas';
+    }
 
     // Careskills courses are Atlas (check delivery_type first, as it's the primary source)
     if (deliveryLower.includes('careskills')) {
@@ -481,11 +495,11 @@ export default function CourseExpiryChecker({ isDark }: { isDark: boolean }) {
                   {/* Matrix headers row - show all headers from mapping */}
                   <tr>
                     <th></th>
-                    {matrixHeaders.map((header, idx) => (
+                    {matrixHeaderData.headers.map((header, idx) => (
                       <th key={idx} className={`px-8 py-3 text-center font-semibold transition-colors duration-300 ${isDark ? 'text-blue-200' : 'text-blue-900'}`}>{header || 'Face to Face'}</th>
                     ))}
                     {/* Fill remaining columns if fewer headers than columns */}
-                    {Array(Math.max(0, 4 - matrixHeaders.length)).fill('').map((_, idx) => (
+                    {Array(Math.max(0, 4 - matrixHeaderData.headers.length)).fill('').map((_, idx) => (
                       <th key={`empty-${idx}`}></th>
                     ))}
                   </tr>
@@ -547,19 +561,22 @@ export default function CourseExpiryChecker({ isDark }: { isDark: boolean }) {
 import { useCallback } from 'react';
 
 function useMatrixHeaders(location: string) {
-  const [headers, setHeaders] = useState<string[]>([]);
+  const [headerData, setHeaderData] = useState<MatrixHeaderData>({ headers: ['Face to Face'], atlasCourses: [] });
 
   const fetchHeaders = useCallback(async () => {
     if (!location) {
-      setHeaders(['Face to Face']);
+      setHeaderData({ headers: ['Face to Face'], atlasCourses: [] });
       return;
     }
     try {
       const res = await fetch(`/api/matrix-headers?location=${encodeURIComponent(location)}`);
       const data = await res.json();
-      setHeaders(data.headers || ['Face to Face']);
+      setHeaderData({
+        headers: data.headers || ['Face to Face'],
+        atlasCourses: data.atlasCourses || [],
+      });
     } catch {
-      setHeaders(['Face to Face']);
+      setHeaderData({ headers: ['Face to Face'], atlasCourses: [] });
     }
   }, [location]);
 
@@ -567,5 +584,5 @@ function useMatrixHeaders(location: string) {
     fetchHeaders();
   }, [fetchHeaders]);
 
-  return headers;
+  return headerData;
 }

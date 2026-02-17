@@ -18,20 +18,117 @@ const locationToCsv: { [key: string]: string } = {
   'Felix House': 'Felix House Training Matrix - Staff Matrix.csv',
 };
 
+function cleanCell(value: string): string {
+  return value.replace(/\s+/g, ' ').trim();
+}
+
+function parseCsvLine(line: string): string[] {
+  const cells: string[] = [];
+  let current = '';
+  let inQuotes = false;
+
+  for (let i = 0; i < line.length; i++) {
+    const ch = line[i];
+
+    if (ch === '"') {
+      if (inQuotes && line[i + 1] === '"') {
+        current += '"';
+        i++;
+        continue;
+      }
+      inQuotes = !inQuotes;
+      continue;
+    }
+
+    if (ch === ',' && !inQuotes) {
+      cells.push(current);
+      current = '';
+      continue;
+    }
+
+    current += ch;
+  }
+
+  cells.push(current);
+  return cells.map(cleanCell);
+}
+
+function hasBalancedQuotes(text: string): boolean {
+  let inQuotes = false;
+  for (let i = 0; i < text.length; i++) {
+    if (text[i] !== '"') continue;
+    if (inQuotes && text[i + 1] === '"') {
+      i++;
+      continue;
+    }
+    inQuotes = !inQuotes;
+  }
+  return !inQuotes;
+}
+
+function parseFirstNLogicalRows(content: string, n: number): string[][] {
+  const lines = content.replace(/\r\n/g, '\n').replace(/\r/g, '\n').split('\n');
+  const rows: string[][] = [];
+  let buffer = '';
+
+  for (const line of lines) {
+    buffer = buffer ? `${buffer}\n${line}` : line;
+    if (!hasBalancedQuotes(buffer)) continue;
+    rows.push(parseCsvLine(buffer));
+    buffer = '';
+    if (rows.length >= n) break;
+  }
+
+  if (buffer && rows.length < n) {
+    rows.push(parseCsvLine(buffer));
+  }
+
+  return rows;
+}
+
+function parseHeaderRows(csvContent: string): { headers: string[]; atlasCourses: string[] } {
+  const rows = parseFirstNLogicalRows(csvContent, 20);
+
+  const courseNameRowIndex = rows.findIndex(row => {
+    const first = cleanCell(row[0] || '').toLowerCase();
+    return first === 'staff name' || first === 'learner name' || first === "learner's name";
+  });
+
+  if (courseNameRowIndex < 0) {
+    return { headers: ['Face to Face'], atlasCourses: [] };
+  }
+
+  const categoryRow = rows[courseNameRowIndex - 1] || [];
+  const courseRow = rows[courseNameRowIndex] || [];
+
+  const headers = courseRow.length ? courseRow : ['Face to Face'];
+  const atlasCourses = courseRow
+    .map((courseName, idx) => {
+      const category = (categoryRow[idx] || '').toLowerCase();
+      if (!category.includes('careskills')) return null;
+      if (!courseName) return null;
+      const normalizedCourse = courseName.trim();
+      if (!normalizedCourse) return null;
+      const lower = normalizedCourse.toLowerCase();
+      if (lower === 'staff name' || lower === 'learner name' || lower === "learner's name") return null;
+      return normalizedCourse;
+    })
+    .filter((course): course is string => Boolean(course));
+
+  return { headers, atlasCourses };
+}
+
 export default function handler(req: NextApiRequest, res: NextApiResponse) {
   const { location } = req.query;
   const csvFile = locationToCsv[location as string];
-  if (!csvFile) return res.status(404).json({ headers: ['Face to Face'] });
+  if (!csvFile) return res.status(404).json({ headers: ['Face to Face'], atlasCourses: [] });
 
   const csvPath = path.join(process.cwd(), 'csv-import', csvFile);
   try {
     const csvContent = fs.readFileSync(csvPath, 'utf8');
-    const lines = csvContent.split('\n');
-    const headerLine = lines.find(line => line.includes('Staff Name'));
-    if (!headerLine) return res.status(200).json({ headers: ['Face to Face'] });
-    const headers = headerLine.split(',').map(h => h.replace(/"/g, '').trim());
-    return res.status(200).json({ headers });
-  } catch (err) {
-    return res.status(200).json({ headers: ['Face to Face'] });
+    const { headers, atlasCourses } = parseHeaderRows(csvContent);
+    return res.status(200).json({ headers, atlasCourses });
+  } catch (_err) {
+    return res.status(200).json({ headers: ['Face to Face'], atlasCourses: [] });
   }
 }
