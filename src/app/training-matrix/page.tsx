@@ -4,7 +4,6 @@ import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import { hasPermission } from '@/lib/permissions';
-import ThemeToggle from '@/app/components/ThemeToggle';
 import HomeButton from '@/app/components/HomeButton';
 import { parseFirstThreeRowsFromCsvString, CsvHeaderRows } from './csvHeaderUtils';
 
@@ -1065,14 +1064,12 @@ export default function TrainingMatrixPage() {
 
   return (
     <div className={`min-h-screen ${isDark ? 'bg-gray-900' : 'bg-gray-50'}`}>
-      {/* Header with Theme Toggle */}
+      {/* Header */}
       <div className={`p-6 ${isDark ? 'bg-gray-800' : 'bg-white'} border-b ${isDark ? 'border-gray-700' : 'border-gray-200'}`}>
         <div className="flex justify-between items-center mb-4">
           <HomeButton />
           <h1 className={`text-3xl font-bold ${isDark ? 'text-white' : 'text-gray-900'}`}>Training Matrix</h1>
-          <div className="flex-shrink-0">
-            <ThemeToggle />
-          </div>
+          <div className="w-10" />
         </div>
 
         {/* Centered Controls */}

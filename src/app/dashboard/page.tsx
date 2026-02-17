@@ -4,7 +4,6 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import { hasPermission } from '@/lib/permissions';
-import ThemeToggle from '@/app/components/ThemeToggle';
 import AddStaffModal from '@/app/components/AddStaffModal';
 import DuplicateRemovalModal from '@/app/components/DuplicateRemovalModal';
 import AtlasImportModal from '@/app/components/AtlasImportModal';
@@ -97,7 +96,6 @@ export default function DashboardPage() {
                 Welcome, {user?.full_name || 'User'}
               </p>
             </div>
-            <ThemeToggle />
           </div>
         </div>
       </div>

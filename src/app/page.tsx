@@ -8,7 +8,6 @@ import ScheduleModal from '@/app/components/ScheduleModal';
 import UniformButton from '@/app/components/UniformButton';
 import BookingModal from '@/app/components/BookingModal';
 import BookingChecklistModal from '@/app/components/BookingChecklistModal';
-import ThemeToggle from '@/app/components/ThemeToggle';
 import { supabase } from '@/lib/supabase';
 import { hasPermission } from '@/lib/permissions';
 
@@ -100,7 +99,7 @@ export default function CalendarPage() {
     // Initial check
     checkTheme();
 
-    // Listen for custom event from ThemeToggle
+    // Listen for global theme updates
     const handleThemeChange = (e: Event) => {
       const customEvent = e as CustomEvent;
       if (customEvent.detail && typeof customEvent.detail.isDark === 'boolean') {
@@ -121,8 +120,7 @@ export default function CalendarPage() {
     };
   }, []);
 
-  // Removed the useEffect that toggles the class on document, 
-  // because ThemeToggle.tsx manages that now. We just react to it.
+  // We don't toggle dark mode here; we only react to the global control.
 
   useEffect(() => {
     fetchUser();
@@ -207,8 +205,6 @@ export default function CalendarPage() {
                     ⚙️ Admin
                   </a>
                 )}
-
-                <div className="cursor-pointer"><ThemeToggle /></div>
               </div>
             </div>
 
