@@ -60,7 +60,7 @@ export async function POST(request: Request) {
         const emailToCheck = staff.email.toLowerCase();
         const { data: existingProfiles, error: checkError } = await supabaseAdmin
           .from('profiles')
-          .select('id, email, is_deleted')
+          .select('id, full_name, email, location, is_deleted')
           .eq('email', emailToCheck);
 
         if (checkError) {
@@ -76,11 +76,33 @@ export async function POST(request: Request) {
         // Allow re-adding deleted staff with same email
         const activeProfile = existingProfiles?.find(p => !p.is_deleted);
         if (activeProfile) {
+          let locationHint = '';
+          try {
+            const { data: linkedLocations } = await supabaseAdmin
+              .from('staff_locations')
+              .select('locations(name)')
+              .eq('staff_id', activeProfile.id);
+
+            const names = (linkedLocations || [])
+              .map((row: any) => row?.locations?.name)
+              .filter(Boolean);
+
+            if (names.length > 0) {
+              locationHint = ` Locations: ${names.join(', ')}.`;
+            }
+          } catch (locErr) {
+            console.warn('Could not resolve staff_locations for duplicate profile:', locErr);
+          }
+
+          if (!locationHint && activeProfile.location) {
+            locationHint = ` Location: ${activeProfile.location}.`;
+          }
+
           console.warn('Staff already exists:', staff.email);
           results.push({
             email: staff.email,
             success: false,
-            error: `Staff member with email ${staff.email} already exists`,
+            error: `Staff member already exists (${staff.email}).${locationHint} If this should be reusable, restore/update the existing record instead of creating a new one.`,
           });
           continue;
         }
