@@ -168,7 +168,7 @@ export async function POST(request: Request) {
         // Create profile only (no auth user)
         const { error: profileError, data: profileData } = await supabaseAdmin
           .from('profiles')
-          .insert([
+          .upsert([
             {
               id: profileId,
               full_name: staff.full_name,
@@ -177,8 +177,9 @@ export async function POST(request: Request) {
               role_tier: staff.role_tier,
               password_needs_change: needsLogin,
               is_deleted: false,
+              deleted_at: null,
             },
-          ])
+          ], { onConflict: 'id' })
           .select();
 
         if (profileError) {
