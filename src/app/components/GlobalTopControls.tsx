@@ -35,6 +35,7 @@ export default function GlobalTopControls() {
   }, []);
 
   const isAuthPage = pathname === '/login' || pathname.startsWith('/auth/');
+  const isExpiryCheckerPage = pathname === '/apps/expiry-checker';
   const topOffsetClass = pathname === '/apps/expiry-checker' ? 'top-6' : 'top-3';
 
   const handleSignOut = async () => {
@@ -46,7 +47,7 @@ export default function GlobalTopControls() {
     router.push('/login');
   };
 
-  if (loading || isAuthPage || !isAuthenticated) return null;
+  if (loading || isAuthPage || isExpiryCheckerPage || !isAuthenticated) return null;
 
   return (
     <div className={`fixed ${topOffsetClass} right-3 z-[70] flex items-center gap-2`}>
