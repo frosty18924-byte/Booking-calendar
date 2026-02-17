@@ -35,6 +35,7 @@ export default function GlobalTopControls() {
   }, []);
 
   const isAuthPage = pathname === '/login' || pathname.startsWith('/auth/');
+  const topOffsetClass = pathname === '/apps/expiry-checker' ? 'top-6' : 'top-3';
 
   const handleSignOut = async () => {
     const { error } = await supabase.auth.signOut();
@@ -48,7 +49,7 @@ export default function GlobalTopControls() {
   if (loading || isAuthPage || !isAuthenticated) return null;
 
   return (
-    <div className="fixed top-3 right-3 z-[70] flex items-center gap-2">
+    <div className={`fixed ${topOffsetClass} right-3 z-[70] flex items-center gap-2`}>
       <button
         onClick={handleSignOut}
         className="px-2 py-1 text-sm font-bold text-red-600 hover:text-red-700 transition-colors"

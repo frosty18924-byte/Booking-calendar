@@ -1,7 +1,6 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import Icon from './Icon';
 import UniformButton from './UniformButton';
 
 // Import the useMatrixHeaders hook (already defined at the bottom of this file)
@@ -303,8 +302,7 @@ export default function CourseExpiryChecker({ isDark }: { isDark: boolean }) {
       {/* Header */}
       <div className={`border-b transition-colors duration-300 ${isDark ? 'border-gray-800 bg-gray-800' : 'border-gray-200 bg-white'}`}>
         <div className="px-4 sm:px-6 lg:px-8 py-10 max-w-7xl mx-auto text-center">
-          <h1 className={`text-4xl font-bold flex items-center justify-center gap-3 transition-colors duration-300 ${isDark ? 'text-white' : 'text-gray-900'}`}>
-            <Icon name="chevron-right" className="w-8 h-8 text-blue-500" />
+          <h1 className={`text-4xl font-bold transition-colors duration-300 ${isDark ? 'text-white' : 'text-gray-900'}`}>
             Course Expiry Checker
           </h1>
           <p className={`mt-3 text-lg transition-colors duration-300 ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
