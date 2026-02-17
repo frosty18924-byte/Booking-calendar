@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from 'react';
 import UniformButton from './UniformButton';
-import ThemeToggle from './ThemeToggle';
 
 // Import the useMatrixHeaders hook (already defined at the bottom of this file)
 import { supabase } from '@/lib/supabase';
@@ -149,15 +148,6 @@ export default function CourseExpiryChecker({ isDark }: { isDark: boolean }) {
 
     setStartDate(formatDate(today));
     setEndDate(formatDate(nextMonth));
-  }
-
-  async function handleSignOut() {
-    const { error } = await supabase.auth.signOut();
-    if (error) {
-      console.error('Error signing out:', error);
-      return;
-    }
-    window.location.href = '/login';
   }
 
   function buildFilterOptions(data: CourseData[]) {
@@ -308,19 +298,10 @@ export default function CourseExpiryChecker({ isDark }: { isDark: boolean }) {
   const isExpiredView = allData.length > 0 && allData[0].expiredSince !== undefined;
 
   return (
-    <div className={`min-h-screen transition-colors duration-500 ${isDark ? 'bg-gray-900' : 'bg-gray-50'}`}>
+    <div className={`min-h-screen pt-16 transition-colors duration-500 ${isDark ? 'bg-gray-900' : 'bg-gray-50'}`}>
       {/* Header */}
       <div className={`border-b transition-colors duration-300 ${isDark ? 'border-gray-800 bg-gray-800' : 'border-gray-200 bg-white'}`}>
-        <div className="px-4 sm:px-6 lg:px-8 py-10 max-w-7xl mx-auto text-center relative">
-          <div className="absolute right-4 top-4 flex items-center gap-2">
-            <button
-              onClick={handleSignOut}
-              className="px-2 py-1 text-sm font-bold text-red-600 hover:text-red-700 transition-colors"
-            >
-              Sign Out
-            </button>
-            <ThemeToggle />
-          </div>
+        <div className="px-4 sm:px-6 lg:px-8 py-10 max-w-7xl mx-auto text-center">
           <h1 className={`text-4xl font-bold transition-colors duration-300 ${isDark ? 'text-white' : 'text-gray-900'}`}>
             Course Expiry Checker
           </h1>
