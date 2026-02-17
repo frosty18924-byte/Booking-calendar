@@ -3,7 +3,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
-import { hasPermission } from '@/lib/permissions';
 import HomeButton from '@/app/components/HomeButton';
 import { parseFirstThreeRowsFromCsvString, CsvHeaderRows } from './csvHeaderUtils';
 
@@ -213,7 +212,12 @@ export default function TrainingMatrixPage() {
         return;
       }
       setUser(user);
-      setUserRole('admin');
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('role_tier')
+        .eq('id', user.id)
+        .single();
+      setUserRole(profile?.role_tier || 'staff');
     } catch (error) {
       console.error('Auth check error:', error);
       router.push('/login');
@@ -229,35 +233,34 @@ export default function TrainingMatrixPage() {
 
   const fetchLocations = async (): Promise<void> => {
     try {
-      if (!hasPermission(userRole, 'ADMIN_DASHBOARD', 'canView')) {
-        const { data, error } = await supabase
-          .from('staff_locations')
-          .select('location_id, locations(id, name)')
-          .eq('staff_id', user.id);
-
-        if (error) {
-          console.warn('Error fetching staff locations:', error);
-          return;
-        }
-
-        if (data && data.length > 0 && data[0].locations) {
-          setLocations([data[0].locations]);
-          setSelectedLocation((data[0].locations as any).id);
-        }
+      const { data: sessionData } = await supabase.auth.getSession();
+      const token = sessionData.session?.access_token;
+      if (!token) {
+        console.warn('No session token available for location fetch');
         return;
       }
 
-      const { data, error } = await supabase.from('locations').select('id, name').order('name');
-      if (error) {
-        console.error('Error fetching locations:', error);
+      const response = await fetch('/api/locations/user-locations', {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      if (!response.ok) {
+        console.warn('Failed to fetch scoped locations:', response.status);
         return;
       }
 
-      if (data && data.length > 0) {
-        // Deduplicate locations by id to prevent duplicates in dropdown
-        const uniqueLocations = Array.from(new Map(data.map(loc => [loc.id, loc])).values());
+      const payload = await response.json();
+      const scopedLocations = Array.isArray(payload.locations) ? payload.locations : [];
+
+      if (scopedLocations.length > 0) {
+        const uniqueLocations = Array.from(new Map(scopedLocations.map((loc: any) => [loc.id, loc])).values());
         setLocations(uniqueLocations);
         setSelectedLocation(uniqueLocations[0].id);
+      } else {
+        setLocations([]);
+        setSelectedLocation('');
       }
     } catch (error) {
       console.error('Error in fetchLocations:', error);

@@ -178,7 +178,7 @@ export default function CalendarPage() {
 
   const uniqueCourses = Array.from(new Set(events.map(e => e.courses?.name).filter(Boolean)));
   const filteredEvents = filterCourse === 'all' ? events : events.filter(e => e.courses?.name === filterCourse);
-  const canViewAdmin = hasPermission(userRole, 'ADMIN_DASHBOARD', 'canView');
+  const canViewAdmin = userRole === 'admin';
   const canSchedule = hasPermission(userRole, 'COURSE_SCHEDULING', 'canCreate');
 
   return (

@@ -84,17 +84,27 @@ export default function CourseExpiryChecker({ isDark }: { isDark: boolean }) {
 
   async function fetchLocations() {
     try {
-      const { data, error } = await supabase
-        .from('locations')
-        .select('id, name')
-        .order('name', { ascending: true });
-
-      if (error) {
-        console.error('Error fetching locations:', error);
+      const { data: sessionData } = await supabase.auth.getSession();
+      const token = sessionData.session?.access_token;
+      if (!token) {
+        console.warn('No session token available for scoped location fetch');
         return;
       }
 
-      setLocations(data || []);
+      const response = await fetch('/api/locations/user-locations', {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      if (!response.ok) {
+        console.warn('Failed to fetch scoped locations:', response.status);
+        return;
+      }
+
+      const payload = await response.json();
+      const scopedLocations = Array.isArray(payload.locations) ? payload.locations : [];
+      setLocations(scopedLocations);
     } catch (error) {
       console.error('Error in fetchLocations:', error);
     }

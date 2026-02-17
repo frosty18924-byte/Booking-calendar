@@ -45,7 +45,7 @@ export async function GET(request: NextRequest) {
     // Get user profile
     const { data: userProfile } = await supabase
       .from('profiles')
-      .select('role_tier')
+      .select('role_tier, managed_houses, location')
       .eq('id', user.id)
       .single();
 
@@ -66,13 +66,48 @@ export async function GET(request: NextRequest) {
         .order('name');
       locations = data || [];
     } else if (userProfile.role_tier === 'manager' || userProfile.role_tier === 'scheduler') {
-      // Get only locations this user manages
-      const { data } = await supabase
+      // Managers/schedulers can see explicitly managed houses + their linked staff locations.
+      const locationMap = new Map<string, { id: string; name: string }>();
+
+      // Existing staff_locations links
+      const { data: linkedLocations } = await supabase
         .from('staff_locations')
         .select('location_id, locations(id, name)')
         .eq('staff_id', user.id);
 
-      locations = data?.map(sl => sl.locations).filter(Boolean) || [];
+      (linkedLocations || []).forEach((sl: any) => {
+        if (sl.locations?.id && sl.locations?.name) {
+          locationMap.set(sl.locations.id, sl.locations);
+        }
+      });
+
+      // Managed house names from profile
+      const managedNames = new Set<string>();
+      if (Array.isArray(userProfile.managed_houses)) {
+        userProfile.managed_houses.forEach((name: any) => {
+          if (typeof name === 'string' && name.trim()) {
+            managedNames.add(name.trim());
+          }
+        });
+      }
+      if (typeof userProfile.location === 'string' && userProfile.location.trim()) {
+        managedNames.add(userProfile.location.trim());
+      }
+
+      if (managedNames.size > 0) {
+        const { data: managedLocations } = await supabase
+          .from('locations')
+          .select('id, name')
+          .in('name', Array.from(managedNames));
+
+        (managedLocations || []).forEach((loc: any) => {
+          if (loc.id && loc.name) {
+            locationMap.set(loc.id, loc);
+          }
+        });
+      }
+
+      locations = Array.from(locationMap.values()).sort((a, b) => a.name.localeCompare(b.name));
     } else {
       // Staff get their own location
       const { data } = await supabase
