@@ -298,7 +298,7 @@ export default function CourseExpiryChecker({ isDark }: { isDark: boolean }) {
   const isExpiredView = allData.length > 0 && allData[0].expiredSince !== undefined;
 
   return (
-    <div className={`min-h-screen pt-16 transition-colors duration-500 ${isDark ? 'bg-gray-900' : 'bg-gray-50'}`}>
+    <div className={`min-h-screen transition-colors duration-500 ${isDark ? 'bg-gray-900' : 'bg-gray-50'}`}>
       {/* Header */}
       <div className={`border-b transition-colors duration-300 ${isDark ? 'border-gray-800 bg-gray-800' : 'border-gray-200 bg-white'}`}>
         <div className="px-4 sm:px-6 lg:px-8 py-10 max-w-7xl mx-auto text-center">

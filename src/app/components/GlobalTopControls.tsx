@@ -35,7 +35,7 @@ export default function GlobalTopControls() {
   }, []);
 
   const isAuthPage = pathname === '/login' || pathname.startsWith('/auth/');
-  const topOffsetClass = pathname === '/apps/expiry-checker' ? 'top-6' : 'top-3';
+  const topOffsetClass = pathname === '/apps/expiry-checker' ? 'top-16' : 'top-3';
 
   const handleSignOut = async () => {
     const { error } = await supabase.auth.signOut();
