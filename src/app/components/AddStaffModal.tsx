@@ -27,6 +27,25 @@ export default function AddStaffModal({ onClose, onRefresh }: { onClose: () => v
     password: ''
   });
 
+  const isUuid = (value: string): boolean =>
+    /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test((value || '').trim());
+
+  const resolveLocationId = (value: string): string => {
+    if (!value) return '';
+    const trimmed = value.trim();
+    if (isUuid(trimmed) && locations.some(loc => loc.id === trimmed)) return trimmed;
+    return locations.find(loc => (loc.name || '').trim().toLowerCase() === trimmed.toLowerCase())?.id || '';
+  };
+
+  const resolveLocationName = (value: string): string => {
+    if (!value) return '';
+    const trimmed = value.trim();
+    if (isUuid(trimmed)) {
+      return locations.find(loc => loc.id === trimmed)?.name || trimmed;
+    }
+    return trimmed;
+  };
+
   useEffect(() => { 
     checkTheme();
     fetchUserRole();
@@ -115,13 +134,11 @@ export default function AddStaffModal({ onClose, onRefresh }: { onClose: () => v
       if (editingId) {
         // Get the current staff data to check if location changed
         const currentStaff = allStaff.find(s => s.id === editingId);
-        // Compare by finding the current location ID from the name
-        const currentLocationId = locations.find(loc => loc.name === currentStaff?.location)?.id;
+        // Compare current/new location IDs with normalization (supports legacy UUID-in-location values)
+        const currentLocationId = resolveLocationId(currentStaff?.location || '');
         const locationChanged = currentLocationId !== formData.home_house;
         
-        // Find the location name from the selected location ID
-        const selectedLocation = locations.find(loc => loc.id === formData.home_house);
-        const locationName = selectedLocation?.name || formData.home_house;
+        const locationName = resolveLocationName(formData.home_house);
         
         // Map home_house to location for database update
         const updateData = {
@@ -179,7 +196,7 @@ export default function AddStaffModal({ onClose, onRefresh }: { onClose: () => v
           full_name: formData.full_name,
           email: formData.email,
           location: locationName,
-          location_id: formData.home_house,
+          location_id: resolveLocationId(formData.home_house) || formData.home_house,
           role_tier: formData.role_tier,
           ...(formData.password && { password: formData.password })
         };
@@ -251,7 +268,7 @@ export default function AddStaffModal({ onClose, onRefresh }: { onClose: () => v
         return;
       }
 
-      const staffData = [];
+      const staffData: any[] = [];
       let errorCount = 0;
       let skippedDuplicates = 0;
       let skippedInternalDuplicates = 0;
@@ -308,10 +325,14 @@ export default function AddStaffModal({ onClose, onRefresh }: { onClose: () => v
 
         console.log(`Row ${i + 1}: ${row.full_name}, email: ${row.email}, location: ${row.home_house}, role: ${row.role_tier}`);
 
+        const normalizedLocationId = resolveLocationId(row.home_house);
+        const normalizedLocationName = resolveLocationName(row.home_house);
+
         const staffRecord: any = {
           full_name: row.full_name,
           email: emailLower,
-          location: row.home_house,
+          location: normalizedLocationName || row.home_house,
+          location_id: normalizedLocationId || undefined,
           role_tier: row.role_tier || 'staff',
           managed_houses: []
         };
@@ -368,6 +389,29 @@ export default function AddStaffModal({ onClose, onRefresh }: { onClose: () => v
           const locationsPresent = data.some(record => record.location);
           if (!locationsPresent) {
             console.warn('⚠️ WARNING: All location values are NULL in inserted records. This is likely an RLS policy issue.');
+          }
+
+          // Ensure every inserted staff member is linked in staff_locations for matrix placement.
+          const staffLocationRows = data
+            .map((record: any) => {
+              const locationId = resolveLocationId(record.location || '');
+              if (!locationId) return null;
+              return {
+                staff_id: record.id,
+                location_id: locationId,
+                display_order: 9999,
+              };
+            })
+            .filter((row: any) => row !== null);
+
+          if (staffLocationRows.length > 0) {
+            const { error: staffLocError } = await supabase
+              .from('staff_locations')
+              .upsert(staffLocationRows, { onConflict: 'staff_id,location_id' });
+
+            if (staffLocError) {
+              console.error('Error creating staff_locations for bulk upload:', staffLocError);
+            }
           }
         }
         
@@ -477,8 +521,8 @@ Charlie Scheduler,charlie@example.com,Banks House,manager`;
 
   const handleEdit = (staff: any) => {
     setEditingId(staff.id);
-    // Find location ID from location name
-    const locationId = locations.find(loc => loc.name === staff.location)?.id || '';
+    // Resolve to location ID from either location name or legacy UUID
+    const locationId = resolveLocationId(staff.location || '');
     setFormData({
       full_name: staff.full_name,
       email: staff.email,
@@ -512,7 +556,7 @@ Charlie Scheduler,charlie@example.com,Banks House,manager`;
     const grouped: { [key: string]: any[] } = {};
     
     allStaff.forEach(staff => {
-      const location = staff.location || 'Unassigned';
+      const location = staff.location ? (resolveLocationName(staff.location) || 'Unassigned') : 'Unassigned';
       if (!grouped[location]) {
         grouped[location] = [];
       }

@@ -8,8 +8,11 @@ interface StaffMember {
   email: string;
   location: string;
   location_id?: string;
-  role_tier: 'staff' | 'scheduler' | 'admin';
+  role_tier: 'staff' | 'scheduler' | 'manager' | 'admin';
 }
+
+const isUuid = (value: string): boolean =>
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test((value || '').trim());
 
 export async function POST(request: Request) {
   try {
@@ -81,6 +84,54 @@ export async function POST(request: Request) {
           continue;
         }
 
+        // Normalize incoming location values so profile.location stores a human-readable name
+        // and staff_locations always gets a real location UUID.
+        let normalizedLocationId = '';
+        let normalizedLocationName = '';
+
+        if (staff.location_id && isUuid(staff.location_id)) {
+          normalizedLocationId = staff.location_id;
+          const { data: byId } = await supabaseAdmin
+            .from('locations')
+            .select('id, name')
+            .eq('id', staff.location_id)
+            .maybeSingle();
+          normalizedLocationName = byId?.name || '';
+        }
+
+        if (!normalizedLocationId && isUuid(staff.location)) {
+          normalizedLocationId = staff.location;
+          const { data: byId } = await supabaseAdmin
+            .from('locations')
+            .select('id, name')
+            .eq('id', staff.location)
+            .maybeSingle();
+          normalizedLocationName = byId?.name || '';
+        }
+
+        if (!normalizedLocationId || !normalizedLocationName) {
+          const locationNameInput = (staff.location || '').trim();
+          const { data: byName } = await supabaseAdmin
+            .from('locations')
+            .select('id, name')
+            .eq('name', locationNameInput)
+            .maybeSingle();
+
+          if (byName) {
+            normalizedLocationId = byName.id;
+            normalizedLocationName = byName.name;
+          }
+        }
+
+        if (!normalizedLocationId || !normalizedLocationName) {
+          results.push({
+            email: staff.email,
+            success: false,
+            error: `Invalid location provided for ${staff.full_name}. Please select a valid location.`,
+          });
+          continue;
+        }
+
         // Generate a roster-only profile ID (UUID)
         const profileId = crypto.randomUUID();
         
@@ -94,7 +145,7 @@ export async function POST(request: Request) {
               id: profileId,
               full_name: staff.full_name,
               email: emailToCheck,
-              location: staff.location,
+              location: normalizedLocationName,
               role_tier: staff.role_tier,
               password_needs_change: false,
               is_deleted: false,
@@ -118,7 +169,7 @@ export async function POST(request: Request) {
           .insert([
             {
               staff_id: profileId,
-              location_id: staff.location_id || staff.location,
+              location_id: normalizedLocationId,
             },
           ]);
 
