@@ -1,20 +1,19 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useSearchParams } from 'next/navigation';
 import { login } from './actions';
 
 export default function SignInPage() {
-  const searchParams = useSearchParams();
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState('');
 
   useEffect(() => {
-    const error = searchParams?.get('error');
+    const params = new URLSearchParams(window.location.search);
+    const error = params.get('error');
     if (error === 'account_deleted') {
       setMessage('Your account has been deactivated. Please contact an administrator.');
     }
-  }, [searchParams]);
+  }, []);
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();

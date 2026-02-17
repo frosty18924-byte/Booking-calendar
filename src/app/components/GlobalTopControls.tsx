@@ -34,7 +34,7 @@ export default function GlobalTopControls() {
     };
   }, []);
 
-  const isAuthPage = pathname === '/login' || pathname.startsWith('/auth/');
+  const isAuthPage = pathname === '/login' || pathname?.startsWith('/auth/');
 
   const handleSignOut = async () => {
     const { error } = await supabase.auth.signOut();
