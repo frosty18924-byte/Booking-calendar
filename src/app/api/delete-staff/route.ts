@@ -41,7 +41,7 @@ export async function POST(request: Request) {
     // First verify the profile exists and get its auth status
     const { data: profileExists } = await supabaseAdmin
       .from('profiles')
-      .select('id, role_tier')
+      .select('id, role_tier, full_name, email, location, home_house, managed_houses, password_needs_change, is_deleted, deleted_at')
       .eq('id', staffId);
     
     console.log('Profile exists:', profileExists && profileExists.length > 0);
@@ -58,6 +58,26 @@ export async function POST(request: Request) {
 
     // Delete the auth user account if it exists (for manager/scheduler/admin users)
     const profile = profileExists[0];
+
+    // Log archive snapshot so admins can restore this profile from Archive page.
+    try {
+      await supabaseAdmin
+        .from('deleted_items')
+        .insert([
+          {
+            entity_type: 'profile',
+            entity_id: String(staffId),
+            location_id: null,
+            snapshot: {
+              profile: profile,
+            },
+            deleted_by: null,
+          },
+        ]);
+    } catch (archiveErr) {
+      console.warn('Could not create archive record for deleted profile:', archiveErr);
+    }
+
     if (profile.role_tier !== 'staff') {
       console.log('Attempting to delete auth user for:', email);
       try {

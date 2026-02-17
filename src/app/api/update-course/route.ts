@@ -24,16 +24,49 @@ export async function POST(request: NextRequest) {
 
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    console.log('Updating course via RPC function:', { courseId, updates });
+    const allowedFields = ['name', 'category', 'expiry_months', 'never_expires'] as const;
+    const sanitizedUpdates = Object.fromEntries(
+      Object.entries(updates || {}).filter(([key]) => allowedFields.includes(key as (typeof allowedFields)[number]))
+    );
 
-    // Use the stored procedure to bypass schema cache issues
-    const { data, error } = await supabase.rpc('update_course_data', {
-      p_course_id: courseId,
-      p_updates: updates,
-    });
+    if (Object.keys(sanitizedUpdates).length === 0) {
+      return NextResponse.json(
+        { error: 'No valid fields provided for update' },
+        { status: 400 }
+      );
+    }
+
+    console.log('Updating training course:', { courseId, updates: sanitizedUpdates });
+
+    let { data, error } = await supabase
+      .from('training_courses')
+      .update(sanitizedUpdates)
+      .eq('id', courseId)
+      .select('id, name, category, expiry_months, never_expires')
+      .single();
+
+    // Some environments may not have `category` on training_courses.
+    // Retry without category in both payload and select shape whenever 42703 appears.
+    if (error?.code === '42703') {
+      const { category: _ignoredCategory, ...withoutCategory } = sanitizedUpdates;
+      const retryUpdates =
+        'category' in sanitizedUpdates && Object.keys(withoutCategory).length > 0
+          ? withoutCategory
+          : sanitizedUpdates;
+
+      const retry = await supabase
+        .from('training_courses')
+        .update(retryUpdates)
+        .eq('id', courseId)
+        .select('id, name, expiry_months, never_expires')
+        .single();
+
+      data = retry.data as any;
+      error = retry.error;
+    }
 
     if (error) {
-      console.error('RPC error:', error);
+      console.error('Update error:', error);
       return NextResponse.json(
         { error: error.message, code: error.code },
         { status: 400 }

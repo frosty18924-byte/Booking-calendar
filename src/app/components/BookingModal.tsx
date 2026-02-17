@@ -210,7 +210,27 @@ export default function BookingModal({ event, onClose, onRefresh, onOpenChecklis
       .eq('id', bookingId)
       .single();
 
-    await supabase.from('bookings').delete().eq('id', bookingId);
+    const { data: sessionData } = await supabase.auth.getSession();
+    const token = sessionData.session?.access_token;
+    if (!token) {
+      alert('You are not authenticated. Please sign in again.');
+      return;
+    }
+
+    const deleteResponse = await fetch('/api/archive/delete-booking', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({ bookingId }),
+    });
+
+    const deleteResult = await deleteResponse.json();
+    if (!deleteResponse.ok || !deleteResult?.success) {
+      alert(`Error removing booking: ${deleteResult?.error || 'Unknown error'}`);
+      return;
+    }
     
     // Send cancellation email
     if (booking?.profile_id) {

@@ -44,6 +44,14 @@ interface MatrixCell {
   status: string | null;
 }
 
+interface RemovedCourseEntry {
+  deleted_item_id: string;
+  course_id: string;
+  course_name: string;
+  location_id: string;
+  display_order: number;
+}
+
 function normalizeCourseName(name: string): string {
   return name.replace(/\s+/g, ' ').trim().toLowerCase();
 }
@@ -73,8 +81,10 @@ export default function TrainingMatrixPage() {
   const [draggedStaff, setDraggedStaff] = useState<string | null>(null);
   const [editingHeader, setEditingHeader] = useState<{ courseId: string; type: 'name' | 'category' | 'expiry' } | null>(null);
   const [editHeaderValue, setEditHeaderValue] = useState<string>('');
+  const [editNeverExpires, setEditNeverExpires] = useState<boolean>(false);
   const [showReorderCourses, setShowReorderCourses] = useState(false);
   const [courseOrderInput, setCourseOrderInput] = useState('');
+  const [lastRemovedCourse, setLastRemovedCourse] = useState<RemovedCourseEntry | null>(null);
 
   function getCategoryOverrides(locationId: string): Record<string, string> {
     if (typeof window === 'undefined') return {};
@@ -204,6 +214,14 @@ export default function TrainingMatrixPage() {
     })();
   }, [selectedLocation, locations]);
 
+  useEffect(() => {
+    if (!lastRemovedCourse) return;
+    if (!selectedLocation) return;
+    if (lastRemovedCourse.location_id !== selectedLocation) {
+      setLastRemovedCourse(null);
+    }
+  }, [selectedLocation, lastRemovedCourse]);
+
   const checkAuth = async (): Promise<void> => {
     try {
       const { data: { user } } = await supabase.auth.getUser();
@@ -255,7 +273,9 @@ export default function TrainingMatrixPage() {
       const scopedLocations = Array.isArray(payload.locations) ? payload.locations : [];
 
       if (scopedLocations.length > 0) {
-        const uniqueLocations = Array.from(new Map(scopedLocations.map((loc: any) => [loc.id, loc])).values());
+        const uniqueLocations: any[] = Array.from(
+          new Map<string, any>(scopedLocations.map((loc: any) => [loc.id, loc])).values()
+        );
         setLocations(uniqueLocations);
         setSelectedLocation(uniqueLocations[0].id);
       } else {
@@ -926,11 +946,82 @@ export default function TrainingMatrixPage() {
     }
   };
 
-  const deleteCourse = (courseId: string) => {
-    if (confirm('Are you sure you want to delete this course? This will remove it from all training records.')) {
+  const deleteCourse = async (courseId: string) => {
+    if (!selectedLocation || selectedLocation.trim() === '') {
+      alert('Please select a location before removing a course');
+      return;
+    }
+
+    const ok = confirm('Remove this course from this location matrix? You can undo this from the banner after deletion.');
+    if (!ok) return;
+
+    try {
+      const removedCourse = courses.find(c => c.id === courseId);
+      const removedDisplayOrder = Math.max(1, courses.findIndex(c => c.id === courseId) + 1);
+      const { data: sessionData } = await supabase.auth.getSession();
+      const token = sessionData.session?.access_token;
+      if (!token) throw new Error('You are not authenticated. Please sign in again.');
+
+      const response = await fetch('/api/archive/remove-location-course', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          courseId,
+          locationId: selectedLocation,
+          displayOrder: removedDisplayOrder,
+        }),
+      });
+      const result = await response.json();
+      if (!response.ok || !result?.success || !result?.removed) {
+        throw new Error(result?.error || 'Failed to remove course from location');
+      }
+
       setCourses(courses.filter(c => c.id !== courseId));
-      // Note: In production, you would also delete from the database
-      // await supabase.from('courses').delete().eq('id', courseId);
+      setLastRemovedCourse({
+        deleted_item_id: result.removed.deleted_item_id,
+        course_id: courseId,
+        course_name: result.removed.course_name || removedCourse?.name || 'Unknown Course',
+        location_id: selectedLocation,
+        display_order: removedDisplayOrder,
+      });
+      await fetchMatrixData();
+    } catch (error) {
+      console.error('Error removing course from location matrix:', error);
+      alert('Error removing course from this location matrix');
+    }
+  };
+
+  const undoRemoveCourse = async () => {
+    if (!lastRemovedCourse) return;
+    if (userRole !== 'admin') {
+      alert('Only admins can restore from archive.');
+      return;
+    }
+
+    try {
+      const { data: sessionData } = await supabase.auth.getSession();
+      const token = sessionData.session?.access_token;
+      if (!token) throw new Error('You are not authenticated. Please sign in again.');
+
+      const response = await fetch('/api/archive', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ deletedItemId: lastRemovedCourse.deleted_item_id }),
+      });
+      const result = await response.json();
+      if (!response.ok || !result?.success) throw new Error(result?.error || 'Failed to restore removed course');
+
+      setLastRemovedCourse(null);
+      await fetchMatrixData();
+    } catch (error) {
+      console.error('Error restoring removed course:', error);
+      alert('Error restoring removed course');
     }
   };
 
@@ -1194,6 +1285,33 @@ export default function TrainingMatrixPage() {
                 )}
               </div>
             )}
+            {lastRemovedCourse && userRole === 'admin' && (
+              <div className={`w-full max-w-4xl rounded-lg border px-4 py-2 text-sm flex items-center justify-between ${
+                isDark ? 'bg-amber-900/20 border-amber-700 text-amber-200' : 'bg-amber-50 border-amber-300 text-amber-800'
+              }`}>
+                <span>
+                  Removed from this location: <strong>{lastRemovedCourse.course_name}</strong>
+                </span>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={undoRemoveCourse}
+                    className={`px-3 py-1 rounded font-semibold ${
+                      isDark ? 'bg-amber-700 hover:bg-amber-600 text-white' : 'bg-amber-500 hover:bg-amber-600 text-white'
+                    }`}
+                  >
+                    Undo
+                  </button>
+                  <button
+                    onClick={() => setLastRemovedCourse(null)}
+                    className={`px-3 py-1 rounded ${
+                      isDark ? 'bg-gray-700 hover:bg-gray-600 text-gray-200' : 'bg-gray-200 hover:bg-gray-300 text-gray-800'
+                    }`}
+                  >
+                    Dismiss
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         )}
       </div>
@@ -1337,6 +1455,7 @@ export default function TrainingMatrixPage() {
                         onClick={() => {
                           setEditingHeader({ courseId: course.id, type: 'expiry' });
                           setEditHeaderValue(String(course.expiry_months || 12));
+                          setEditNeverExpires(course.never_expires || false);
                         }}
                         className={`px-2 py-1 text-center text-xs cursor-pointer hover:opacity-80 ${isDark ? 'text-gray-400' : 'text-gray-600'} min-w-[140px] ${isDark ? 'bg-gray-600' : 'bg-gray-200'}`}
                       >
@@ -1345,16 +1464,13 @@ export default function TrainingMatrixPage() {
                             <label className={`text-xs font-medium ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>
                               <input
                                 type="checkbox"
-                                checked={course.never_expires || false}
-                                onChange={(e) => {
-                                  const updatedCourses = courses.map(c => c.id === course.id ? { ...c, never_expires: e.target.checked } : c);
-                                  setCourses(updatedCourses);
-                                }}
+                                checked={editNeverExpires}
+                                onChange={(e) => setEditNeverExpires(e.target.checked)}
                                 className="mr-1"
                               />
                               Never expires
                             </label>
-                            {!course.never_expires && (
+                            {!editNeverExpires && (
                               <input
                                 type="number"
                                 value={editHeaderValue}
@@ -1363,7 +1479,7 @@ export default function TrainingMatrixPage() {
                                   const months = parseInt(editHeaderValue) || 12;
                                   const updatedCourses = courses.map(c => c.id === course.id ? { ...c, expiry_months: months } : c);
                                   setCourses(updatedCourses);
-                                  await saveCourseChanges(course.id, { expiry_months: months, never_expires: false });
+                                  await saveCourseChanges(course.id, { expiry_months: months, never_expires: false }, true);
                                   await updateAllExpiriesForCourse(course.id, months, false);
                                   setEditingHeader(null);
                                 }}
@@ -1372,7 +1488,7 @@ export default function TrainingMatrixPage() {
                                     const months = parseInt(editHeaderValue) || 12;
                                     const updatedCourses = courses.map(c => c.id === course.id ? { ...c, expiry_months: months } : c);
                                     setCourses(updatedCourses);
-                                    await saveCourseChanges(course.id, { expiry_months: months, never_expires: false });
+                                    await saveCourseChanges(course.id, { expiry_months: months, never_expires: false }, true);
                                     await updateAllExpiriesForCourse(course.id, months, false);
                                     setEditingHeader(null);
                                   }
@@ -1383,12 +1499,15 @@ export default function TrainingMatrixPage() {
                                 autoFocus
                               />
                             )}
-                            {(course.never_expires || course.expiry_months === 9999) && (
+                            {(editNeverExpires || course.expiry_months === 9999) && (
                               <button
                                 onClick={async () => {
-                                  const updatedCourses = courses.map(c => c.id === course.id ? { ...c, never_expires: false, expiry_months: 12 } : c);
+                                  setEditNeverExpires(false);
+                                  const months = parseInt(editHeaderValue) || 12;
+                                  const updatedCourses = courses.map(c => c.id === course.id ? { ...c, never_expires: false, expiry_months: months } : c);
                                   setCourses(updatedCourses);
-                                  await saveCourseChanges(course.id, { never_expires: false, expiry_months: 12 });
+                                  await saveCourseChanges(course.id, { never_expires: false, expiry_months: months }, true);
+                                  await updateAllExpiriesForCourse(course.id, months, false);
                                   setEditingHeader(null);
                                 }}
                                 className={`text-xs px-2 py-1 rounded ${isDark ? 'bg-gray-700 hover:bg-gray-600' : 'bg-gray-300 hover:bg-gray-400'} transition-colors`}
@@ -1398,8 +1517,18 @@ export default function TrainingMatrixPage() {
                             )}
                             <button
                               onClick={async () => {
-                                await saveCourseChanges(course.id, { expiry_months: parseInt(editHeaderValue) || 12, never_expires: course.never_expires || false });
-                                await updateAllExpiriesForCourse(course.id, parseInt(editHeaderValue) || 12, course.never_expires || false);
+                                if (editNeverExpires) {
+                                  const updatedCourses = courses.map(c => c.id === course.id ? { ...c, never_expires: true, expiry_months: 9999 } : c);
+                                  setCourses(updatedCourses);
+                                  await saveCourseChanges(course.id, { never_expires: true, expiry_months: 9999 }, true);
+                                  await updateAllExpiriesForCourse(course.id, 9999, true);
+                                } else {
+                                  const months = parseInt(editHeaderValue) || 12;
+                                  const updatedCourses = courses.map(c => c.id === course.id ? { ...c, never_expires: false, expiry_months: months } : c);
+                                  setCourses(updatedCourses);
+                                  await saveCourseChanges(course.id, { expiry_months: months, never_expires: false }, true);
+                                  await updateAllExpiriesForCourse(course.id, months, false);
+                                }
                                 setEditingHeader(null);
                               }}
                               className={`text-xs px-2 py-1 rounded ${isDark ? 'bg-blue-700 hover:bg-blue-600' : 'bg-blue-500 hover:bg-blue-600'} text-white transition-colors`}

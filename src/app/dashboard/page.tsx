@@ -114,7 +114,7 @@ export default function DashboardPage() {
               </p>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
               {/* Add Staff Card */}
               <div
                 onClick={() => setShowAddStaffModal(true)}
@@ -180,6 +180,30 @@ export default function DashboardPage() {
                   Import Careskills completion dates from Atlas Excel files
                 </p>
                 <div className="mt-6 flex items-center text-blue-600 dark:text-blue-400 group-hover:translate-x-1 transition-transform">
+                  <span className="font-semibold">Open</span>
+                  <svg className="w-5 h-5 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                  </svg>
+                </div>
+              </div>
+
+              {/* Archive & Restore Card */}
+              <div
+                onClick={() => router.push('/admin/archive')}
+                className={`group cursor-pointer p-8 rounded-xl border-2 transition-all duration-300 hover:shadow-lg ${
+                  isDark
+                    ? 'bg-gray-800 border-gray-700 hover:border-orange-500 hover:bg-gray-750'
+                    : 'bg-white border-gray-200 hover:border-orange-500 hover:bg-orange-50'
+                }`}
+              >
+                <div className="text-5xl mb-4">🗂️</div>
+                <h3 className={`text-2xl font-bold mb-2 transition-colors duration-300 ${isDark ? 'text-white' : 'text-gray-900'}`}>
+                  Archive & Restore
+                </h3>
+                <p className={`transition-colors duration-300 ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
+                  Recover deleted bookings, staff, and archived items.
+                </p>
+                <div className="mt-6 flex items-center text-orange-600 dark:text-orange-400 group-hover:translate-x-1 transition-transform">
                   <span className="font-semibold">Open</span>
                   <svg className="w-5 h-5 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />

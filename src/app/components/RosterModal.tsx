@@ -129,8 +129,22 @@ export default function RosterModal({ event, onClose, onRefresh, userRole = 'adm
     if (!confirm('Remove this staff member from the event?')) return;
     setLoading(true);
     try {
-      const { error } = await supabase.from('bookings').delete().eq('id', bookingId);
-      if (error) throw error;
+      const { data: sessionData } = await supabase.auth.getSession();
+      const token = sessionData.session?.access_token;
+      if (!token) throw new Error('You are not authenticated. Please sign in again.');
+
+      const response = await fetch('/api/archive/delete-booking', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ bookingId }),
+      });
+      const result = await response.json();
+      if (!response.ok || !result?.success) {
+        throw new Error(result?.error || 'Failed to remove booking');
+      }
 
       await fetchData();
       onRefresh();
