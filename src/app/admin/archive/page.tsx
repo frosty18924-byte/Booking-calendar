@@ -22,6 +22,7 @@ export default function ArchivePage() {
   const [isDark, setIsDark] = useState(true);
   const [items, setItems] = useState<ArchiveItem[]>([]);
   const [restoringId, setRestoringId] = useState<string | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
   useEffect(() => {
     const init = async () => {
@@ -94,6 +95,35 @@ export default function ArchivePage() {
     }
   }
 
+  async function deleteArchiveItem(id: string) {
+    if (!confirm('Delete this archive entry permanently?')) return;
+
+    setDeletingId(id);
+    try {
+      const { data: sessionData } = await supabase.auth.getSession();
+      const token = sessionData.session?.access_token;
+      if (!token) throw new Error('You are not authenticated');
+
+      const response = await fetch('/api/archive', {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ deletedItemId: id }),
+      });
+      const result = await response.json();
+      if (!response.ok || !result?.success) {
+        throw new Error(result?.error || 'Failed to delete archive entry');
+      }
+      await loadItems();
+    } catch (error: any) {
+      alert(`Delete failed: ${error.message}`);
+    } finally {
+      setDeletingId(null);
+    }
+  }
+
   function itemTitle(item: ArchiveItem): string {
     if (item.entity_type === 'location_training_course') {
       return item?.snapshot?.course_name || 'Removed Matrix Course';
@@ -150,13 +180,22 @@ export default function ArchivePage() {
                       Type: {item.entity_type} {item.location_name ? `• Location: ${item.location_name}` : ''} • Deleted: {new Date(item.deleted_at).toLocaleString('en-GB')}
                     </div>
                   </div>
-                  <button
-                    onClick={() => restoreItem(item.id)}
-                    disabled={restoringId === item.id}
-                    className="px-3 py-2 rounded font-semibold bg-emerald-600 hover:bg-emerald-700 disabled:opacity-60 text-white"
-                  >
-                    {restoringId === item.id ? 'Restoring...' : 'Restore'}
-                  </button>
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => restoreItem(item.id)}
+                      disabled={restoringId === item.id || deletingId === item.id}
+                      className="px-3 py-2 rounded font-semibold bg-emerald-600 hover:bg-emerald-700 disabled:opacity-60 text-white"
+                    >
+                      {restoringId === item.id ? 'Restoring...' : 'Restore'}
+                    </button>
+                    <button
+                      onClick={() => deleteArchiveItem(item.id)}
+                      disabled={restoringId === item.id || deletingId === item.id}
+                      className="px-3 py-2 rounded font-semibold bg-red-600 hover:bg-red-700 disabled:opacity-60 text-white"
+                    >
+                      {deletingId === item.id ? 'Deleting...' : 'Delete'}
+                    </button>
+                  </div>
                 </div>
               </div>
             ))}

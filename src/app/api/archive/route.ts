@@ -223,3 +223,27 @@ export async function POST(request: NextRequest) {
 
   return NextResponse.json({ success: true });
 }
+
+export async function DELETE(request: NextRequest) {
+  const authz = await requireAdmin(request);
+  if ('error' in authz) return authz.error;
+
+  const { service } = authz;
+  const body = await request.json();
+  const deletedItemId = body?.deletedItemId as string | undefined;
+
+  if (!deletedItemId) {
+    return NextResponse.json({ error: 'deletedItemId is required' }, { status: 400 });
+  }
+
+  const { error } = await service
+    .from('deleted_items')
+    .delete()
+    .eq('id', deletedItemId);
+
+  if (error) {
+    return NextResponse.json({ error: error.message, code: error.code }, { status: 400 });
+  }
+
+  return NextResponse.json({ success: true });
+}
