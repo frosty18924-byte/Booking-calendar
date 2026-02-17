@@ -26,6 +26,9 @@ export default function CalendarPage() {
   const [user, setUser] = useState<any>(null);
   const [userRole, setUserRole] = useState<string | null>(null);
 
+  const isTestCourseName = (courseName?: string | null) =>
+    !!courseName && /^e2e[-_ ]/i.test(courseName.trim());
+
   // Helper for colors - All distinct vibrant colors with fallback to dynamic generation
   const courseColors: { [key: string]: { bg: string; text: string } } = {
     'Team Teach L2': { bg: '#3b82f6', text: '#ffffff' },
@@ -151,7 +154,7 @@ export default function CalendarPage() {
           .eq('event_date', event.event_date);
         return { ...event, course_event_overrides: overrides };
       }));
-      setEvents(eventsWithOverrides);
+      setEvents(eventsWithOverrides.filter(event => !isTestCourseName(event.courses?.name)));
     } else {
       setEvents([]);
     }
