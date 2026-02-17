@@ -59,12 +59,12 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(url)
   }
 
-  // 3. If logged in, check if password needs to be changed
-  if (user && !isChangePasswordPage) {
+  // 3. If logged in, validate profile state (deleted / password reset)
+  if (user) {
     try {
       const { data: profile, error: profileError } = await supabase
         .from('profiles')
-        .select('password_needs_change')
+        .select('password_needs_change, is_deleted')
         .eq('id', user.id)
         .single()
 
@@ -72,7 +72,16 @@ export async function middleware(request: NextRequest) {
         console.error('Error fetching profile:', profileError)
       }
 
-      if (profile?.password_needs_change === true) {
+      // Block deleted users from accessing the app even if auth session exists.
+      if (profile?.is_deleted === true) {
+        await supabase.auth.signOut()
+        const url = request.nextUrl.clone()
+        url.pathname = '/login'
+        url.searchParams.set('error', 'account_deleted')
+        return NextResponse.redirect(url)
+      }
+
+      if (!isChangePasswordPage && profile?.password_needs_change === true) {
         console.log('Redirecting user to change password page for user:', user.id)
         const url = request.nextUrl.clone()
         url.pathname = '/auth/change-password-required'
