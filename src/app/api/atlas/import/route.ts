@@ -13,6 +13,24 @@ type ImportChangeRecord = {
   action: 'updated' | 'created';
 };
 
+type IgnoredStaffReason = 'manual_ignore' | 'not_in_database';
+
+function normalizeName(value: string): string {
+  return value.trim().toLowerCase().replace(/\s+/g, ' ');
+}
+
+function getConfiguredIgnoredNames(): Set<string> {
+  const raw = process.env.ATLAS_IMPORT_IGNORE_STAFF_NAMES || '';
+  if (!raw.trim()) return new Set();
+
+  return new Set(
+    raw
+      .split(',')
+      .map((name) => normalizeName(name))
+      .filter(Boolean)
+  );
+}
+
 export async function POST(request: NextRequest) {
   try {
     const formData = await request.formData();
@@ -273,7 +291,9 @@ export async function POST(request: NextRequest) {
     const updates: any[] = [];
     const errors: any[] = [];
     const ignoredStaff = new Set<string>();
-    const ignoredStaffNames = new Set(['ian bunton']);
+    const ignoredMissingStaff = new Set<string>();
+    const ignoredStaffReasons = new Map<string, IgnoredStaffReason>();
+    const ignoredStaffNames = getConfiguredIgnoredNames();
 
     console.log(`Processing ${records.length} records`);
     console.log(`Found ${recordCourseToDB.size} courses to match`);
@@ -287,20 +307,18 @@ export async function POST(request: NextRequest) {
         continue; // Skip empty rows
       }
 
-      if (ignoredStaffNames.has(staffName.toLowerCase())) {
+      if (ignoredStaffNames.has(normalizeName(staffName))) {
         ignoredStaff.add(staffName);
+        ignoredStaffReasons.set(staffName, 'manual_ignore');
         continue;
       }
 
       const staffId = staffMap.get(staffName.toLowerCase());
 
       if (!staffId) {
-        console.log(`Staff not found: "${staffName}"`);
-        errors.push({
-          row: i + 1,
-          name: staffName,
-          error: 'Staff member not found in database'
-        });
+        console.log(`Skipping staff not in database: "${staffName}"`);
+        ignoredMissingStaff.add(staffName);
+        ignoredStaffReasons.set(staffName, 'not_in_database');
         continue;
       }
 
@@ -596,13 +614,16 @@ export async function POST(request: NextRequest) {
         updated: updatedCount,
         created: createdCount,
         changes: updatedRecords.length + createdRecords.length,
-        ignored: ignoredStaff.size,
+        ignored: ignoredStaff.size + ignoredMissingStaff.size,
+        ignoredNotInDatabase: ignoredMissingStaff.size,
         errors: errors.length
       },
       changes: [...updatedRecords, ...createdRecords],
       updatedRecords,
       createdRecords,
       ignoredStaff: Array.from(ignoredStaff),
+      ignoredMissingStaff: Array.from(ignoredMissingStaff),
+      ignoredStaffReasons: Array.from(ignoredStaffReasons.entries()).map(([name, reason]) => ({ name, reason })),
       errors: errors.slice(0, 20) // Show first 20 errors
     });
   } catch (error) {

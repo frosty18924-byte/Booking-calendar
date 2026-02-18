@@ -877,20 +877,25 @@ export default function TrainingMatrixPage() {
   const persistStaffOrdering = async (orderedStaff: Staff[]) => {
     if (!selectedLocation) return;
 
-    const staffRows = orderedStaff
-      .filter((s) => !s.id.startsWith('divider-'))
-      .map((s, idx) => ({
+    const staffRows: Array<{ staff_id: string; location_id: string; display_order: number }> = [];
+    const dividerUpdates: Array<{ divider_id: string; display_order: number }> = [];
+
+    orderedStaff.forEach((s, idx) => {
+      const displayOrder = idx + 1;
+      if (s.id.startsWith('divider-')) {
+        dividerUpdates.push({
+          divider_id: s.id.replace(/^divider-/, ''),
+          display_order: displayOrder,
+        });
+        return;
+      }
+
+      staffRows.push({
         staff_id: s.id,
         location_id: selectedLocation,
-        display_order: idx + 1,
-      }));
-
-    const dividerUpdates = orderedStaff
-      .filter((s) => s.id.startsWith('divider-'))
-      .map((s, idx) => ({
-        divider_id: s.id.replace(/^divider-/, ''),
-        display_order: idx + 1,
-      }));
+        display_order: displayOrder,
+      });
+    });
 
     if (staffRows.length > 0) {
       const { error: staffOrderError } = await supabase
