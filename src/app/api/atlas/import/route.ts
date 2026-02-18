@@ -562,9 +562,18 @@ export async function POST(request: NextRequest) {
       const batch = toInsertNew.slice(i, i + INSERT_BATCH_SIZE);
       const payload = batch.map(item => item.payload);
       
-      const { error, data } = await supabase
+      let { error, data } = await supabase
         .from('staff_training_matrix')
-        .upsert(payload, { onConflict: 'staff_id,course_id' });
+        .upsert(payload, { onConflict: 'staff_id,course_id,completed_at_location_id' });
+
+      // Support older deployments still using the legacy unique key.
+      if (error?.code === '42P10') {
+        const fallback = await supabase
+          .from('staff_training_matrix')
+          .upsert(payload, { onConflict: 'staff_id,course_id' });
+        error = fallback.error;
+        data = fallback.data;
+      }
 
       if (!error) {
         createdCount += payload.length;

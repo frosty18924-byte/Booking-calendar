@@ -31,9 +31,22 @@ export async function middleware(request: NextRequest) {
     }
   )
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
+  let user: { id: string } | null = null
+  try {
+    const {
+      data: { user: authUser },
+    } = await supabase.auth.getUser()
+    user = authUser
+  } catch (error) {
+    // Malformed/partial auth cookies can throw during JSON parsing.
+    // Clear likely Supabase auth cookies so requests can proceed to login cleanly.
+    console.error('Supabase auth cookie parse error in middleware:', error)
+    request.cookies.getAll().forEach(({ name }) => {
+      if (name.startsWith('sb-') || name.includes('auth-token')) {
+        response.cookies.set(name, '', { path: '/', maxAge: 0 })
+      }
+    })
+  }
 
   const isLoginPage = request.nextUrl.pathname === '/login'
   const isChangePasswordPage = request.nextUrl.pathname === '/auth/change-password-required'

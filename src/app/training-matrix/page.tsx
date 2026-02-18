@@ -1120,6 +1120,65 @@ export default function TrainingMatrixPage() {
     // Optionally persist to database (for now just in UI)
   };
 
+  const exportMatrixCsv = () => {
+    if (!selectedLocation || staff.length === 0 || courses.length === 0) {
+      alert('Nothing to export for this location yet.');
+      return;
+    }
+
+    const escapeCsv = (value: string): string => {
+      const needsQuotes = /[",\n]/.test(value);
+      const escaped = value.replace(/"/g, '""');
+      return needsQuotes ? `"${escaped}"` : escaped;
+    };
+
+    const formatCellForExport = (staffId: string, course: Course): string => {
+      const cell = matrixData[staffId]?.[course.id];
+      if (!cell) return '';
+
+      if (cell.status === 'booked') return 'Booked';
+      if (cell.status === 'awaiting') return 'Awaiting Date';
+      if (cell.status === 'na') return 'N/A';
+
+      if (cell.completion_date) {
+        return new Date(cell.completion_date).toLocaleDateString('en-GB');
+      }
+
+      return '';
+    };
+
+    const header = ['Staff Name', ...courses.map((c) => c.name)];
+    const rows = staff.map((staffMember) => {
+      if (staffDividers.has(staffMember.id)) {
+        return [staffMember.name, ...courses.map(() => '')];
+      }
+
+      return [
+        staffMember.name,
+        ...courses.map((course) => formatCellForExport(staffMember.id, course)),
+      ];
+    });
+
+    const csv = [header, ...rows]
+      .map((row) => row.map((value) => escapeCsv(String(value ?? ''))).join(','))
+      .join('\n');
+
+    const locationName = locations.find((l: any) => l.id === selectedLocation)?.name || 'training-matrix';
+    const safeLocationName = locationName.replace(/[^a-z0-9-_]+/gi, '-').replace(/^-+|-+$/g, '');
+    const datePart = new Date().toISOString().split('T')[0];
+    const filename = `${safeLocationName || 'training-matrix'}-${datePart}.csv`;
+
+    const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
+
   const deleteStaffMember = async (staffId: string) => {
     const staffMember = staff.find(s => s.id === staffId);
     if (!staffMember) return;
@@ -1189,6 +1248,12 @@ export default function TrainingMatrixPage() {
             {/* Buttons Row - Centered */}
             {selectedLocation && (
               <div className="flex flex-wrap justify-center gap-2">
+                <button
+                  onClick={exportMatrixCsv}
+                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors duration-200 text-sm font-medium"
+                >
+                  Export CSV
+                </button>
                 {canEditMatrix && (
                   <>
                     {!showAddCourse ? (
@@ -1475,14 +1540,6 @@ export default function TrainingMatrixPage() {
                                 type="number"
                                 value={editHeaderValue}
                                 onChange={(e) => setEditHeaderValue(e.target.value)}
-                                onBlur={async () => {
-                                  const months = parseInt(editHeaderValue) || 12;
-                                  const updatedCourses = courses.map(c => c.id === course.id ? { ...c, expiry_months: months } : c);
-                                  setCourses(updatedCourses);
-                                  await saveCourseChanges(course.id, { expiry_months: months, never_expires: false }, true);
-                                  await updateAllExpiriesForCourse(course.id, months, false);
-                                  setEditingHeader(null);
-                                }}
                                 onKeyDown={async (e) => {
                                   if (e.key === 'Enter') {
                                     const months = parseInt(editHeaderValue) || 12;
@@ -1905,10 +1962,20 @@ export default function TrainingMatrixPage() {
         updated_at: new Date().toISOString(),
       };
 
-      const { data, error } = await supabase
+      let { data, error } = await supabase
         .from('staff_training_matrix')
-        .upsert(upsertData, { onConflict: 'staff_id,course_id' })
+        .upsert(upsertData, { onConflict: 'staff_id,course_id,completed_at_location_id' })
         .select();
+
+      // Support deployments that still use the older two-column unique key.
+      if (error?.code === '42P10') {
+        const fallback = await supabase
+          .from('staff_training_matrix')
+          .upsert(upsertData, { onConflict: 'staff_id,course_id' })
+          .select();
+        data = fallback.data;
+        error = fallback.error;
+      }
 
       console.log('Upsert response:', { data, error });
 

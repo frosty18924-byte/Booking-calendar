@@ -25,6 +25,11 @@ function buildLocationCourseKey(locationId?: string | null, courseId?: string | 
   return `${locationId}::${courseId}`;
 }
 
+function canonicalCourseName(name?: string | null): string {
+  if (!name) return '';
+  return name.replace(/\s+\(Careskills\)\s*$/i, '').replace(/\s+/g, ' ').trim().toLowerCase();
+}
+
 function buildCareskillsAliasMap(courses: Array<{ id?: string; name?: string }>): Map<string, string> {
   const baseByName = new Map<string, string>();
   const aliasMap = new Map<string, string>();
@@ -51,6 +56,33 @@ function buildCareskillsAliasMap(courses: Array<{ id?: string; name?: string }>)
   return aliasMap;
 }
 
+async function fetchAllRows(
+  supabase: any,
+  table: string,
+  selectClause: string,
+  applyFilters?: (query: any) => any
+): Promise<{ data: any[] | null; error: any | null }> {
+  const pageSize = 1000;
+  let from = 0;
+  const allRows: any[] = [];
+
+  while (true) {
+    let query = supabase.from(table).select(selectClause);
+    if (applyFilters) query = applyFilters(query);
+    query = query.range(from, from + pageSize - 1);
+
+    const { data, error } = await query;
+    if (error) return { data: null, error };
+
+    const rows = data || [];
+    allRows.push(...rows);
+    if (rows.length < pageSize) break;
+    from += pageSize;
+  }
+
+  return { data: allRows, error: null };
+}
+
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
@@ -62,10 +94,10 @@ export async function GET(request: NextRequest) {
       process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''
     );
 
-    // Query: Get all training records with "awaiting" status
-    let query = supabase
-      .from('staff_training_matrix')
-      .select(`
+    const { data: awaitingCourses, error } = await fetchAllRows(
+      supabase,
+      'staff_training_matrix',
+      `
         id,
         staff_id,
         course_id,
@@ -76,15 +108,13 @@ export async function GET(request: NextRequest) {
         profiles(full_name, is_deleted),
         training_courses(name, expiry_months, never_expires),
         locations(name)
-      `)
-      .eq('status', 'awaiting'); // Get awaiting records
-
-    // Apply location filter if provided
-    if (locationFilter) {
-      query = query.eq('completed_at_location_id', locationFilter);
-    }
-
-    const { data: awaitingCourses, error } = await query;
+      `,
+      (query) => {
+        let scoped = query.eq('status', 'awaiting');
+        if (locationFilter) scoped = scoped.eq('completed_at_location_id', locationFilter);
+        return scoped;
+      }
+    );
 
     if (error) {
       console.error('Supabase error:', error);
@@ -94,15 +124,12 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    let locationCourseQuery = supabase
-      .from('location_training_courses')
-      .select('location_id, training_course_id');
-
-    if (locationFilter) {
-      locationCourseQuery = locationCourseQuery.eq('location_id', locationFilter);
-    }
-
-    const { data: locationCourseLinks, error: locationCourseError } = await locationCourseQuery;
+    const { data: locationCourseLinks, error: locationCourseError } = await fetchAllRows(
+      supabase,
+      'location_training_courses',
+      'location_id, training_course_id, training_courses(name)',
+      (query) => (locationFilter ? query.eq('location_id', locationFilter) : query)
+    );
     if (locationCourseError) {
       console.error('Supabase error fetching location-course links:', locationCourseError);
       return NextResponse.json(
@@ -116,10 +143,22 @@ export async function GET(request: NextRequest) {
         .map((link: any) => buildLocationCourseKey(link.location_id, link.training_course_id))
         .filter((key): key is string => Boolean(key))
     );
+    const validLocationCourseNames = new Set(
+      (locationCourseLinks || [])
+        .map((link: any) => {
+          const linkedCourse = Array.isArray(link.training_courses) ? link.training_courses[0] : link.training_courses;
+          const normalizedName = canonicalCourseName(linkedCourse?.name);
+          if (!normalizedName || !link.location_id) return null;
+          return `${link.location_id}::${normalizedName}`;
+        })
+        .filter((key): key is string => Boolean(key))
+    );
 
-    const { data: trainingCourses, error: trainingCoursesError } = await supabase
-      .from('training_courses')
-      .select('id, name');
+    const { data: trainingCourses, error: trainingCoursesError } = await fetchAllRows(
+      supabase,
+      'training_courses',
+      'id, name'
+    );
     if (trainingCoursesError) {
       console.error('Supabase error fetching course aliases:', trainingCoursesError);
       return NextResponse.json(
@@ -137,9 +176,14 @@ export async function GET(request: NextRequest) {
         const aliasKey = baseCourseId
           ? buildLocationCourseKey(record.completed_at_location_id, baseCourseId)
           : null;
+        const course = record.training_courses as { name?: string } | null;
+        const nameKey = record.completed_at_location_id
+          ? `${record.completed_at_location_id}::${canonicalCourseName(course?.name)}`
+          : null;
         return Boolean(
           (primaryKey && validLocationCourseKeys.has(primaryKey))
           || (aliasKey && validLocationCourseKeys.has(aliasKey))
+          || (nameKey && validLocationCourseNames.has(nameKey))
         );
       })
       .filter((record: any) => !isDeletedProfile(record.profiles as { full_name?: string; is_deleted?: boolean } | null))

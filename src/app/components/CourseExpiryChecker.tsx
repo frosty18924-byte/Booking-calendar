@@ -23,6 +23,36 @@ interface MatrixHeaderData {
   atlasCourses: string[];
 }
 
+function canonicalCourseName(name: string): string {
+  return name.replace(/\s+\(Careskills\)\s*$/i, '').replace(/\s+/g, ' ').trim();
+}
+
+function isCareskillsCourse(name: string): boolean {
+  return /\(careskills\)/i.test(name);
+}
+
+function dedupeRows(rows: CourseData[]): CourseData[] {
+  const byKey = new Map<string, CourseData>();
+
+  for (const row of rows) {
+    const expiryKey = row.awaitingTrainingDate ? '-' : (row.expiry || '-');
+    const key = `${row.name}||${row.location}||${expiryKey}||${canonicalCourseName(row.course).toLowerCase()}`;
+    const existing = byKey.get(key);
+
+    if (!existing) {
+      byKey.set(key, row);
+      continue;
+    }
+
+    // Prefer non-Careskills display name when both exist.
+    if (isCareskillsCourse(existing.course) && !isCareskillsCourse(row.course)) {
+      byKey.set(key, row);
+    }
+  }
+
+  return Array.from(byKey.values());
+}
+
 export default function CourseExpiryChecker({ isDark }: { isDark: boolean }) {
   const [allData, setAllData] = useState<CourseData[]>([]);
   const [filteredData, setFilteredData] = useState<CourseData[]>([]);
@@ -161,6 +191,8 @@ export default function CourseExpiryChecker({ isDark }: { isDark: boolean }) {
   }
 
   function buildFilterOptions(data: CourseData[]) {
+    const normalizedCourseOptions = [...new Set(data.map(d => canonicalCourseName(d.course)))].sort();
+
     // Categorize all delivery types to only show Atlas, Online, Face to Face
     const categorizedDeliveries = new Set(
       data.map(d => categorizeDeliveryType(d.course, d.delivery))
@@ -168,7 +200,7 @@ export default function CourseExpiryChecker({ isDark }: { isDark: boolean }) {
     
     setFilterOptions({
       names: [...new Set(data.map(d => d.name))].sort(),
-      courses: [...new Set(data.map(d => d.course))].sort(),
+      courses: normalizedCourseOptions,
       locations: [...new Set(data.map(d => d.location))].sort(),
       deliveries: (['Atlas', 'Online', 'Face to Face'] as const).filter(type => categorizedDeliveries.has(type)),
     });
@@ -202,10 +234,11 @@ export default function CourseExpiryChecker({ isDark }: { isDark: boolean }) {
       }
 
       const data: CourseData[] = await response.json();
+      const dedupedData = dedupeRows(data).map(row => ({ ...row, course: canonicalCourseName(row.course) }));
 
-      setAllData(data);
-      buildFilterOptions(data);
-      setStatus(`Found ${data.length} expiring courses`);
+      setAllData(dedupedData);
+      buildFilterOptions(dedupedData);
+      setStatus(`Found ${dedupedData.length} expiring courses`);
     } catch (error) {
       console.error('Error fetching courses:', error);
       setStatus('Error loading courses. Please check your Google Sheets connection.');
@@ -233,10 +266,11 @@ export default function CourseExpiryChecker({ isDark }: { isDark: boolean }) {
       }
 
       const data: CourseData[] = await response.json();
+      const dedupedData = dedupeRows(data).map(row => ({ ...row, course: canonicalCourseName(row.course) }));
 
-      setAllData(data);
-      buildFilterOptions(data);
-      setStatus(`Found ${data.length} courses awaiting training`);
+      setAllData(dedupedData);
+      buildFilterOptions(dedupedData);
+      setStatus(`Found ${dedupedData.length} courses awaiting training`);
     } catch (error) {
       console.error('Error fetching courses:', error);
       setStatus('Error loading courses. Please check your Google Sheets connection.');
@@ -264,10 +298,11 @@ export default function CourseExpiryChecker({ isDark }: { isDark: boolean }) {
       }
 
       const data: CourseData[] = await response.json();
+      const dedupedData = dedupeRows(data).map(row => ({ ...row, course: canonicalCourseName(row.course) }));
 
-      setAllData(data);
-      buildFilterOptions(data);
-      setStatus(`Found ${data.length} expired courses`);
+      setAllData(dedupedData);
+      buildFilterOptions(dedupedData);
+      setStatus(`Found ${dedupedData.length} expired courses`);
     } catch (error) {
       console.error('Error fetching courses:', error);
       setStatus('Error loading courses. Please check your Google Sheets connection.');
@@ -283,7 +318,7 @@ export default function CourseExpiryChecker({ isDark }: { isDark: boolean }) {
       filtered = filtered.filter(d => d.name === filters.name);
     }
     if (filters.course) {
-      filtered = filtered.filter(d => d.course === filters.course);
+      filtered = filtered.filter(d => canonicalCourseName(d.course) === filters.course);
     }
     if (filters.location) {
       filtered = filtered.filter(d => d.location === filters.location);
@@ -497,21 +532,12 @@ export default function CourseExpiryChecker({ isDark }: { isDark: boolean }) {
         {/* Results Table */}
         {allData.length > 0 && (
           <div className={`rounded-lg border overflow-hidden shadow-lg transition-colors duration-300 ${isDark ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'}`}>
+            <div className={`px-6 py-4 border-b text-center font-medium transition-colors duration-300 ${isDark ? 'border-gray-700 bg-gray-750 text-gray-300' : 'border-gray-200 bg-gray-50 text-gray-600'}`}>
+              Displaying {filteredData.length} records
+            </div>
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead className={`transition-colors duration-300 ${isDark ? 'bg-gray-700' : 'bg-gray-100'}`}>
-                  {/* Matrix headers row - show all headers from mapping */}
-                  <tr>
-                    <th></th>
-                    {matrixHeaderData.headers.map((header, idx) => (
-                      <th key={idx} className={`px-8 py-3 text-center font-semibold transition-colors duration-300 ${isDark ? 'text-blue-200' : 'text-blue-900'}`}>{header || 'Face to Face'}</th>
-                    ))}
-                    {/* Fill remaining columns if fewer headers than columns */}
-                    {Array(Math.max(0, 4 - matrixHeaderData.headers.length)).fill('').map((_, idx) => (
-                      <th key={`empty-${idx}`}></th>
-                    ))}
-                  </tr>
-                  {/* Standard table headers row */}
                   <tr>
                     <th className={`px-8 py-6 text-center font-semibold transition-colors duration-300 ${isDark ? 'text-gray-200' : 'text-gray-900'}`}>Staff Name</th>
                     <th className={`px-8 py-6 text-center font-semibold transition-colors duration-300 ${isDark ? 'text-gray-200' : 'text-gray-900'}`}>Course</th>
@@ -547,9 +573,6 @@ export default function CourseExpiryChecker({ isDark }: { isDark: boolean }) {
                   )}
                 </tbody>
               </table>
-            </div>
-            <div className={`px-6 py-4 border-t text-center font-medium transition-colors duration-300 ${isDark ? 'border-gray-700 bg-gray-750 text-gray-300' : 'border-gray-200 bg-gray-50 text-gray-600'}`}>
-              Displaying {filteredData.length} of {allData.length} records
             </div>
           </div>
         )}
