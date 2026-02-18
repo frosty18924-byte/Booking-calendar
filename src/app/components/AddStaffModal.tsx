@@ -46,6 +46,13 @@ export default function AddStaffModal({ onClose, onRefresh }: { onClose: () => v
     return trimmed;
   };
 
+  const canonicalCourseName = (value: string): string =>
+    (value || '')
+      .replace(/\s+\(Careskills\)\s*$/i, '')
+      .replace(/\s+/g, ' ')
+      .trim()
+      .toLowerCase();
+
   useEffect(() => { 
     checkTheme();
     fetchUserRole();
@@ -156,6 +163,97 @@ export default function AddStaffModal({ onClose, onRefresh }: { onClose: () => v
         // If location changed, also update staff_locations table so they move on the matrix
         if (locationChanged && formData.home_house) {
           console.log('Location changed, updating staff_locations...');
+
+          // Move only relevant training rows:
+          // - rows currently attached to old location
+          // - course exists on BOTH old and new location matrices (matched by canonical course name)
+          // - remap course_id when old/new locations use different IDs for the matched course
+          let movedTrainingCount = 0;
+          const newLocationId = formData.home_house;
+          if (currentLocationId && currentLocationId !== newLocationId) {
+            try {
+              const oldLocationCoursesQuery = await supabase
+                .from('location_training_courses')
+                .select('training_course_id, training_courses(name)')
+                .eq('location_id', currentLocationId);
+
+              const newLocationCoursesQuery = await supabase
+                .from('location_training_courses')
+                .select('training_course_id, training_courses(name)')
+                .eq('location_id', newLocationId);
+
+              if (oldLocationCoursesQuery.error) throw oldLocationCoursesQuery.error;
+              if (newLocationCoursesQuery.error) throw newLocationCoursesQuery.error;
+
+              const oldLocationCourses = oldLocationCoursesQuery.data || [];
+              const newLocationCourses = newLocationCoursesQuery.data || [];
+
+              const newCourseIdByName = new Map<string, string>();
+              newLocationCourses.forEach((row: any) => {
+                const courseObj = Array.isArray(row.training_courses) ? row.training_courses[0] : row.training_courses;
+                const key = canonicalCourseName(courseObj?.name || '');
+                if (key && row.training_course_id && !newCourseIdByName.has(key)) {
+                  newCourseIdByName.set(key, row.training_course_id);
+                }
+              });
+
+              const oldToNewCourseId = new Map<string, string>();
+              oldLocationCourses.forEach((row: any) => {
+                const courseObj = Array.isArray(row.training_courses) ? row.training_courses[0] : row.training_courses;
+                const key = canonicalCourseName(courseObj?.name || '');
+                const mappedNewCourseId = key ? newCourseIdByName.get(key) : null;
+                if (mappedNewCourseId && row.training_course_id) {
+                  oldToNewCourseId.set(row.training_course_id, mappedNewCourseId);
+                }
+              });
+
+              const oldCourseIdsToMove = Array.from(oldToNewCourseId.keys());
+
+              if (oldCourseIdsToMove.length > 0) {
+                const { data: existingRows, error: existingRowsError } = await supabase
+                  .from('staff_training_matrix')
+                  .select('id, course_id')
+                  .eq('staff_id', editingId)
+                  .eq('completed_at_location_id', currentLocationId)
+                  .in('course_id', oldCourseIdsToMove);
+
+                if (existingRowsError) throw existingRowsError;
+
+                for (const row of existingRows || []) {
+                  const targetCourseId = oldToNewCourseId.get(row.course_id) || row.course_id;
+                  const { error: moveError } = await supabase
+                    .from('staff_training_matrix')
+                    .update({
+                      completed_at_location_id: newLocationId,
+                      course_id: targetCourseId,
+                    })
+                    .eq('id', row.id);
+
+                  if (!moveError) {
+                    movedTrainingCount++;
+                    continue;
+                  }
+
+                  // If a duplicate already exists at destination, remove the old row.
+                  if (moveError.code === '23505') {
+                    const { error: deleteDuplicateError } = await supabase
+                      .from('staff_training_matrix')
+                      .delete()
+                      .eq('id', row.id);
+                    if (!deleteDuplicateError) {
+                      movedTrainingCount++;
+                    } else {
+                      console.error('Error deleting duplicate old training row:', deleteDuplicateError);
+                    }
+                  } else {
+                    console.error('Error moving training row:', moveError);
+                  }
+                }
+              }
+            } catch (moveTrainingError) {
+              console.error('Error while moving matching training rows to new location:', moveTrainingError);
+            }
+          }
           
           // First, remove from old location(s) 
           const { error: deleteError } = await supabase
@@ -181,6 +279,7 @@ export default function AddStaffModal({ onClose, onRefresh }: { onClose: () => v
             console.warn('Profile updated but staff_locations may not be correct. Staff may not appear on new location matrix.');
           } else {
             console.log('Staff_locations updated successfully');
+            console.log(`Moved ${movedTrainingCount} matching training row(s) to the new location matrix`);
           }
         }
         

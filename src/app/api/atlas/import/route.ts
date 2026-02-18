@@ -372,27 +372,45 @@ export async function POST(request: NextRequest) {
     
     // Query in small batches to avoid Supabase's 1000 row limit per query
     // Each staff can have up to 47 courses, so batch size of 20 = max 940 results per query
-    const existingMap = new Map();
+    const existingMap = new Map<string, { id: string; completion_date: string | null }>();
     const QUERY_BATCH_SIZE = 20;
+    const PAGE_SIZE = 1000;
     
     for (let i = 0; i < uniqueStaffIds.length; i += QUERY_BATCH_SIZE) {
       const staffBatch = uniqueStaffIds.slice(i, i + QUERY_BATCH_SIZE);
       
-      const { data: existingRecords, error } = await supabase
-        .from('staff_training_matrix')
-        .select('id, staff_id, course_id, completion_date')
-        .in('staff_id', staffBatch)
-        .in('course_id', uniqueCourseIds)
-        .limit(1000);
-      
-      if (error) {
-        console.error('Error fetching existing records:', error.message);
+      let from = 0;
+      let hasMore = true;
+
+      while (hasMore) {
+        const { data: existingRecords, error } = await supabase
+          .from('staff_training_matrix')
+          .select('id, staff_id, course_id, completion_date, completed_at_location_id')
+          .in('staff_id', staffBatch)
+          .in('course_id', uniqueCourseIds)
+          .range(from, from + PAGE_SIZE - 1);
+        
+        if (error) {
+          console.error('Error fetching existing records:', error.message);
+          break;
+        }
+
+        const rows = existingRecords || [];
+        rows.forEach((record: any) => {
+          const locationKey = record.completed_at_location_id || '';
+          const key = `${record.staff_id}|${record.course_id}|${locationKey}`;
+          existingMap.set(key, {
+            id: record.id,
+            completion_date: record.completion_date || null,
+          });
+        });
+
+        if (rows.length < PAGE_SIZE) {
+          hasMore = false;
+        } else {
+          from += PAGE_SIZE;
+        }
       }
-      
-      existingRecords?.forEach(record => {
-        const key = `${record.staff_id}|${record.course_id}`;
-        existingMap.set(key, record);
-      });
       
       // Log progress for large batches
       if (i > 0 && i % 100 === 0) {
@@ -422,18 +440,39 @@ export async function POST(request: NextRequest) {
     }> = [];
 
     for (const update of updates) {
-      const key = `${update.staff_id}|${update.course_id}`;
-      const existing = existingMap.get(key);
-
-      const oldDate = existing?.completion_date || null;
       const newDate = update.completion_date || null;
-      
-      // Only process if there's an actual change (and we have a new date to set)
-      const hasActualChange = newDate && oldDate !== newDate;
-      
-      if (hasActualChange) {
-        const locations = staffLocations.get(update.staff_id) || [];
-        const locationNames = locations.map((l: any) => typeof l === 'string' ? l : l.name).join(', ');
+      if (!newDate) continue;
+
+      const staffLocs = staffLocations.get(update.staff_id) || [];
+      const targetLocationIds: Array<string | undefined> =
+        staffLocs.length > 0
+          ? staffLocs.map((loc: any) => (typeof loc === 'string' ? undefined : loc.id))
+          : [undefined];
+
+      const locations = staffLocations.get(update.staff_id) || [];
+      const locationNames = locations.map((l: any) => typeof l === 'string' ? l : l.name).join(', ');
+
+      // Get course expiry_months to calculate expiry_date
+      const course = dbTrainingCourses?.find(c => c.id === update.course_id);
+      const expiryMonths = course?.expiry_months ?? 12;
+
+      let expiryDate = null;
+      if (update.completion_date && expiryMonths) {
+        const completionDate = new Date(update.completion_date);
+        const expiryDateObj = new Date(completionDate);
+        expiryDateObj.setMonth(expiryDateObj.getMonth() + expiryMonths);
+        expiryDate = expiryDateObj.toISOString().split('T')[0];
+      }
+
+      for (const locId of targetLocationIds) {
+        const locationKey = locId || '';
+        const existingKey = `${update.staff_id}|${update.course_id}|${locationKey}`;
+        const existing = existingMap.get(existingKey);
+        const oldDate = existing?.completion_date || null;
+        const hasActualChange = oldDate !== newDate;
+
+        if (!hasActualChange) continue;
+
         const changeBase = {
           staff: update.staff_name,
           locations: locationNames,
@@ -442,23 +481,7 @@ export async function POST(request: NextRequest) {
           newDate: newDate
         };
 
-        // Get course expiry_months to calculate expiry_date
-        const course = dbTrainingCourses?.find(c => c.id === update.course_id);
-        const expiryMonths = course?.expiry_months ?? 12;
-        
-        let expiryDate = null;
-        if (update.completion_date && expiryMonths) {
-          // Use Date object to handle edge cases like leap years properly
-          const completionDate = new Date(update.completion_date);
-          const expiryDateObj = new Date(completionDate);
-          expiryDateObj.setMonth(expiryDateObj.getMonth() + expiryMonths);
-          
-          // Format as YYYY-MM-DD
-          expiryDate = expiryDateObj.toISOString().split('T')[0];
-        }
-
         if (existing) {
-          // Update existing record
           toUpdateExisting.push({
             id: existing.id,
             completion_date: update.completion_date,
@@ -469,47 +492,21 @@ export async function POST(request: NextRequest) {
             }
           });
         } else {
-          // Create new record(s) for each location the staff member is assigned to
-          const staffLocs = staffLocations.get(update.staff_id) || [];
-          
-          if (staffLocs.length === 0) {
-            // Staff has no locations - create record without location
-            console.log(`Staff ${update.staff_name} has no assigned locations`);
-            toInsertNew.push({
-              payload: {
-                staff_id: update.staff_id,
-                course_id: update.course_id,
-                completion_date: update.completion_date,
-                expiry_date: expiryDate,
-                status: update.completion_date ? 'completed' : 'awaiting',
-                created_at: new Date().toISOString()
-              },
-              change: {
-                ...changeBase,
-                action: 'created'
-              }
-            });
-          } else {
-            // Create a record for each location
-            for (const loc of staffLocs) {
-              const locId = typeof loc === 'string' ? undefined : loc.id;
-              toInsertNew.push({
-                payload: {
-                  staff_id: update.staff_id,
-                  course_id: update.course_id,
-                  completion_date: update.completion_date,
-                  expiry_date: expiryDate,
-                  status: update.completion_date ? 'completed' : 'awaiting',
-                  completed_at_location_id: locId,
-                  created_at: new Date().toISOString()
-                },
-                change: {
-                  ...changeBase,
-                  action: 'created'
-                }
-              });
+          toInsertNew.push({
+            payload: {
+              staff_id: update.staff_id,
+              course_id: update.course_id,
+              completion_date: update.completion_date,
+              expiry_date: expiryDate,
+              status: update.completion_date ? 'completed' : 'awaiting',
+              completed_at_location_id: locId,
+              created_at: new Date().toISOString()
+            },
+            change: {
+              ...changeBase,
+              action: 'created'
             }
-          }
+          });
         }
       }
     }

@@ -219,8 +219,8 @@ export default function DashboardPage() {
                   <AddStaffModal 
                     onClose={() => setShowAddStaffModal(false)}
                     onRefresh={() => {
-                      setShowAddStaffModal(false);
-                      // Optionally refresh dashboard data if needed
+                      // Keep modal open after save/update so users can continue editing.
+                      // AddStaffModal already refreshes and clears its own form state.
                     }}
                   />
                 </div>
