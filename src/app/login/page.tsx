@@ -6,12 +6,14 @@ import { login } from './actions';
 export default function SignInPage() {
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState('');
+  const [messageType, setMessageType] = useState<'error' | 'info'>('error');
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const error = params.get('error');
     if (error === 'account_deleted') {
       setMessage('Your account has been deactivated. Please contact an administrator.');
+      setMessageType('error');
     }
   }, []);
 
@@ -19,6 +21,7 @@ export default function SignInPage() {
     event.preventDefault();
     setLoading(true);
     setMessage('');
+    setMessageType('error');
 
     const formData = new FormData(event.currentTarget);
     try {
@@ -26,12 +29,18 @@ export default function SignInPage() {
 
       if (result?.error) {
         setMessage(result.error);
-      } else {
-        // On success, server action redirects to dashboard.
-        setMessage('Signing you in...');
+        setMessageType('error');
       }
     } catch (error: any) {
+      // Successful server-action redirects can surface as thrown NEXT_REDIRECT signals.
+      if (
+        error?.digest?.toString().includes('NEXT_REDIRECT')
+        || error?.message?.toString().includes('NEXT_REDIRECT')
+      ) {
+        return;
+      }
       setMessage(error?.message || 'Unable to sign in right now.');
+      setMessageType('error');
     } finally {
       setLoading(false);
     }
@@ -75,7 +84,7 @@ export default function SignInPage() {
         </form>
 
         {message && (
-          <p className={`mt-4 text-center text-sm font-semibold ${message.includes('Success') ? 'text-green-600' : 'text-red-500'}`}>
+          <p className={`mt-4 text-center text-sm font-semibold ${messageType === 'error' ? 'text-red-500' : 'text-blue-600'}`}>
             {message}
           </p>
         )}
