@@ -874,7 +874,51 @@ export default function TrainingMatrixPage() {
     e.dataTransfer.dropEffect = 'move';
   };
 
-  const handleStaffDropEnd = (e: React.DragEvent, targetStaffId: string) => {
+  const persistStaffOrdering = async (orderedStaff: Staff[]) => {
+    if (!selectedLocation) return;
+
+    const staffRows = orderedStaff
+      .filter((s) => !s.id.startsWith('divider-'))
+      .map((s, idx) => ({
+        staff_id: s.id,
+        location_id: selectedLocation,
+        display_order: idx + 1,
+      }));
+
+    const dividerUpdates = orderedStaff
+      .filter((s) => s.id.startsWith('divider-'))
+      .map((s, idx) => ({
+        divider_id: s.id.replace(/^divider-/, ''),
+        display_order: idx + 1,
+      }));
+
+    if (staffRows.length > 0) {
+      const { error: staffOrderError } = await supabase
+        .from('staff_locations')
+        .upsert(staffRows, { onConflict: 'staff_id,location_id' });
+
+      if (staffOrderError) {
+        throw staffOrderError;
+      }
+    }
+
+    if (dividerUpdates.length > 0) {
+      const dividerWrites = dividerUpdates.map((d) =>
+        supabase
+          .from('location_matrix_dividers')
+          .update({ display_order: d.display_order })
+          .eq('id', d.divider_id)
+          .eq('location_id', selectedLocation)
+      );
+      const dividerResults = await Promise.all(dividerWrites);
+      const failed = dividerResults.find((r) => r.error);
+      if (failed?.error) {
+        throw failed.error;
+      }
+    }
+  };
+
+  const handleStaffDropEnd = async (e: React.DragEvent, targetStaffId: string) => {
     e.preventDefault();
     if (!draggedStaff || draggedStaff === targetStaffId) {
       setDraggedStaff(null);
@@ -894,7 +938,18 @@ export default function TrainingMatrixPage() {
     newStaff.splice(targetIndex, 0, draggedItem);
 
     setStaff(newStaff);
+    const newOrder = new Map<string, number>();
+    newStaff.forEach((s, idx) => newOrder.set(s.id, idx + 1));
+    setStaffOrder(newOrder);
     setDraggedStaff(null);
+
+    try {
+      await persistStaffOrdering(newStaff);
+    } catch (error) {
+      console.error('Error persisting staff order:', error);
+      alert('Could not save new staff order. Reloading previous order.');
+      await fetchMatrixData();
+    }
   };
 
   const addNewCourse = async () => {
