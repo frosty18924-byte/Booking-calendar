@@ -12,6 +12,7 @@ interface DuplicateStaff {
   location: string;
   is_deleted: boolean;
   created_at: string;
+  reason?: string;
 }
 
 interface Divider {
@@ -46,41 +47,189 @@ export default function DuplicateRemovalModal({ onClose }: { onClose: () => void
   async function analyzeDuplicates() {
     setAnalyzing(true);
     try {
+      const normalizeName = (value: string) => value.trim().toLowerCase().replace(/\s+/g, ' ');
+      const levenshteinDistance = (a: string, b: string): number => {
+        const aa = normalizeName(a);
+        const bb = normalizeName(b);
+        const m = aa.length;
+        const n = bb.length;
+        if (m === 0) return n;
+        if (n === 0) return m;
+
+        const dp: number[][] = Array.from({ length: m + 1 }, () => Array(n + 1).fill(0));
+        for (let i = 0; i <= m; i++) dp[i][0] = i;
+        for (let j = 0; j <= n; j++) dp[0][j] = j;
+
+        for (let i = 1; i <= m; i++) {
+          for (let j = 1; j <= n; j++) {
+            const cost = aa[i - 1] === bb[j - 1] ? 0 : 1;
+            dp[i][j] = Math.min(
+              dp[i - 1][j] + 1,
+              dp[i][j - 1] + 1,
+              dp[i - 1][j - 1] + cost
+            );
+          }
+        }
+        return dp[m][n];
+      };
+
+      const emailsCompatibleForMerge = (a: any, b: any): boolean => {
+        const emailA = String(a?.email || '').trim().toLowerCase();
+        const emailB = String(b?.email || '').trim().toLowerCase();
+        if (!emailA || !emailB) return true;
+        return emailA === emailB;
+      };
+
       // Analyze staff for duplicates
       const { data: allStaff } = await supabase
         .from('profiles')
-        .select('*')
+        .select(`
+          id,
+          email,
+          full_name,
+          location,
+          is_deleted,
+          created_at,
+          staff_locations (
+            location_id,
+            locations (name)
+          )
+        `)
         .eq('is_deleted', false)
-        .order('email');
+        .order('created_at', { ascending: true });
 
       if (allStaff) {
-        const emailGroups = new Map<string, DuplicateStaff[]>();
-        
+        const toDuplicateStaff = (staff: any): DuplicateStaff => {
+          const locationNames = (staff.staff_locations || [])
+            .map((sl: any) => sl.locations?.name)
+            .filter(Boolean);
+          return {
+            id: staff.id,
+            email: staff.email || '',
+            full_name: staff.full_name,
+            location: locationNames.length > 0 ? locationNames.join(', ') : (staff.location || 'Unknown'),
+            is_deleted: staff.is_deleted,
+            created_at: staff.created_at,
+          };
+        };
+
+        const duplicateById = new Map<string, DuplicateStaff>();
+
+        const markDuplicate = (staff: any, reason: string) => {
+          if (!staff?.id) return;
+          if (duplicateById.has(staff.id)) return;
+          duplicateById.set(staff.id, {
+            ...toDuplicateStaff(staff),
+            reason,
+          });
+        };
+
+        // Rule 1: duplicate email (legacy behavior, but now null-safe)
+        const emailGroups = new Map<string, any[]>();
         allStaff.forEach((staff: any) => {
-          const email = staff.email.toLowerCase();
+          const email = String(staff.email || '').trim().toLowerCase();
+          if (!email) return;
           if (!emailGroups.has(email)) {
             emailGroups.set(email, []);
           }
-          emailGroups.get(email)!.push({
-            id: staff.id,
-            email: staff.email,
-            full_name: staff.full_name,
-            location: staff.location,
-            is_deleted: staff.is_deleted,
-            created_at: staff.created_at,
-          });
+          emailGroups.get(email)!.push(staff);
         });
 
-        // Extract duplicates (emails with multiple entries)
-        const duplicates: DuplicateStaff[] = [];
         emailGroups.forEach((entries, email) => {
           if (entries.length > 1) {
-            // Add all but the first (oldest) one
-            duplicates.push(...entries.slice(1));
+            const sorted = [...entries].sort((a, b) => {
+              const aDate = new Date(a.created_at || 0).getTime();
+              const bDate = new Date(b.created_at || 0).getTime();
+              return aDate - bDate;
+            });
+            sorted.slice(1).forEach((staff) => markDuplicate(staff, `Duplicate email: ${email}`));
           }
         });
 
-        setDuplicateStaff(duplicates);
+        // Rule 2: duplicate full_name in the same location
+        const nameLocationGroups = new Map<string, any[]>();
+        allStaff.forEach((staff: any) => {
+          const normalizedName = String(staff.full_name || '').trim().toLowerCase().replace(/\s+/g, ' ');
+          if (!normalizedName) return;
+
+          const locationIds = (staff.staff_locations || [])
+            .map((sl: any) => sl.location_id)
+            .filter(Boolean);
+
+          locationIds.forEach((locationId: string) => {
+            const key = `${normalizedName}|${locationId}`;
+            if (!nameLocationGroups.has(key)) {
+              nameLocationGroups.set(key, []);
+            }
+            nameLocationGroups.get(key)!.push(staff);
+          });
+        });
+
+        nameLocationGroups.forEach((entries) => {
+          if (entries.length > 1) {
+            const distinctNonEmptyEmails = new Set(
+              entries
+                .map((entry: any) => String(entry.email || '').trim().toLowerCase())
+                .filter(Boolean)
+            );
+
+            // If same name exists in same location with clearly different non-empty emails,
+            // treat as separate people rather than duplicates.
+            if (distinctNonEmptyEmails.size > 1) {
+              return;
+            }
+
+            const sorted = [...entries].sort((a, b) => {
+              const aDate = new Date(a.created_at || 0).getTime();
+              const bDate = new Date(b.created_at || 0).getTime();
+              return aDate - bDate;
+            });
+            sorted.slice(1).forEach((staff) => markDuplicate(staff, 'Duplicate name in same location'));
+          }
+        });
+
+        // Rule 3: near-identical name variant in the same location (e.g. spelling variation),
+        // only when emails are compatible to avoid false positives.
+        const locationGroups = new Map<string, any[]>();
+        allStaff.forEach((staff: any) => {
+          const locationIds = (staff.staff_locations || [])
+            .map((sl: any) => sl.location_id)
+            .filter(Boolean);
+          locationIds.forEach((locationId: string) => {
+            if (!locationGroups.has(locationId)) {
+              locationGroups.set(locationId, []);
+            }
+            locationGroups.get(locationId)!.push(staff);
+          });
+        });
+
+        locationGroups.forEach((entries) => {
+          if (entries.length < 2) return;
+          const sorted = [...entries].sort((a, b) => {
+            const aDate = new Date(a.created_at || 0).getTime();
+            const bDate = new Date(b.created_at || 0).getTime();
+            return aDate - bDate;
+          });
+
+          for (let i = 0; i < sorted.length; i++) {
+            for (let j = i + 1; j < sorted.length; j++) {
+              const older = sorted[i];
+              const newer = sorted[j];
+              const olderName = String(older.full_name || '');
+              const newerName = String(newer.full_name || '');
+              if (!olderName || !newerName) continue;
+              if (normalizeName(olderName) === normalizeName(newerName)) continue; // already handled by exact-name rule
+              if (!emailsCompatibleForMerge(older, newer)) continue;
+
+              const distance = levenshteinDistance(olderName, newerName);
+              if (distance <= 2) {
+                markDuplicate(newer, `Possible name variant: "${olderName}" vs "${newerName}"`);
+              }
+            }
+          }
+        });
+
+        setDuplicateStaff(Array.from(duplicateById.values()));
       }
 
       // Analyze dividers for duplicates

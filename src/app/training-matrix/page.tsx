@@ -652,6 +652,66 @@ export default function TrainingMatrixPage() {
           };
         });
 
+      // Safety dedupe: if near-identical names exist in the same location and one has no
+      // training rows, prefer the one that has training data to avoid blank duplicate rows.
+      const normalizePersonName = (value: string) =>
+        String(value || '').trim().toLowerCase().replace(/\s+/g, ' ');
+      const levenshteinDistance = (a: string, b: string): number => {
+        const aa = normalizePersonName(a);
+        const bb = normalizePersonName(b);
+        const m = aa.length;
+        const n = bb.length;
+        if (m === 0) return n;
+        if (n === 0) return m;
+        const dp: number[][] = Array.from({ length: m + 1 }, () => Array(n + 1).fill(0));
+        for (let i = 0; i <= m; i++) dp[i][0] = i;
+        for (let j = 0; j <= n; j++) dp[0][j] = j;
+        for (let i = 1; i <= m; i++) {
+          for (let j = 1; j <= n; j++) {
+            const cost = aa[i - 1] === bb[j - 1] ? 0 : 1;
+            dp[i][j] = Math.min(dp[i - 1][j] + 1, dp[i][j - 1] + 1, dp[i - 1][j - 1] + cost);
+          }
+        }
+        return dp[m][n];
+      };
+      const sharesNameToken = (a: string, b: string): boolean => {
+        const tokensA = normalizePersonName(a).split(' ').filter((t) => t.length > 2);
+        const tokensB = new Set(normalizePersonName(b).split(' ').filter((t) => t.length > 2));
+        return tokensA.some((t) => tokensB.has(t));
+      };
+
+      const dedupedStaffWithOrder: typeof staffWithOrder = [];
+      for (const candidate of staffWithOrder.sort((a, b) => (a.display_order || 9999) - (b.display_order || 9999))) {
+        const existingIndex = dedupedStaffWithOrder.findIndex((existing) => {
+          const distance = levenshteinDistance(existing.name, candidate.name);
+          const sameOrNear = distance === 0 || (distance <= 2 && sharesNameToken(existing.name, candidate.name));
+          return sameOrNear;
+        });
+
+        if (existingIndex === -1) {
+          dedupedStaffWithOrder.push(candidate);
+          continue;
+        }
+
+        const existing = dedupedStaffWithOrder[existingIndex];
+        const existingHasTraining = staffFromTrainingSet.has(existing.id);
+        const candidateHasTraining = staffFromTrainingSet.has(candidate.id);
+
+        if (!existingHasTraining && candidateHasTraining) {
+          dedupedStaffWithOrder[existingIndex] = {
+            ...candidate,
+            display_order: Math.min(existing.display_order || 9999, candidate.display_order || 9999),
+          };
+        } else if (existingHasTraining && !candidateHasTraining) {
+          // Keep existing row with data; suppress blank duplicate.
+        } else if (!existingHasTraining && !candidateHasTraining) {
+          // Keep the first one by order.
+        } else {
+          // Both have data: keep both to avoid hiding potentially distinct staff.
+          dedupedStaffWithOrder.push(candidate);
+        }
+      }
+
       // Add dividers from the database
       const dividerItems = (dividersData || [])
         .filter((d: any) => d.name !== 'Staff Name') // Filter out "Staff Name" header
@@ -664,15 +724,19 @@ export default function TrainingMatrixPage() {
         }));
 
       // Merge staff and dividers, sort by display_order
-      const combinedList = [...staffWithOrder, ...dividerItems]
+      const combinedListDeduped = [...dedupedStaffWithOrder, ...dividerItems]
         .sort((a, b) => (a.display_order || 9999) - (b.display_order || 9999));
 
-      console.log('Formatted staff for location:', { staffCount: staffWithOrder.length, dividerCount: dividerItems.length });
+      console.log('Formatted staff for location:', {
+        staffCount: staffWithOrder.length,
+        staffCountAfterDedupe: dedupedStaffWithOrder.length,
+        dividerCount: dividerItems.length,
+      });
 
       // Set divider IDs for styling
       const dividerIds = new Set<string>(dividerItems.map((d: any) => d.id));
       setStaffDividers(dividerIds);
-      setStaff(combinedList);
+      setStaff(combinedListDeduped);
 
       console.log('DEBUG: filteredCourses =', filteredCourses);
       console.log('DEBUG: filteredCourses length =', filteredCourses?.length);
