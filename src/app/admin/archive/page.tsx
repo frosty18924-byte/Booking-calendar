@@ -21,6 +21,7 @@ export default function ArchivePage() {
   const [loading, setLoading] = useState(true);
   const [isDark, setIsDark] = useState(true);
   const [items, setItems] = useState<ArchiveItem[]>([]);
+  const [openDates, setOpenDates] = useState<Record<string, boolean>>({});
   const [restoringId, setRestoringId] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
@@ -137,6 +138,23 @@ export default function ArchivePage() {
     return item.entity_type;
   }
 
+  function dayKey(iso: string): string {
+    const date = new Date(iso);
+    const y = date.getFullYear();
+    const m = String(date.getMonth() + 1).padStart(2, '0');
+    const d = String(date.getDate()).padStart(2, '0');
+    return `${y}-${m}-${d}`;
+  }
+
+  const groupedItems = items.reduce<Record<string, ArchiveItem[]>>((acc, item) => {
+    const key = dayKey(item.deleted_at);
+    if (!acc[key]) acc[key] = [];
+    acc[key].push(item);
+    return acc;
+  }, {});
+
+  const groupedDates = Object.keys(groupedItems).sort((a, b) => b.localeCompare(a));
+
   if (loading) {
     return <div className={`p-8 ${isDark ? 'bg-gray-900 text-white' : 'bg-gray-50 text-gray-900'}`}>Loading archive...</div>;
   }
@@ -168,37 +186,72 @@ export default function ArchivePage() {
           </div>
         ) : (
           <div className="space-y-3">
-            {items.map((item) => (
-              <div
-                key={item.id}
-                className={`rounded-lg border p-4 ${isDark ? 'border-gray-700 bg-gray-800' : 'border-gray-200 bg-white'}`}
-              >
-                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-                  <div>
-                    <div className="font-bold">{itemTitle(item)}</div>
-                    <div className={`text-xs ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
-                      Type: {item.entity_type} {item.location_name ? `• Location: ${item.location_name}` : ''} • Deleted: {new Date(item.deleted_at).toLocaleString('en-GB')}
+            {groupedDates.map((dateKey, index) => {
+              const isOpen = openDates[dateKey] ?? index === 0;
+              const dayItems = groupedItems[dateKey];
+              const formattedDate = new Date(`${dateKey}T00:00:00`).toLocaleDateString('en-GB', {
+                weekday: 'short',
+                day: '2-digit',
+                month: 'short',
+                year: 'numeric',
+              });
+
+              return (
+                <div key={dateKey} className={`rounded-lg border ${isDark ? 'border-gray-700 bg-gray-800/40' : 'border-gray-200 bg-white'}`}>
+                  <button
+                    type="button"
+                    onClick={() => setOpenDates((prev) => ({ ...prev, [dateKey]: !isOpen }))}
+                    className={`w-full px-4 py-3 flex items-center justify-between text-left ${isDark ? 'hover:bg-gray-800' : 'hover:bg-gray-50'}`}
+                  >
+                    <div>
+                      <div className="font-bold">{formattedDate}</div>
+                      <div className={`text-xs ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
+                        {dayItems.length} item{dayItems.length === 1 ? '' : 's'} deleted
+                      </div>
                     </div>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <button
-                      onClick={() => restoreItem(item.id)}
-                      disabled={restoringId === item.id || deletingId === item.id}
-                      className="px-3 py-2 rounded font-semibold bg-emerald-600 hover:bg-emerald-700 disabled:opacity-60 text-white"
-                    >
-                      {restoringId === item.id ? 'Restoring...' : 'Restore'}
-                    </button>
-                    <button
-                      onClick={() => deleteArchiveItem(item.id)}
-                      disabled={restoringId === item.id || deletingId === item.id}
-                      className="px-3 py-2 rounded font-semibold bg-red-600 hover:bg-red-700 disabled:opacity-60 text-white"
-                    >
-                      {deletingId === item.id ? 'Deleting...' : 'Delete'}
-                    </button>
-                  </div>
+                    <span className={`text-sm font-bold ${isDark ? 'text-gray-300' : 'text-gray-600'}`}>
+                      {isOpen ? 'Hide' : 'Show'}
+                    </span>
+                  </button>
+
+                  {isOpen && (
+                    <div className="px-4 pb-4 space-y-3">
+                      {dayItems.map((item) => (
+                        <div
+                          key={item.id}
+                          className={`rounded-lg border p-4 ${isDark ? 'border-gray-700 bg-gray-800' : 'border-gray-200 bg-white'}`}
+                        >
+                          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                            <div>
+                              <div className="font-bold">{itemTitle(item)}</div>
+                              <div className={`text-xs ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
+                                Type: {item.entity_type} {item.location_name ? `• Location: ${item.location_name}` : ''} • Deleted: {new Date(item.deleted_at).toLocaleString('en-GB')}
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <button
+                                onClick={() => restoreItem(item.id)}
+                                disabled={restoringId === item.id || deletingId === item.id}
+                                className="px-3 py-2 rounded font-semibold bg-emerald-600 hover:bg-emerald-700 disabled:opacity-60 text-white"
+                              >
+                                {restoringId === item.id ? 'Restoring...' : 'Restore'}
+                              </button>
+                              <button
+                                onClick={() => deleteArchiveItem(item.id)}
+                                disabled={restoringId === item.id || deletingId === item.id}
+                                className="px-3 py-2 rounded font-semibold bg-red-600 hover:bg-red-700 disabled:opacity-60 text-white"
+                              >
+                                {deletingId === item.id ? 'Deleting...' : 'Delete'}
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </div>

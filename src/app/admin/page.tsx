@@ -93,7 +93,7 @@ export default function AdminPage() {
           <div />
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2 sm:gap-4">
           {/* LOCATIONS MANAGEMENT */}
           <div style={{ backgroundColor: isDark ? '#1e293b' : '#ffffff', borderColor: isDark ? '#334155' : '#e2e8f0' }} className="p-3 sm:p-4 rounded-lg border shadow-sm group hover:border-amber-500 transition-all cursor-pointer" onClick={() => setShowLocationModal(true)}>
              <div className="text-2xl sm:text-3xl mb-2">📍</div>
@@ -151,24 +151,6 @@ export default function AdminPage() {
              </button>
           </div>
 
-          {/* ARCHIVE / RESTORE */}
-          <div style={{ backgroundColor: isDark ? '#1e293b' : '#ffffff', borderColor: isDark ? '#334155' : '#e2e8f0' }} className="p-3 sm:p-4 rounded-lg border shadow-sm group hover:border-orange-500 transition-all cursor-pointer" onClick={() => router.push('/admin/archive')}>
-             <div className="text-2xl sm:text-3xl mb-2">🗂️</div>
-             <h3 style={{ color: isDark ? '#f1f5f9' : '#1e293b' }} className="text-sm sm:text-base font-bold mb-1">Archive & Restore</h3>
-             <p style={{ color: isDark ? '#94a3b8' : '#64748b' }} className="text-xs mb-2">Restore deleted items across apps.</p>
-             <button
-               onClick={(e) => {
-                 e.stopPropagation();
-                 router.push('/admin/archive');
-               }}
-               style={{ backgroundColor: '#f97316' }}
-               onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#ea580c'}
-               onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#f97316'}
-               className="w-full py-1 sm:py-1.5 text-white font-bold rounded text-xs hover:scale-105 active:scale-95 shadow-md hover:shadow-lg duration-200"
-             >
-               ↩ Restore
-             </button>
-          </div>
         </div>
       </div>
 
