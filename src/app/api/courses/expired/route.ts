@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
-import { requireRole } from '@/lib/apiAuth';
+import { createServiceClient, requireRole } from '@/lib/apiAuth';
 
 export const dynamic = 'force-dynamic';
 
@@ -96,11 +95,8 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const locationFilter = searchParams.get('locationFilter');
 
-    // Initialize Supabase client
-    const supabase = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL || '',
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''
-    );
+    // Use service client after role-gate; RLS on these tables now requires auth context.
+    const supabase = createServiceClient();
 
     const today = new Date();
     today.setHours(0, 0, 0, 0);

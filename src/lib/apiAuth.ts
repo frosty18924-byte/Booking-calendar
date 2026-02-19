@@ -1,6 +1,6 @@
 import { createServerClient } from '@supabase/ssr';
 import { createClient } from '@supabase/supabase-js';
-import { cookies } from 'next/headers';
+import { cookies, headers } from 'next/headers';
 import { NextResponse } from 'next/server';
 
 export type RoleTier = 'staff' | 'manager' | 'scheduler' | 'admin';
@@ -13,26 +13,48 @@ export function createServiceClient() {
 }
 
 export async function requireRole(allowedRoles: RoleTier[]) {
-  const cookieStore = await cookies();
-  const authClient = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL || '',
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '',
-    {
-      cookies: {
-        getAll() {
-          return cookieStore.getAll();
-        },
-        setAll() {
-          // No-op in route handlers.
-        },
-      },
-    }
-  );
+  const reqHeaders = await headers();
+  const authHeader = reqHeaders.get('authorization') || reqHeaders.get('Authorization');
+  const bearerToken = authHeader?.replace(/^Bearer\s+/i, '').trim();
 
-  const {
-    data: { user },
-    error: userError,
-  } = await authClient.auth.getUser();
+  let user: { id: string } | null = null;
+  let userError: unknown = null;
+
+  if (bearerToken) {
+    const tokenClient = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL || '',
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '',
+      {
+        global: {
+          headers: {
+            Authorization: `Bearer ${bearerToken}`,
+          },
+        },
+      }
+    );
+    const { data, error } = await tokenClient.auth.getUser();
+    user = data.user;
+    userError = error;
+  } else {
+    const cookieStore = await cookies();
+    const authClient = createServerClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL || '',
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '',
+      {
+        cookies: {
+          getAll() {
+            return cookieStore.getAll();
+          },
+          setAll() {
+            // No-op in route handlers.
+          },
+        },
+      }
+    );
+    const { data, error } = await authClient.auth.getUser();
+    user = data.user;
+    userError = error;
+  }
 
   if (userError || !user) {
     return { error: NextResponse.json({ error: 'Unauthorized' }, { status: 401 }) } as const;

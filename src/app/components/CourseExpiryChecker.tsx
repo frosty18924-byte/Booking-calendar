@@ -190,6 +190,13 @@ export default function CourseExpiryChecker({ isDark }: { isDark: boolean }) {
     setEndDate(formatDate(nextMonth));
   }
 
+  async function getAuthHeaders(): Promise<Record<string, string>> {
+    const { data: sessionData } = await supabase.auth.getSession();
+    const token = sessionData.session?.access_token;
+    if (!token) return {};
+    return { Authorization: `Bearer ${token}` };
+  }
+
   function buildFilterOptions(data: CourseData[]) {
     const normalizedCourseOptions = [...new Set(data.map(d => canonicalCourseName(d.course)))].sort();
 
@@ -225,12 +232,13 @@ export default function CourseExpiryChecker({ isDark }: { isDark: boolean }) {
         params.append('locationFilter', selectedLocation);
       }
 
-      const response = await fetch(
-        `/api/courses/expiring?${params.toString()}`
-      );
+      const response = await fetch(`/api/courses/expiring?${params.toString()}`, {
+        headers: await getAuthHeaders(),
+      });
 
       if (!response.ok) {
-        throw new Error('Failed to fetch courses');
+        const result = await response.json().catch(() => ({}));
+        throw new Error(result?.error || 'Failed to fetch courses');
       }
 
       const data: CourseData[] = await response.json();
@@ -239,9 +247,9 @@ export default function CourseExpiryChecker({ isDark }: { isDark: boolean }) {
       setAllData(dedupedData);
       buildFilterOptions(dedupedData);
       setStatus(`Found ${dedupedData.length} expiring courses`);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error fetching courses:', error);
-      setStatus('Error loading courses. Please check your Google Sheets connection.');
+      setStatus(error?.message || 'Error loading courses. Please check your Google Sheets connection.');
     } finally {
       setLoading(false);
     }
@@ -259,10 +267,13 @@ export default function CourseExpiryChecker({ isDark }: { isDark: boolean }) {
       }
 
       const url = `/api/courses/awaiting-training${params.toString() ? '?' + params.toString() : ''}`;
-      const response = await fetch(url);
+      const response = await fetch(url, {
+        headers: await getAuthHeaders(),
+      });
 
       if (!response.ok) {
-        throw new Error('Failed to fetch courses');
+        const result = await response.json().catch(() => ({}));
+        throw new Error(result?.error || 'Failed to fetch courses');
       }
 
       const data: CourseData[] = await response.json();
@@ -271,9 +282,9 @@ export default function CourseExpiryChecker({ isDark }: { isDark: boolean }) {
       setAllData(dedupedData);
       buildFilterOptions(dedupedData);
       setStatus(`Found ${dedupedData.length} courses awaiting training`);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error fetching courses:', error);
-      setStatus('Error loading courses. Please check your Google Sheets connection.');
+      setStatus(error?.message || 'Error loading courses. Please check your Google Sheets connection.');
     } finally {
       setLoading(false);
     }
@@ -291,10 +302,13 @@ export default function CourseExpiryChecker({ isDark }: { isDark: boolean }) {
       }
 
       const url = `/api/courses/expired${params.toString() ? '?' + params.toString() : ''}`;
-      const response = await fetch(url);
+      const response = await fetch(url, {
+        headers: await getAuthHeaders(),
+      });
 
       if (!response.ok) {
-        throw new Error('Failed to fetch courses');
+        const result = await response.json().catch(() => ({}));
+        throw new Error(result?.error || 'Failed to fetch courses');
       }
 
       const data: CourseData[] = await response.json();
@@ -303,9 +317,9 @@ export default function CourseExpiryChecker({ isDark }: { isDark: boolean }) {
       setAllData(dedupedData);
       buildFilterOptions(dedupedData);
       setStatus(`Found ${dedupedData.length} expired courses`);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error fetching courses:', error);
-      setStatus('Error loading courses. Please check your Google Sheets connection.');
+      setStatus(error?.message || 'Error loading courses. Please check your Google Sheets connection.');
     } finally {
       setLoading(false);
     }
@@ -443,6 +457,9 @@ export default function CourseExpiryChecker({ isDark }: { isDark: boolean }) {
         </div>
 
         {/* Status */}
+        <div className={`mb-6 text-center text-sm font-medium transition-colors duration-300 ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>
+          {status}
+        </div>
 
         {loading && (
           <div className="text-center py-8">
