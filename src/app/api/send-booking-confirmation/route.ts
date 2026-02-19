@@ -1,17 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { sendBookingEmail } from '@/lib/email';
-import { createClient } from '@supabase/supabase-js';
+import { createServiceClient, requireRole } from '@/lib/apiAuth';
 
 export async function POST(request: NextRequest) {
   try {
+    const authz = await requireRole(['admin', 'scheduler']);
+    if ('error' in authz) return authz.error;
+
     const { staffId, eventId } = await request.json();
     console.log('Booking confirmation request:', { staffId, eventId });
 
     // Initialize Supabase with service role key for backend operations
-    const supabase = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!
-    );
+    const supabase = createServiceClient();
 
     // Get staff details
     const { data: staff } = await supabase

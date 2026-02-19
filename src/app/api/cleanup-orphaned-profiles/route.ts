@@ -1,13 +1,12 @@
-import { createClient } from '@supabase/supabase-js';
+import { requireRole } from '@/lib/apiAuth';
 
 export const dynamic = 'force-dynamic';
 
-export async function GET(request: Request) {
+export async function GET(_request: Request) {
   try {
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-    const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
-
-    const supabaseAdmin = createClient(supabaseUrl, serviceRoleKey);
+    const authz = await requireRole(['admin']);
+    if ('error' in authz) return authz.error;
+    const { service: supabaseAdmin } = authz;
 
     // Get all profiles
     const { data: allProfiles } = await supabaseAdmin

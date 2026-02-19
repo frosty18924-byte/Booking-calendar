@@ -1,10 +1,13 @@
-import { createClient } from '@supabase/supabase-js';
 import { NextRequest, NextResponse } from 'next/server';
+import { createServiceClient, requireRole } from '@/lib/apiAuth';
 
 export const dynamic = 'force-dynamic';
 
 export async function POST(request: NextRequest) {
   try {
+    const authz = await requireRole(['admin', 'scheduler']);
+    if ('error' in authz) return authz.error;
+
     const { eventId, staffIds } = await request.json();
 
     if (!eventId || !staffIds || staffIds.length === 0) {
@@ -14,10 +17,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const supabaseAdmin = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!
-    );
+    const supabaseAdmin = createServiceClient();
 
     // Get event details
     const { data: event, error: eventError } = await supabaseAdmin

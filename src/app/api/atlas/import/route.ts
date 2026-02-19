@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import * as XLSX from 'xlsx';
+import { requireRole } from '@/lib/apiAuth';
 
 export const dynamic = 'force-dynamic';
 
@@ -33,6 +34,9 @@ function getConfiguredIgnoredNames(): Set<string> {
 
 export async function POST(request: NextRequest) {
   try {
+    const authz = await requireRole(['admin']);
+    if ('error' in authz) return authz.error;
+
     const formData = await request.formData();
     const file = formData.get('file') as File;
 

@@ -1,15 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { sendBulkEmail } from '@/lib/email';
-import { createClient } from '@supabase/supabase-js';
+import { createServiceClient, requireRole } from '@/lib/apiAuth';
 
 export async function POST(request: NextRequest) {
   try {
+    const authz = await requireRole(['admin', 'scheduler']);
+    if ('error' in authz) return authz.error;
+
     const { eventId, notifyAllStaff = false } = await request.json();
 
-    const supabase = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!
-    );
+    const supabase = createServiceClient();
 
     // Get event details
     const { data: event } = await supabase

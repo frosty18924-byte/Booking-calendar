@@ -1,4 +1,5 @@
 import { createClient } from '@supabase/supabase-js';
+import { requireRole } from '@/lib/apiAuth';
 
 export const dynamic = 'force-dynamic';
 
@@ -49,25 +50,18 @@ async function deleteProfile(profileId?: string, email?: string) {
   return { success: true, message: 'Profile deleted' };
 }
 
-export async function GET(request: Request) {
-  try {
-    const { searchParams } = new URL(request.url);
-    const profileId = searchParams.get('profileId');
-    const email = searchParams.get('email');
-
-    const result = await deleteProfile(profileId || undefined, email || undefined);
-    return Response.json(result);
-  } catch (error) {
-    console.error('API error:', error);
-    return Response.json(
-      { error: error instanceof Error ? error.message : 'Unknown error' },
-      { status: 500 }
-    );
-  }
+export async function GET(_request: Request) {
+  return Response.json(
+    { error: 'Method Not Allowed. Use POST for destructive actions.' },
+    { status: 405 }
+  );
 }
 
 export async function POST(request: Request) {
   try {
+    const authz = await requireRole(['admin']);
+    if ('error' in authz) return authz.error;
+
     const body = await request.json();
     const { profileId, email } = body;
 

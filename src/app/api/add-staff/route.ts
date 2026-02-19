@@ -1,5 +1,6 @@
-import { createClient } from '@supabase/supabase-js';
 import { sendPasswordResetEmail } from '@/lib/email';
+import { NextRequest } from 'next/server';
+import { createServiceClient, requireRole } from '@/lib/apiAuth';
 
 export const dynamic = 'force-dynamic';
 
@@ -15,18 +16,18 @@ interface StaffMember {
 const isUuid = (value: string): boolean =>
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test((value || '').trim());
 
-export async function POST(request: Request) {
+export async function POST(request: NextRequest) {
   try {
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-    const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
+    const authz = await requireRole(['admin']);
+    if ('error' in authz) return authz.error;
 
-    // Create admin client with service role key
-    const supabaseAdmin = createClient(supabaseUrl, serviceRoleKey);
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+    const supabaseAdmin = createServiceClient();
     const body = await request.json();
     const staffMembers: StaffMember[] = Array.isArray(body) ? body : [body];
 
     // Validate environment variables
-    if (!supabaseUrl || !serviceRoleKey) {
+    if (!supabaseUrl) {
       return Response.json(
         {
           success: false,
@@ -188,7 +189,7 @@ export async function POST(request: Request) {
         console.log('Creating roster-only profile for:', staff.email, 'with ID:', profileId);
         
         // Create profile only (no auth user)
-        const { error: profileError, data: profileData } = await supabaseAdmin
+        const { error: profileError } = await supabaseAdmin
           .from('profiles')
           .upsert([
             {

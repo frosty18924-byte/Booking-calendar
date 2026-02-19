@@ -1,10 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
+import { createServiceClient, requireRole } from '@/lib/apiAuth';
 
 export const dynamic = 'force-dynamic';
 
 export async function GET(request: NextRequest) {
   try {
+    const authz = await requireRole(['admin', 'scheduler', 'manager', 'staff']);
+    if ('error' in authz) return authz.error;
+
     const { searchParams } = new URL(request.url);
     const locationId = searchParams.get('locationId');
 
@@ -15,10 +18,7 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const supabase = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL || '',
-      process.env.SUPABASE_SERVICE_ROLE_KEY || ''
-    );
+    const supabase = createServiceClient();
 
     // Get courses for this location with proper ordering
     const { data: locationCourses, error } = await supabase

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
+import { requireRole } from '@/lib/apiAuth';
 
 export const dynamic = 'force-dynamic';
 
@@ -85,6 +86,9 @@ async function fetchAllRows(
 
 export async function GET(request: NextRequest) {
   try {
+    const authz = await requireRole(['admin', 'scheduler', 'manager', 'staff']);
+    if ('error' in authz) return authz.error;
+
     const { searchParams } = new URL(request.url);
     const locationFilter = searchParams.get('locationFilter');
 

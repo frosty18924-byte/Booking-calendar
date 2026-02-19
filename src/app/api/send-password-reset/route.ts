@@ -1,9 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
 import { sendPasswordResetEmail } from '@/lib/email';
+import { createServiceClient, requireRole } from '@/lib/apiAuth';
 
 export async function POST(request: NextRequest) {
   try {
+    const authz = await requireRole(['admin']);
+    if ('error' in authz) return authz.error;
+
     const { email, staffName } = await request.json();
 
     if (!email || !email.includes('@')) {
@@ -11,10 +14,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Initialize Supabase with service role key for backend operations
-    const supabase = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!
-    );
+    const supabase = createServiceClient();
 
     // Use admin API to generate a magiclink
     // This works for both new and existing users without requiring a password
