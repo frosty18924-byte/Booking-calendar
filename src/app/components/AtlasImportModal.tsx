@@ -152,7 +152,7 @@ export default function AtlasImportModal({ onClose }: { onClose?: () => void }) 
             <h3 style={{ margin: '0 0 8px 0', fontSize: '16px', fontWeight: 600 }}>{result.success ? '✅ Import Successful' : '❌ Import Failed'}</h3>
             <p style={{ margin: 0, fontSize: '14px' }}>
               {result.success
-                ? `Updated ${result.summary.updated} records, created ${result.summary.created} new records, ignored ${result.summary.ignored || 0} staff.`
+                ? `Updated ${result.summary.updated} records and created ${result.summary.created} new records.`
                 : result.errors[0]?.error}
             </p>
           </div>
@@ -203,17 +203,6 @@ export default function AtlasImportModal({ onClose }: { onClose?: () => void }) 
             </div>
           )}
 
-          {(result.ignoredStaff && result.ignoredStaff.length > 0) && (
-            <div style={{ marginBottom: '16px' }}>
-              <h3 style={{ fontSize: '14px', fontWeight: 600, marginBottom: '8px' }}>Ignored Staff ({result.ignoredStaff.length}):</h3>
-              <div style={{ maxHeight: '120px', overflowY: 'auto', backgroundColor: isDark ? '#0f172a' : '#f8fafc', padding: '12px', borderRadius: '6px', fontSize: '12px' }}>
-                {result.ignoredStaff.map((name, idx) => (
-                  <div key={idx} style={{ marginBottom: '4px' }}>{name}</div>
-                ))}
-              </div>
-            </div>
-          )}
-
           {result.summary.errors > 0 && (
             <div style={{ marginBottom: '16px' }}>
               <h3 style={{ fontSize: '14px', fontWeight: 600, marginBottom: '8px', color: '#ef4444' }}>Errors ({result.summary.errors}):</h3>
@@ -230,7 +219,12 @@ export default function AtlasImportModal({ onClose }: { onClose?: () => void }) 
               variant="primary"
               className="px-5 py-2 rounded-lg font-bold"
               style={{ backgroundColor: '#10b981', color: '#ffffff' }}
-              onClick={() => { setFile(null); setResult(null); setShowResult(false); }}
+              onClick={() => {
+                setFile(null);
+                setResult(null);
+                setShowResult(false);
+                onClose?.();
+              }}
             >
               ✅ Done
             </UniformButton>

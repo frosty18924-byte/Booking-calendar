@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { sendPasswordResetEmail } from '@/lib/email';
+import { getEmailSendOptionsFromHeaders, sendPasswordResetEmail } from '@/lib/email';
 import { createServiceClient, requireRole } from '@/lib/apiAuth';
 
 export async function POST(request: NextRequest) {
@@ -8,6 +8,10 @@ export async function POST(request: NextRequest) {
     if ('error' in authz) return authz.error;
 
     const { email, staffName } = await request.json();
+    const emailOptions = getEmailSendOptionsFromHeaders(
+      request.headers.get('x-email-test-mode'),
+      request.headers.get('x-test-email-address')
+    );
 
     if (!email || !email.includes('@')) {
       return NextResponse.json({ error: 'Invalid email address' }, { status: 400 });
@@ -43,7 +47,8 @@ export async function POST(request: NextRequest) {
     const success = await sendPasswordResetEmail(
       email,
       staffName || 'Staff Member',
-      resetLink
+      resetLink,
+      emailOptions
     );
 
     if (!success) {

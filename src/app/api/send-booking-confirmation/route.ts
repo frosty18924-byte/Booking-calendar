@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { sendBookingEmail } from '@/lib/email';
+import { getEmailSendOptionsFromHeaders, sendBookingEmail } from '@/lib/email';
 import { createServiceClient, requireRole } from '@/lib/apiAuth';
 
 export async function POST(request: NextRequest) {
@@ -40,6 +40,10 @@ export async function POST(request: NextRequest) {
     }
 
     console.log('Event found:', { date: event.event_date, course: (event.courses as any)?.name });
+    const emailOptions = getEmailSendOptionsFromHeaders(
+      request.headers.get('x-email-test-mode'),
+      request.headers.get('x-test-email-address')
+    );
 
     // Send email
     console.log('Sending email to:', staff.email);
@@ -47,7 +51,8 @@ export async function POST(request: NextRequest) {
       staff.email,
       staff.full_name || 'Staff Member',
       (event.courses as any)?.name || 'Unknown Course',
-      event.event_date
+      event.event_date,
+      emailOptions
     );
 
     console.log('Email send result:', success);

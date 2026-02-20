@@ -35,6 +35,7 @@ export default function GlobalTopControls() {
   }, []);
 
   const isAuthPage = pathname === '/login' || pathname?.startsWith('/auth/');
+  const isDashboardPage = pathname === '/dashboard';
 
   const handleSignOut = async () => {
     const { error } = await supabase.auth.signOut();
@@ -44,6 +45,8 @@ export default function GlobalTopControls() {
     }
     router.push('/login');
   };
+
+  if (isDashboardPage) return null;
 
   return (
     <div className="fixed top-16 right-2 sm:right-4 z-[999] flex max-w-[calc(100vw-1rem)] items-center gap-2 rounded-xl border border-slate-200/70 bg-white/85 p-1.5 shadow-lg backdrop-blur dark:border-slate-700/70 dark:bg-slate-900/85">

@@ -3,21 +3,37 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
+import type { User } from '@supabase/supabase-js';
 import CourseManagerModal from '@/app/components/CourseManagerModal';
 import LocationManagerModal from '@/app/components/LocationManagerModal';
 
 export default function AdminPage() {
   const router = useRouter();
-  const [user, setUser] = useState<any>(null);
+  const [user, setUser] = useState<User | null>(null);
   const [isDark, setIsDark] = useState(true);
   const [loading, setLoading] = useState(true);
   const [showCourseModal, setShowCourseModal] = useState(false);
   const [showLocationModal, setShowLocationModal] = useState(false);
 
   useEffect(() => {
-    checkAuth();
     checkTheme();
-  }, []);
+    const runAuthCheck = async () => {
+      try {
+        const { data: { user: currentUser } } = await supabase.auth.getUser();
+        if (!currentUser) {
+          router.push('/login');
+          return;
+        }
+        setUser(currentUser);
+      } catch (err) {
+        console.error('Error checking auth:', err);
+        router.push('/login');
+      } finally {
+        setLoading(false);
+      }
+    };
+    runAuthCheck();
+  }, [router]);
 
   useEffect(() => {
     const html = document.documentElement;
@@ -29,9 +45,10 @@ export default function AdminPage() {
   }, [isDark]);
 
   useEffect(() => {
-    const handleThemeChange = (event: any) => {
-      console.log('Theme change detected:', event.detail.isDark);
-      setIsDark(event.detail.isDark);
+    const handleThemeChange = (event: Event) => {
+      const themeEvent = event as CustomEvent<{ isDark: boolean }>;
+      console.log('Theme change detected:', themeEvent.detail.isDark);
+      setIsDark(themeEvent.detail.isDark);
     };
     
     window.addEventListener('themeChange', handleThemeChange);
@@ -45,22 +62,6 @@ export default function AdminPage() {
       setIsDark(isDarkMode);
     }
   };
-
-  const checkAuth = async (): Promise<void> => {
-    try {
-      const { data: { user: currentUser } } = await supabase.auth.getUser();
-      if (!currentUser) {
-        router.push('/login');
-        return;
-      }
-      setUser(currentUser);
-    } catch (err) {
-      console.error("Error checking auth:", err);
-      router.push('/login');
-    } finally {
-      setLoading(false);
-    }
-  }
 
   if (loading) {
     return (
@@ -89,7 +90,7 @@ export default function AdminPage() {
           >
             ←
           </button>
-          <h1 style={{ color: isDark ? '#f1f5f9' : '#1e293b' }} className="text-xl sm:text-2xl md:text-3xl font-black uppercase tracking-tighter">Admin Control Centre</h1>
+          <h1 style={{ color: isDark ? '#f1f5f9' : '#1e293b' }} className="text-xl sm:text-2xl md:text-3xl font-black uppercase tracking-tighter">Training Control Centre</h1>
           <div />
         </div>
 

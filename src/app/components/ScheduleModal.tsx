@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
+import { getEmailTestHeaders } from '@/lib/emailTestMode';
 import Icon from './Icon';
 
 export default function ScheduleModal({ onClose, onRefresh }: { onClose: () => void, onRefresh: () => void }) {
@@ -94,7 +95,7 @@ export default function ScheduleModal({ onClose, onRefresh }: { onClose: () => v
       try {
         await fetch('/api/send-course-notification', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: { 'Content-Type': 'application/json', ...getEmailTestHeaders() },
           body: JSON.stringify({ 
             eventId: insertedEvent.id, 
             notifyAllStaff: true 

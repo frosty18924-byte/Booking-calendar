@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
 import { hasPermission } from '@/lib/permissions';
+import { getEmailTestHeaders } from '@/lib/emailTestMode';
 import UniformButton from './UniformButton';
 
 interface BookingModalProps {
@@ -183,7 +184,7 @@ export default function BookingModal({ event, onClose, onRefresh, onOpenChecklis
         try {
           await fetch('/api/send-booking-confirmation', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: { 'Content-Type': 'application/json', ...getEmailTestHeaders() },
             body: JSON.stringify({ staffId, eventId: event.id })
           });
         } catch (err) {
@@ -237,7 +238,7 @@ export default function BookingModal({ event, onClose, onRefresh, onOpenChecklis
       try {
         await fetch('/api/send-booking-cancellation', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: { 'Content-Type': 'application/json', ...getEmailTestHeaders() },
           body: JSON.stringify({ 
             staffId: booking.profile_id, 
             eventId: event.id,
@@ -263,7 +264,7 @@ export default function BookingModal({ event, onClose, onRefresh, onOpenChecklis
         try {
           await fetch('/api/send-booking-cancellation', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: { 'Content-Type': 'application/json', ...getEmailTestHeaders() },
             body: JSON.stringify({ 
               staffId: booking.profile_id, 
               eventId: event.id,

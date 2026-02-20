@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import UniformButton from './UniformButton';
 import { supabase } from '@/lib/supabase';
 import { hasPermission } from '@/lib/permissions';
+import { getEmailTestHeaders } from '@/lib/emailTestMode';
 
 export default function AddStaffModal({ onClose, onRefresh }: { onClose: () => void; onRefresh: () => void }) {
   const [locations, setLocations] = useState<any[]>([]);
@@ -619,7 +620,7 @@ Charlie Scheduler,charlie@example.com,Banks House,manager`;
     try {
       const response = await fetch('/api/send-password-reset', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...getEmailTestHeaders() },
         body: JSON.stringify({ email, staffName })
       });
 

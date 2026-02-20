@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { sendBookingCancellationEmail } from '@/lib/email';
+import { getEmailSendOptionsFromHeaders, sendBookingCancellationEmail } from '@/lib/email';
 import { createServiceClient, requireRole } from '@/lib/apiAuth';
 
 export async function POST(request: NextRequest) {
@@ -32,6 +32,10 @@ export async function POST(request: NextRequest) {
     if (!event) {
       return NextResponse.json({ error: 'Event not found' }, { status: 404 });
     }
+    const emailOptions = getEmailSendOptionsFromHeaders(
+      request.headers.get('x-email-test-mode'),
+      request.headers.get('x-test-email-address')
+    );
 
     // Send email
     const success = await sendBookingCancellationEmail(
@@ -39,7 +43,8 @@ export async function POST(request: NextRequest) {
       staff.full_name || 'Staff Member',
       (event.courses as any)?.name || 'Unknown Course',
       event.event_date,
-      reason
+      reason,
+      emailOptions
     );
 
     if (!success) {

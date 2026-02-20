@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
-import * as XLSX from 'xlsx';
+import readXlsxFile from 'read-excel-file/node';
 import { requireRole } from '@/lib/apiAuth';
 
 export const dynamic = 'force-dynamic';
@@ -32,6 +32,23 @@ function getConfiguredIgnoredNames(): Set<string> {
   );
 }
 
+function toDdMmYyyy(date: Date): string {
+  const day = String(date.getDate()).padStart(2, '0');
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const year = String(date.getFullYear());
+  return `${day}/${month}/${year}`;
+}
+
+function cellValueToString(value: unknown): string {
+  if (value === null || value === undefined) return '';
+  if (value instanceof Date) return toDdMmYyyy(value);
+  if (typeof value === 'string') return value.trim();
+  if (typeof value === 'number') return String(value);
+  if (typeof value === 'boolean') return value ? 'TRUE' : 'FALSE';
+
+  return String(value).trim();
+}
+
 export async function POST(request: NextRequest) {
   try {
     const authz = await requireRole(['admin']);
@@ -59,12 +76,8 @@ export async function POST(request: NextRequest) {
     let records: any[] = [];
     try {
       const buffer = await file.arrayBuffer();
-      const workbook = XLSX.read(buffer, { type: 'array' });
-      const sheet = workbook.Sheets[workbook.SheetNames[0]];
-      
-      // Use row 2 as headers (header: 1 tells it to skip row 1)
-      // This will use row 2 to determine column names
-      const allData = XLSX.utils.sheet_to_json(sheet, { header: 1 });
+      const rows = await readXlsxFile(Buffer.from(buffer));
+      const allData: string[][] = rows.map((row) => row.map((cell) => cellValueToString(cell)));
       
       console.log(`Excel file has ${allData.length} rows`);
       
