@@ -66,41 +66,67 @@ export default function ScheduleModal({ onClose, onRefresh }: { onClose: () => v
     }
   }
 
+  const getNextDate = (dateValue: string): string => {
+    const base = new Date(`${dateValue}T00:00:00Z`);
+    base.setUTCDate(base.getUTCDate() + 1);
+    return base.toISOString().split('T')[0];
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
 
-    const { data: conflicts } = await supabase
-      .from('training_events')
-      .select('*, courses(name)')
-      .eq('event_date', formData.event_date)
-      .eq('location', formData.location)
-      .filter('start_time', 'lt', `${formData.end_time}:00`)
-      .filter('end_time', 'gt', `${formData.start_time}:00`);
+    const selectedCourse = courses.find(c => c.id === formData.course_id);
+    const isTeamTeachLevel2 = String(selectedCourse?.name || '').trim().toLowerCase() === 'team teach level 2';
+    const eventDates = isTeamTeachLevel2
+      ? [formData.event_date, getNextDate(formData.event_date)]
+      : [formData.event_date];
 
-    if (conflicts && conflicts.length > 0) {
-      alert(`⚠️ VENUE CONFLICT: This room is already booked for ${conflicts[0].courses?.name}`);
-      setLoading(false);
-      return;
+    for (const eventDate of eventDates) {
+      const { data: conflicts } = await supabase
+        .from('training_events')
+        .select('*, courses(name)')
+        .eq('event_date', eventDate)
+        .eq('location', formData.location)
+        .filter('start_time', 'lt', `${formData.end_time}:00`)
+        .filter('end_time', 'gt', `${formData.start_time}:00`);
+
+      if (conflicts && conflicts.length > 0) {
+        alert(
+          `⚠️ VENUE CONFLICT (${new Date(`${eventDate}T00:00:00`).toLocaleDateString('en-GB')}): This room is already booked for ${conflicts[0].courses?.name}`
+        );
+        setLoading(false);
+        return;
+      }
     }
 
-    const { data: insertedEvent, error } = await supabase.from('training_events').insert([{
+    const eventsToInsert = eventDates.map((eventDate) => ({
       ...formData,
+      event_date: eventDate,
       start_time: `${formData.start_time}:00`,
       end_time: `${formData.end_time}:00`
-    }]).select().single();
+    }));
 
-    if (!error && insertedEvent) {
+    const { data: insertedEvents, error } = await supabase
+      .from('training_events')
+      .insert(eventsToInsert)
+      .select('id');
+
+    if (!error && insertedEvents && insertedEvents.length > 0) {
       // Send course notification to all staff
       try {
-        await fetch('/api/send-course-notification', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', ...getEmailTestHeaders() },
-          body: JSON.stringify({ 
-            eventId: insertedEvent.id, 
-            notifyAllStaff: true 
-          })
-        });
+        await Promise.allSettled(
+          insertedEvents.map((eventRow) =>
+            fetch('/api/send-course-notification', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json', ...getEmailTestHeaders() },
+              body: JSON.stringify({
+                eventId: eventRow.id,
+                notifyAllStaff: true
+              })
+            })
+          )
+        );
       } catch (err) {
         console.error('Failed to send course notification:', err);
         // Don't fail the event creation if email fails
@@ -174,6 +200,11 @@ export default function ScheduleModal({ onClose, onRefresh }: { onClose: () => v
                 value={formData.event_date}
                 onChange={(e) => setFormData({...formData, event_date: e.target.value})}
               />
+              {String(courses.find(c => c.id === formData.course_id)?.name || '').trim().toLowerCase() === 'team teach level 2' && (
+                <p style={{ color: isDark ? '#94a3b8' : '#64748b' }} className="mt-2 text-[10px] font-black uppercase">
+                  Team Teach Level 2 auto-adds the same session on the following day.
+                </p>
+              )}
             </div>
 
             <div>
