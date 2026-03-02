@@ -1,9 +1,11 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { login } from './actions';
 
 export default function SignInPage() {
+  const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState('');
   const [messageType, setMessageType] = useState<'error' | 'info'>('error');
@@ -30,15 +32,11 @@ export default function SignInPage() {
       if (result?.error) {
         setMessage(result.error);
         setMessageType('error');
-      }
-    } catch (error: any) {
-      // Successful server-action redirects can surface as thrown NEXT_REDIRECT signals.
-      if (
-        error?.digest?.toString().includes('NEXT_REDIRECT')
-        || error?.message?.toString().includes('NEXT_REDIRECT')
-      ) {
         return;
       }
+      router.push('/dashboard');
+      router.refresh();
+    } catch (error: any) {
       setMessage(error?.message || 'Unable to sign in right now.');
       setMessageType('error');
     } finally {

@@ -1,7 +1,5 @@
 'use server'
 
-import { revalidatePath } from 'next/cache'
-import { redirect } from 'next/navigation'
 import { createServerClient } from '@supabase/ssr'
 import { cookies } from 'next/headers'
 
@@ -54,10 +52,9 @@ export async function login(formData: FormData) {
 
         if (profile?.is_deleted) {
             await supabase.auth.signOut()
-            redirect('/login?error=account_deleted')
+            return { error: 'Your account has been deactivated. Please contact an administrator.' }
         }
     }
 
-    revalidatePath('/', 'layout')
-    redirect('/dashboard')
+    return { success: true }
 }

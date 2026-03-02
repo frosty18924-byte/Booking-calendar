@@ -150,13 +150,17 @@ export default function BookingModal({ event, onClose, onRefresh, onOpenChecklis
 
   const handleBooking = async () => {
     if (!hasPermission(userRole, 'BOOKINGS', 'canCreate')) return;
+    if (loading) return;
+    const staffIdsToBook = [...selectedIds];
+    if (staffIdsToBook.length === 0) return;
+
     setLoading(true);
     try {
       // Use the new booking endpoint that validates capacity
       const response = await fetch('/api/book-staff', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ eventId: event.id, staffIds: selectedIds })
+        body: JSON.stringify({ eventId: event.id, staffIds: staffIdsToBook })
       });
 
       const result = await response.json();
@@ -178,23 +182,25 @@ export default function BookingModal({ event, onClose, onRefresh, onOpenChecklis
       }
 
       alert(`✅ ${result.message}`);
-
-      // Send confirmation emails for each booked staff member
-      for (const staffId of selectedIds) {
-        try {
-          await fetch('/api/send-booking-confirmation', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', ...getEmailTestHeaders() },
-            body: JSON.stringify({ staffId, eventId: event.id })
-          });
-        } catch (err) {
-          console.error('Failed to send email for staff:', staffId, err);
-        }
-      }
       setSelectedIds([]);
       await fetchInitialData();
       setActiveTab('roster');
       onRefresh();
+
+      // Send emails in the background so roster confirmation isn't delayed.
+      void Promise.allSettled(
+        staffIdsToBook.map(async (staffId) => {
+          try {
+            await fetch('/api/send-booking-confirmation', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json', ...getEmailTestHeaders() },
+              body: JSON.stringify({ staffId, eventId: event.id })
+            });
+          } catch (err) {
+            console.error('Failed to send email for staff:', staffId, err);
+          }
+        })
+      );
     } catch (error: any) {
       alert(`❌ Error: ${error.message}`);
     }
@@ -406,8 +412,19 @@ export default function BookingModal({ event, onClose, onRefresh, onOpenChecklis
                   </div>
                 ))}
               </div>
-              <button onClick={handleBooking} disabled={selectedIds.length === 0} className="w-full mt-6 py-4 bg-blue-600 text-white font-black text-xs uppercase rounded-2xl disabled:opacity-50">
-                Confirm Booking ({selectedIds.length})
+              <button
+                onClick={handleBooking}
+                disabled={selectedIds.length === 0 || loading}
+                className="w-full mt-6 py-4 bg-blue-600 text-white font-black text-xs uppercase rounded-2xl disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+              >
+                {loading ? (
+                  <>
+                    <span className="inline-block h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                    Confirming Booking...
+                  </>
+                ) : (
+                  <>Confirm Booking ({selectedIds.length})</>
+                )}
               </button>
             </>
           ) : (

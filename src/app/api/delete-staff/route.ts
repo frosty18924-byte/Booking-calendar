@@ -3,6 +3,21 @@ import { createServiceClient, requireRole } from '@/lib/apiAuth';
 
 export const dynamic = 'force-dynamic';
 
+type FutureBooking = {
+  id: string;
+  event_id: string;
+  profile_id: string;
+  attended_at: string | null;
+  lateness_reason: string | null;
+  lateness_minutes: number | null;
+  absence_reason: string | null;
+  booked_by: string | null;
+  created_at: string | null;
+  is_late: boolean | null;
+  late_reason: string | null;
+  minutes_late: number | null;
+};
+
 export async function POST(request: NextRequest) {
   try {
     const authz = await requireRole(['admin']);
@@ -59,6 +74,8 @@ export async function POST(request: NextRequest) {
 
     // Delete the auth user account if it exists (for manager/scheduler/admin users)
     const profile = profileExists[0];
+    const todayIsoDate = new Date().toISOString().split('T')[0];
+    let removedFutureBookings = 0;
 
     // Log archive snapshot so admins can restore this profile from Archive page.
     try {
@@ -110,7 +127,83 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Soft delete the profile: anonymize and mark as deleted for historical analytics
+    // Remove only FUTURE bookings so past rosters remain historically accurate.
+    // We archive each removed booking so admins can restore if needed.
+    try {
+      const { data: futureBookings, error: futureBookingsError } = await supabaseAdmin
+        .from('bookings')
+        .select(`
+          id,
+          event_id,
+          profile_id,
+          attended_at,
+          lateness_reason,
+          lateness_minutes,
+          absence_reason,
+          booked_by,
+          created_at,
+          is_late,
+          late_reason,
+          minutes_late,
+          training_events!inner(
+            event_date
+          )
+        `)
+        .eq('profile_id', staffId)
+        .gte('training_events.event_date', todayIsoDate);
+
+      if (futureBookingsError) {
+        console.warn('Could not query future bookings for deleted profile:', futureBookingsError.message);
+      } else if (futureBookings && futureBookings.length > 0) {
+        const typedFutureBookings = futureBookings as FutureBooking[];
+        const bookingSnapshots = typedFutureBookings.map((booking) => ({
+          entity_type: 'booking',
+          entity_id: String(booking.id),
+          location_id: null,
+          snapshot: {
+            booking: {
+              id: booking.id,
+              event_id: booking.event_id,
+              profile_id: booking.profile_id,
+              attended_at: booking.attended_at ?? null,
+              lateness_reason: booking.lateness_reason ?? null,
+              lateness_minutes: booking.lateness_minutes ?? null,
+              absence_reason: booking.absence_reason ?? null,
+              booked_by: booking.booked_by ?? null,
+              created_at: booking.created_at ?? null,
+              is_late: booking.is_late ?? null,
+              late_reason: booking.late_reason ?? null,
+              minutes_late: booking.minutes_late ?? null,
+            },
+          },
+          deleted_by: null,
+        }));
+
+        const { error: archiveBookingsError } = await supabaseAdmin
+          .from('deleted_items')
+          .insert(bookingSnapshots);
+
+        if (archiveBookingsError) {
+          console.warn('Could not archive future bookings before deletion:', archiveBookingsError.message);
+        }
+
+        const bookingIdsToDelete = typedFutureBookings.map((booking) => booking.id);
+        const { error: deleteFutureBookingsError } = await supabaseAdmin
+          .from('bookings')
+          .delete()
+          .in('id', bookingIdsToDelete);
+
+        if (deleteFutureBookingsError) {
+          console.warn('Could not delete future bookings for deleted profile:', deleteFutureBookingsError.message);
+        } else {
+          removedFutureBookings = bookingIdsToDelete.length;
+        }
+      }
+    } catch (futureBookingCleanupErr) {
+      console.warn('Future booking cleanup failed during staff deletion:', futureBookingCleanupErr);
+    }
+
+    // Soft delete the profile while preserving full_name for historical roster display
     console.log('Soft deleting profile with id:', staffId);
     
     const { error: profileError } = await supabaseAdmin
@@ -118,7 +211,6 @@ export async function POST(request: NextRequest) {
       .update({
         is_deleted: true,
         deleted_at: new Date().toISOString(),
-        full_name: 'Deleted User',
         email: `deleted-${staffId}@system.local`, // Anonymize email
       })
       .eq('id', staffId);
@@ -156,7 +248,8 @@ export async function POST(request: NextRequest) {
     return Response.json(
       {
         success: true,
-        message: `Staff member ${email} has been completely removed`,
+        message: `Staff member removed. ${removedFutureBookings} future booking(s) were removed; historical rosters were kept.`,
+        removedFutureBookings,
       },
       { status: 200 }
     );

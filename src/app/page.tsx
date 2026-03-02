@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import Icon from '@/app/components/Icon';
-import { useRouter } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { format, startOfMonth, endOfMonth, startOfWeek, endOfWeek, eachDayOfInterval, isSameDay, isSameMonth, subMonths, addMonths } from 'date-fns';
 import ScheduleModal from '@/app/components/ScheduleModal';
 import UniformButton from '@/app/components/UniformButton';
@@ -13,6 +13,7 @@ import { hasPermission } from '@/lib/permissions';
 
 export default function CalendarPage() {
   const router = useRouter();
+  const pathname = usePathname();
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [events, setEvents] = useState<any[]>([]);
   const [showSchedule, setShowSchedule] = useState(false);
@@ -201,7 +202,11 @@ export default function CalendarPage() {
 
               <div className="flex items-center justify-end gap-1 md:gap-3">
                 {canViewAdmin && (
-                  <a href="/admin" title="Training Dashboard" className="cursor-pointer bg-emerald-600 text-white px-1 md:px-4 py-1 md:py-2 rounded-lg md:rounded-xl font-black text-[7px] md:text-[10px] uppercase hover:bg-emerald-700 hover:shadow-md hover:scale-105 active:scale-95 transition-all duration-200">
+                  <a
+                    href={`/admin?from=${encodeURIComponent(pathname || '/apps/booking-calendar')}`}
+                    title="Training Dashboard"
+                    className="cursor-pointer bg-emerald-600 text-white px-1 md:px-4 py-1 md:py-2 rounded-lg md:rounded-xl font-black text-[7px] md:text-[10px] uppercase hover:bg-emerald-700 hover:shadow-md hover:scale-105 active:scale-95 transition-all duration-200"
+                  >
                     🎓 Training Dashboard
                   </a>
                 )}

@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import type { User } from '@supabase/supabase-js';
 import CourseManagerModal from '@/app/components/CourseManagerModal';
@@ -9,6 +9,7 @@ import LocationManagerModal from '@/app/components/LocationManagerModal';
 
 export default function AdminPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [user, setUser] = useState<User | null>(null);
   const [isDark, setIsDark] = useState(true);
   const [loading, setLoading] = useState(true);
@@ -63,6 +64,19 @@ export default function AdminPage() {
     }
   };
 
+  const handleBack = (): void => {
+    const fromParam = searchParams.get('from');
+    if (fromParam && fromParam.startsWith('/')) {
+      router.push(fromParam);
+      return;
+    }
+    if (typeof window !== 'undefined' && window.history.length > 1) {
+      router.back();
+      return;
+    }
+    router.push('/dashboard');
+  };
+
   if (loading) {
     return (
       <main style={{ backgroundColor: isDark ? '#0f172a' : '#f1f5f9', minHeight: '100vh' }} className="p-8 transition-colors duration-300 flex items-center justify-center">
@@ -84,7 +98,7 @@ export default function AdminPage() {
         {/* Header row with back button and title */}
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8 sm:mb-12 px-2 sm:px-4">
           <button 
-            onClick={() => router.push('/')}
+            onClick={handleBack}
             style={{ color: isDark ? '#94a3b8' : '#475569' }}
             className="p-2 hover:opacity-80 rounded-lg font-bold text-xl sm:text-2xl"
           >
