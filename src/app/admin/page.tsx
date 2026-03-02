@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import type { User } from '@supabase/supabase-js';
 import CourseManagerModal from '@/app/components/CourseManagerModal';
@@ -9,7 +9,6 @@ import LocationManagerModal from '@/app/components/LocationManagerModal';
 
 export default function AdminPage() {
   const router = useRouter();
-  const searchParams = useSearchParams();
   const [user, setUser] = useState<User | null>(null);
   const [isDark, setIsDark] = useState(true);
   const [loading, setLoading] = useState(true);
@@ -65,10 +64,12 @@ export default function AdminPage() {
   };
 
   const handleBack = (): void => {
-    const fromParam = searchParams.get('from');
-    if (fromParam && fromParam.startsWith('/')) {
-      router.push(fromParam);
-      return;
+    if (typeof window !== 'undefined') {
+      const fromParam = new URLSearchParams(window.location.search).get('from');
+      if (fromParam && fromParam.startsWith('/')) {
+        router.push(fromParam);
+        return;
+      }
     }
     if (typeof window !== 'undefined' && window.history.length > 1) {
       router.back();
