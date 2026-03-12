@@ -64,18 +64,7 @@ export default function AdminPage() {
   };
 
   const handleBack = (): void => {
-    if (typeof window !== 'undefined') {
-      const fromParam = new URLSearchParams(window.location.search).get('from');
-      if (fromParam && fromParam.startsWith('/')) {
-        router.push(fromParam);
-        return;
-      }
-    }
-    if (typeof window !== 'undefined' && window.history.length > 1) {
-      router.back();
-      return;
-    }
-    router.push('/dashboard');
+    router.push('/apps/booking-calendar');
   };
 
   if (loading) {
