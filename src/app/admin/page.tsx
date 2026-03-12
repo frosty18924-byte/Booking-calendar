@@ -149,14 +149,14 @@ export default function AdminPage() {
           </div>
 
           {/* ANALYTICS SHORTCUT */}
-          <div style={{ backgroundColor: isDark ? '#1e293b' : '#ffffff', borderColor: isDark ? '#334155' : '#e2e8f0' }} className="p-3 sm:p-4 rounded-lg border shadow-sm group hover:border-emerald-500 transition-all cursor-pointer" onClick={() => router.push('/analytics')}>
+          <div style={{ backgroundColor: isDark ? '#1e293b' : '#ffffff', borderColor: isDark ? '#334155' : '#e2e8f0' }} className="p-3 sm:p-4 rounded-lg border shadow-sm group hover:border-emerald-500 transition-all cursor-pointer" onClick={() => router.push('/analytics?from=/admin')}>
              <div className="text-2xl sm:text-3xl mb-2">📊</div>
              <h3 style={{ color: isDark ? '#f1f5f9' : '#1e293b' }} className="text-sm sm:text-base font-bold mb-1">Intelligence Hub</h3>
              <p style={{ color: isDark ? '#94a3b8' : '#64748b' }} className="text-xs mb-2">View your performance dashboard.</p>
              <button 
               onClick={(e) => {
                 e.stopPropagation();
-                router.push('/analytics');
+                router.push('/analytics?from=/admin');
               }}
               style={{ backgroundColor: '#10b981' }} 
               onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#059669'} 

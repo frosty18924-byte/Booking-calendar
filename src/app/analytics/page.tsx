@@ -15,6 +15,7 @@ export default function AnalyticsDashboard() {
   const [isDark, setIsDark] = useState(true);
   const [user, setUser] = useState<any>(null);
   const [selectedReason, setSelectedReason] = useState<{ type: 'lateness' | 'absence'; reason: string } | null>(null);
+  const [selectedAbsenceGroup, setSelectedAbsenceGroup] = useState<{ key: string } | null>(null);
 
   useEffect(() => {
     checkAuth();
@@ -262,6 +263,7 @@ export default function AnalyticsDashboard() {
         .filter((item: any) => item?.minutes_late && item.minutes_late > 0 && (item?.late_reason || 'Not specified') === reason)
         .map((item: any) => ({
           name: item?.profiles?.full_name || 'Unknown',
+          location: item?.profiles?.location || 'Unassigned Location',
           minutes_late: item?.minutes_late,
           event_date: item?.training_events?.event_date,
           course: item?.training_events?.courses?.name || 'Unknown'
@@ -271,10 +273,28 @@ export default function AnalyticsDashboard() {
         .filter((item: any) => !item?.attended_at && (item?.absence_reason || 'Not specified') === reason)
         .map((item: any) => ({
           name: item?.profiles?.full_name || 'Unknown',
+          location: item?.profiles?.location || 'Unassigned Location',
           event_date: item?.training_events?.event_date,
           course: item?.training_events?.courses?.name || 'Unknown'
         }));
     }
+  };
+
+  const getGroupAbsences = (groupKey: string) => {
+    return data
+      .filter((item: any) => {
+        if (item?.attended_at) return false;
+        if (groupBy === 'location') return (item?.profiles?.location || 'Unassigned Location') === groupKey;
+        if (groupBy === 'course') return (item?.training_events?.courses?.name || 'Unknown Course') === groupKey;
+        return (item?.profiles?.full_name || 'Unknown Staff') === groupKey;
+      })
+      .map((item: any) => ({
+        name: item?.profiles?.full_name || 'Unknown',
+        location: item?.profiles?.location || 'Unassigned Location',
+        course: item?.training_events?.courses?.name || 'Unknown',
+        event_date: item?.training_events?.event_date,
+        absence_reason: item?.absence_reason || 'Not specified'
+      }));
   };
 
   if (loading) {
@@ -298,7 +318,16 @@ export default function AnalyticsDashboard() {
         {/* Header row with back button and title */}
         <div className="flex justify-between items-center mb-8 px-4">
           <button 
-            onClick={() => router.push('/')}
+            onClick={() => {
+              if (typeof window !== 'undefined') {
+                const fromParam = new URLSearchParams(window.location.search).get('from');
+                if (fromParam && fromParam.startsWith('/')) {
+                  router.push(fromParam);
+                  return;
+                }
+              }
+              router.push('/admin');
+            }}
             style={{ color: isDark ? '#94a3b8' : '#475569' }}
             className="p-2 hover:opacity-80 rounded-lg font-bold text-2xl hover:scale-125 active:scale-100 transition-transform duration-200"
             aria-label="Back"
@@ -399,7 +428,10 @@ export default function AnalyticsDashboard() {
                   return (
                     <div 
                       key={idx}
-                      onClick={() => setSelectedReason({ type: 'lateness', reason: item.reason })}
+                      onClick={() => {
+                        setSelectedAbsenceGroup(null);
+                        setSelectedReason({ type: 'lateness', reason: item.reason });
+                      }}
                       className="cursor-pointer hover:opacity-80 transition-opacity p-2 rounded-lg"
                       style={{ backgroundColor: isDark ? '#0f172a' : '#f1f5f9' }}
                     >
@@ -433,7 +465,10 @@ export default function AnalyticsDashboard() {
                   return (
                     <div 
                       key={idx}
-                      onClick={() => setSelectedReason({ type: 'absence', reason: item.reason })}
+                      onClick={() => {
+                        setSelectedAbsenceGroup(null);
+                        setSelectedReason({ type: 'absence', reason: item.reason });
+                      }}
                       className="cursor-pointer hover:opacity-80 transition-opacity p-2 rounded-lg"
                       style={{ backgroundColor: isDark ? '#0f172a' : '#f1f5f9' }}
                     >
@@ -482,7 +517,24 @@ export default function AnalyticsDashboard() {
                     <td style={{ color: isDark ? '#94a3b8' : '#64748b' }} className="p-4 text-center">{row.booked}</td>
                     <td style={{ color: '#10b981' }} className="p-4 text-center font-bold">{row.attended}</td>
                     <td style={{ color: '#f59e0b' }} className="p-4 text-center font-bold">{row.late}</td>
-                    <td style={{ color: '#ef4444' }} className="p-4 text-center font-bold">{row.absences}</td>
+                    <td className="p-4 text-center font-bold">
+                      {row.absences > 0 ? (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setSelectedReason(null);
+                            setSelectedAbsenceGroup({ key: row.key });
+                          }}
+                          style={{ color: '#ef4444' }}
+                          className="hover:opacity-80 underline underline-offset-4"
+                          aria-label={`View absences for ${row.key}`}
+                        >
+                          {row.absences}
+                        </button>
+                      ) : (
+                        <span style={{ color: '#ef4444' }}>0</span>
+                      )}
+                    </td>
                     <td style={{ color: isDark ? '#cbd5e1' : '#1e293b' }} className="p-4 text-right font-bold">{row.booked > 0 ? Math.round((row.attended / row.booked) * 100) : 0}%</td>
                   </tr>
                 ))
@@ -524,10 +576,62 @@ export default function AnalyticsDashboard() {
                       className="border rounded-lg p-4"
                     >
                       <div className="flex justify-between items-start mb-2">
-                        <p style={{ color: isDark ? '#f1f5f9' : '#1e293b' }} className="font-bold text-sm">{record.name}</p>
+                        <div className="min-w-0 pr-3">
+                          <p style={{ color: isDark ? '#f1f5f9' : '#1e293b' }} className="font-bold text-sm truncate">{record.name}</p>
+                          <p style={{ color: isDark ? '#94a3b8' : '#64748b' }} className="text-[11px] font-bold uppercase truncate">{record.location}</p>
+                        </div>
                         {selectedReason.type === 'lateness' && (
                           <p style={{ color: '#f59e0b' }} className="text-sm font-black">{record.minutes_late} mins late</p>
                         )}
+                      </div>
+                      <p style={{ color: isDark ? '#94a3b8' : '#64748b' }} className="text-xs mb-1">📚 {record.course}</p>
+                      <p style={{ color: isDark ? '#94a3b8' : '#64748b' }} className="text-xs">📅 {record.event_date}</p>
+                    </div>
+                  ));
+                })()}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* GROUP ABSENCES MODAL */}
+        {selectedAbsenceGroup && (
+          <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-md flex items-center justify-center p-4 z-50">
+            <div style={{ backgroundColor: isDark ? '#1e293b' : '#ffffff' }} className="rounded-3xl p-8 w-full max-w-2xl max-h-[80vh] overflow-y-auto shadow-2xl">
+              <div className="flex justify-between items-center mb-6">
+                <h2 style={{ color: isDark ? '#f1f5f9' : '#1e293b' }} className="text-2xl font-black uppercase">
+                  Absences - {groupBy === 'location' ? 'Location' : groupBy === 'course' ? 'Course' : 'Staff Member'}: {selectedAbsenceGroup.key}
+                </h2>
+                <button
+                  onClick={() => setSelectedAbsenceGroup(null)}
+                  style={{ color: isDark ? '#94a3b8' : '#64748b' }}
+                  className="text-3xl font-bold hover:opacity-60 transition-opacity"
+                >
+                  ✕
+                </button>
+              </div>
+
+              <div className="space-y-3">
+                {(() => {
+                  const detailedData = getGroupAbsences(selectedAbsenceGroup.key);
+                  if (detailedData.length === 0) {
+                    return <p style={{ color: isDark ? '#94a3b8' : '#64748b' }} className="text-center py-8">No records found</p>;
+                  }
+                  return detailedData.map((record: any, idx: number) => (
+                    <div
+                      key={idx}
+                      style={{
+                        backgroundColor: isDark ? '#0f172a' : '#f1f5f9',
+                        borderColor: isDark ? '#334155' : '#e2e8f0'
+                      }}
+                      className="border rounded-lg p-4"
+                    >
+                      <div className="flex justify-between items-start mb-2">
+                        <div className="min-w-0 pr-3">
+                          <p style={{ color: isDark ? '#f1f5f9' : '#1e293b' }} className="font-bold text-sm truncate">{record.name}</p>
+                          <p style={{ color: isDark ? '#94a3b8' : '#64748b' }} className="text-[11px] font-bold uppercase truncate">{record.location}</p>
+                        </div>
+                        <p style={{ color: '#ef4444' }} className="text-sm font-black whitespace-nowrap">{record.absence_reason}</p>
                       </div>
                       <p style={{ color: isDark ? '#94a3b8' : '#64748b' }} className="text-xs mb-1">📚 {record.course}</p>
                       <p style={{ color: isDark ? '#94a3b8' : '#64748b' }} className="text-xs">📅 {record.event_date}</p>

@@ -50,8 +50,12 @@ function createTransporter() {
 
 const transporter = createTransporter();
 
-const SENDER_EMAIL = process.env.EMAIL_FROM || process.env.GMAIL_USER || 'noreply@example.com';
-const SENDER_NAME = 'Training Team';
+const SENDER_EMAIL =
+  process.env.EMAIL_FROM ||
+  process.env.SMTP_USER ||
+  process.env.GMAIL_USER ||
+  'noreply@example.com';
+const SENDER_NAME = process.env.EMAIL_FROM_NAME || 'Training Team';
 const EMAIL_TEST_MODE = ['true', '1', 'yes', 'on'].includes(
   (process.env.EMAIL_TEST_MODE || process.env.NEXT_PUBLIC_EMAIL_TEST_MODE || '').toLowerCase()
 );

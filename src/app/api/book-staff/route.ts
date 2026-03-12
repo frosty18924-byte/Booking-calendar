@@ -129,9 +129,8 @@ export async function POST(request: NextRequest) {
           .eq('course_id', nextDayEvent.course_id)
           .eq('event_date', nextDayEvent.event_date);
 
-        linkedEventCapacity = nextDayOverrides && nextDayOverrides.length > 0
-          ? nextDayOverrides[0].max_attendees
-          : nextDayCourseMaxAttendees;
+        const overrideCapacity = nextDayOverrides && nextDayOverrides.length > 0 ? nextDayOverrides[0].max_attendees : null;
+        linkedEventCapacity = overrideCapacity ?? nextDayCourseMaxAttendees;
 
         const { data: nextDayCurrentBookings, error: nextDayCountError } = await supabaseAdmin
           .from('bookings')
@@ -156,6 +155,13 @@ export async function POST(request: NextRequest) {
 
         const nextDayCurrentCount = nextDayCurrentBookings?.length || 0;
         const nextDayTotalAfterBooking = nextDayCurrentCount + linkedEventNewStaffIds.length;
+
+        if (linkedEventCapacity === null) {
+          return NextResponse.json(
+            { error: 'Missing capacity for linked day event' },
+            { status: 500 }
+          );
+        }
 
         if (nextDayTotalAfterBooking > linkedEventCapacity) {
           const availableSpots = linkedEventCapacity - nextDayCurrentCount;
