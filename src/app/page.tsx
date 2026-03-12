@@ -17,6 +17,7 @@ export default function CalendarPage() {
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [events, setEvents] = useState<any[]>([]);
   const [showSchedule, setShowSchedule] = useState(false);
+  const [scheduleDefaultDate, setScheduleDefaultDate] = useState<string | null>(null);
   const [selectedEvent, setSelectedEvent] = useState<any>(null);
   const [showChecklist, setShowChecklist] = useState(false);
   const [selectedChecklistEventId, setSelectedChecklistEventId] = useState<string | null>(null);
@@ -258,7 +259,10 @@ export default function CalendarPage() {
                   <UniformButton
                     variant="primary"
                     className="px-2 md:px-6 py-1 md:py-3 rounded-lg md:rounded-2xl font-black text-[7px] md:text-[10px] uppercase shadow-xl hover:shadow-2xl hover:scale-105 active:scale-95 transition-all duration-200"
-                    onClick={() => setShowSchedule(true)}
+                    onClick={() => {
+                      setScheduleDefaultDate(null);
+                      setShowSchedule(true);
+                    }}
                   >
                     ➕ Schedule
                   </UniformButton>
@@ -284,7 +288,13 @@ export default function CalendarPage() {
                     backgroundColor: isCurrentMonth ? (isDark ? '#0f172a' : '#ffffff') : (isDark ? '#1a2332' : '#f8fafc'),
                     borderColor: isDark ? '#334155' : '#e2e8f0'
                   }}
-                  className={`border p-3 min-h-[140px] flex flex-col ${!isCurrentMonth ? 'opacity-40' : ''}`}
+                  onClick={() => {
+                    if (!canSchedule) return;
+                    setSelectedEvent(null);
+                    setScheduleDefaultDate(format(day, 'yyyy-MM-dd'));
+                    setShowSchedule(true);
+                  }}
+                  className={`border p-3 min-h-[140px] flex flex-col ${!isCurrentMonth ? 'opacity-40' : ''} ${canSchedule ? 'cursor-pointer' : ''}`}
                 >
                   <span style={{ color: isSameDay(day, new Date()) ? '#3b82f6' : (isDark ? '#94a3b8' : '#64748b') }} className="text-sm font-black mb-2">
                     {format(day, 'd')}
@@ -297,7 +307,10 @@ export default function CalendarPage() {
                       return (
                         <button
                           key={event.id}
-                          onClick={() => setSelectedEvent(event)}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setSelectedEvent(event);
+                          }}
                           style={{ backgroundColor: colors.bg, color: colors.text }}
                           className="cursor-pointer w-full text-left p-3 rounded-lg transition-all border border-black/10 shadow-sm hover:brightness-110"
                         >
@@ -321,7 +334,16 @@ export default function CalendarPage() {
         </div>
       </div>
 
-      {showSchedule && <ScheduleModal onClose={() => setShowSchedule(false)} onRefresh={fetchEvents} />}
+      {showSchedule && (
+        <ScheduleModal
+          defaultDate={scheduleDefaultDate || undefined}
+          onClose={() => {
+            setShowSchedule(false);
+            setScheduleDefaultDate(null);
+          }}
+          onRefresh={fetchEvents}
+        />
+      )}
       {selectedEvent && (
         <BookingModal 
           event={selectedEvent} 

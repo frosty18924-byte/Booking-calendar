@@ -5,7 +5,15 @@ import { supabase } from '@/lib/supabase';
 import { getEmailTestHeaders } from '@/lib/emailTestMode';
 import Icon from './Icon';
 
-export default function ScheduleModal({ onClose, onRefresh }: { onClose: () => void, onRefresh: () => void }) {
+export default function ScheduleModal({
+  onClose,
+  onRefresh,
+  defaultDate,
+}: {
+  onClose: () => void;
+  onRefresh: () => void;
+  defaultDate?: string;
+}) {
   const [courses, setCourses] = useState<any[]>([]);
   const [venues, setVenues] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
@@ -14,7 +22,7 @@ export default function ScheduleModal({ onClose, onRefresh }: { onClose: () => v
   const [formData, setFormData] = useState({
     course_id: '',
     location: '', 
-    event_date: '',
+    event_date: defaultDate || '',
     start_time: '09:00',
     end_time: '17:00'
   });
