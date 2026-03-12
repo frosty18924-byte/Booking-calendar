@@ -95,7 +95,6 @@ export async function middleware(request: NextRequest) {
       }
 
       if (!isChangePasswordPage && profile?.password_needs_change === true) {
-        console.log('Redirecting user to change password page for user:', user.id)
         const url = request.nextUrl.clone()
         url.pathname = '/auth/change-password-required'
         return NextResponse.redirect(url)

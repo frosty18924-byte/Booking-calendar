@@ -6,6 +6,7 @@ import { supabase } from '@/lib/supabase';
 import type { User } from '@supabase/supabase-js';
 import CourseManagerModal from '@/app/components/CourseManagerModal';
 import LocationManagerModal from '@/app/components/LocationManagerModal';
+import { debugLog } from '@/lib/debug';
 
 export default function AdminPage() {
   const router = useRouter();
@@ -45,9 +46,9 @@ export default function AdminPage() {
   }, [isDark]);
 
   useEffect(() => {
-    const handleThemeChange = (event: Event) => {
+      const handleThemeChange = (event: Event) => {
       const themeEvent = event as CustomEvent<{ isDark: boolean }>;
-      console.log('Theme change detected:', themeEvent.detail.isDark);
+      debugLog('Theme change detected:', themeEvent.detail.isDark);
       setIsDark(themeEvent.detail.isDark);
     };
     

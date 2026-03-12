@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import Icon from '@/app/components/Icon';
+import { debugLog, debugWarn } from '@/lib/debug';
 
 export default function AnalyticsDashboard() {
   const router = useRouter();
@@ -108,20 +109,20 @@ export default function AnalyticsDashboard() {
       }
       
       if (!bookings || bookings.length === 0) {
-        console.warn('No bookings found');
+        debugWarn('No bookings found');
         setData([]);
         setLoading(false);
         return;
       }
 
-      console.log('Total bookings:', bookings.length);
+      debugLog('Total bookings:', bookings.length);
 
       // Get all unique event IDs and profile IDs
       const eventIds = Array.from(new Set(bookings.map((b: any) => b.event_id).filter(Boolean)));
       const profileIds = Array.from(new Set(bookings.map((b: any) => b.profile_id).filter(Boolean)));
 
-      console.log('Unique event IDs:', eventIds.length, eventIds);
-      console.log('Unique profile IDs:', profileIds.length);
+      debugLog('Unique event IDs:', eventIds.length, eventIds);
+      debugLog('Unique profile IDs:', profileIds.length);
 
       let events: any[] = [];
       let profiles: any[] = [];
@@ -137,7 +138,7 @@ export default function AnalyticsDashboard() {
           console.error('Error fetching events:', eventsError);
         } else {
           events = eventsData || [];
-          console.log('Fetched events:', events.length);
+          debugLog('Fetched events:', events.length);
         }
       }
 
@@ -152,7 +153,7 @@ export default function AnalyticsDashboard() {
           console.error('Error fetching profiles:', profilesError);
         } else {
           profiles = profilesData || [];
-          console.log('Fetched profiles:', profiles.length);
+          debugLog('Fetched profiles:', profiles.length);
         }
       }
 
@@ -172,7 +173,7 @@ export default function AnalyticsDashboard() {
         return eventDate && eventDate >= startDate && eventDate <= endDate && eventDate <= today;
       });
 
-      console.log('Filtered bookings:', filtered.length);
+      debugLog('Filtered bookings:', filtered.length);
       setData(filtered);
     } catch (err) {
       console.error("Error fetching analytics:", err);

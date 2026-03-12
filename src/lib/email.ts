@@ -1,5 +1,6 @@
 import nodemailer from 'nodemailer';
 import { createClient } from '@supabase/supabase-js';
+import { debugLog } from '@/lib/debug';
 
 export interface EmailSendOptions {
   testMode?: boolean;
@@ -175,7 +176,7 @@ async function sendRawEmail(recipients: string[], subject: string, html: string,
       html,
     });
 
-    console.log('Email sent successfully:', { id: info.messageId, recipients, mode });
+    debugLog('Email sent successfully:', { id: info.messageId, recipients, mode });
     return {
       success: true,
       messageId: info.messageId,

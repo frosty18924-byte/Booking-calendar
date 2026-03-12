@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import HomeButton from '@/app/components/HomeButton';
 import { parseFirstThreeRowsFromCsvString, CsvHeaderRows } from './csvHeaderUtils';
+import { debugLog } from '@/lib/debug';
 
 // Helper to get CSV URL for a location name (public folder)
 function getCsvUrlForLocation(locationName: string): string {
@@ -338,7 +339,7 @@ export default function TrainingMatrixPage() {
         if (!trainingStaffIds || trainingStaffIds.length === 0) {
           hasMoreStaff = false;
         } else {
-          console.log(`Fetching staff page ${pageNum}: ${trainingStaffIds.length} records`);
+	          debugLog(`Fetching staff page ${pageNum}: ${trainingStaffIds.length} records`);
           allTrainingStaffIds = allTrainingStaffIds.concat(trainingStaffIds);
           pageNum++;
           if (trainingStaffIds.length < staffPageSize) {
@@ -347,7 +348,7 @@ export default function TrainingMatrixPage() {
         }
       }
       
-      console.log(`Total staff from training data (paginated): ${allTrainingStaffIds.length}`);
+	      debugLog(`Total staff from training data (paginated): ${allTrainingStaffIds.length}`);
 
       // Get unique staff IDs from training data
       const uniqueStaffIds = new Set<string>();
@@ -361,7 +362,7 @@ export default function TrainingMatrixPage() {
       let trainingStaffData: any[] = [];
       if (uniqueStaffIds.size > 0) {
         const staffIdArray = Array.from(uniqueStaffIds);
-        console.log('Fetching profiles for staff IDs:', staffIdArray.length);
+	        debugLog('Fetching profiles for staff IDs:', staffIdArray.length);
         
         const { data: profiles, error: profileError } = await supabase
           .from('profiles')
@@ -372,19 +373,19 @@ export default function TrainingMatrixPage() {
         if (profileError) {
           console.error('Error fetching profiles:', profileError);
         } else {
-          console.log('Fetched profiles:', profiles?.length || 0);
+	          debugLog('Fetched profiles:', profiles?.length || 0);
           trainingStaffData = profiles?.map((p: any) => ({
             profiles: p
           })) || [];
         }
       } else {
-        console.log('No training staff IDs found for this location');
+	        debugLog('No training staff IDs found for this location');
       }
 
       // Merge both lists, eliminating duplicates
       const staffMap = new Map<string, any>();
       
-      console.log('Staff from staff_locations:', activeStaffLocationsData?.length || 0);
+	      debugLog('Staff from staff_locations:', activeStaffLocationsData?.length || 0);
       activeStaffLocationsData?.forEach((s: any) => {
         if (s.profiles) {
           staffMap.set(s.profiles.id, {
@@ -395,9 +396,9 @@ export default function TrainingMatrixPage() {
         }
       });
 
-      console.log('Staff from training data:', trainingStaffData?.length || 0);
+	      debugLog('Staff from training data:', trainingStaffData?.length || 0);
       trainingStaffData?.forEach((s: any) => {
-        console.log('Processing training staff:', s);
+	        debugLog('Processing training staff:', s);
         if (s.profiles && !staffMap.has(s.profiles.id)) {
           staffMap.set(s.profiles.id, {
             id: s.profiles.id,
@@ -407,7 +408,7 @@ export default function TrainingMatrixPage() {
         }
       });
 
-      console.log('Final staff map size:', staffMap.size);
+	      debugLog('Final staff map size:', staffMap.size);
 
       const staffData = Array.from(staffMap.values()).map(s => ({
         profiles: { id: s.id, full_name: s.full_name }
@@ -446,10 +447,10 @@ export default function TrainingMatrixPage() {
         locationCoursesError = withoutCategoryRes.error;
       }
 
-      console.log('DEBUG: selectedLocation =', selectedLocation);
-      console.log('DEBUG: locationCoursesError =', locationCoursesError);
-      console.log('DEBUG: locationCoursesData =', locationCoursesData);
-      console.log('DEBUG: locationCoursesData length =', locationCoursesData?.length);
+	      debugLog('DEBUG: selectedLocation =', selectedLocation);
+	      debugLog('DEBUG: locationCoursesError =', locationCoursesError);
+	      debugLog('DEBUG: locationCoursesData =', locationCoursesData);
+	      debugLog('DEBUG: locationCoursesData length =', locationCoursesData?.length);
 
       if (locationCoursesError) {
         console.warn('Error fetching location courses:', locationCoursesError);
@@ -510,7 +511,7 @@ export default function TrainingMatrixPage() {
         category: categoryOverrides[course.id] ?? course.category,
       }));
 
-      console.log(`Found ${filteredCourses.length} courses for location ${selectedLocation} with location-specific ordering`);
+      debugLog(`Found ${filteredCourses.length} courses for location ${selectedLocation} with location-specific ordering`);
 
       // Build mapping of Careskills course IDs to base course IDs
       // This allows records stored under "(Careskills)" variants to show in the base course column
@@ -539,7 +540,7 @@ export default function TrainingMatrixPage() {
             }
           }
         });
-        console.log(`Mapped ${careskillsToBaseMap.size} Careskills courses to base courses`);
+        debugLog(`Mapped ${careskillsToBaseMap.size} Careskills courses to base courses`);
       }
       
       // Fetch all training records by paginating through results
@@ -572,7 +573,7 @@ export default function TrainingMatrixPage() {
         if (!pageData || pageData.length === 0) {
           hasMore = false;
         } else {
-          console.log(`Fetching training data page ${pageNumber}: ${pageData.length} records`);
+          debugLog(`Fetching training data page ${pageNumber}: ${pageData.length} records`);
           allTrainingData = allTrainingData.concat(pageData);
           pageNumber++;
           if (pageData.length < pageSize) {
@@ -583,8 +584,8 @@ export default function TrainingMatrixPage() {
       
       const trainingData = allTrainingData;
       const trainingError = null;
-      console.log('Total training records fetched (paginated):', trainingData.length);
-      console.log('Selected location:', selectedLocation);
+      debugLog('Total training records fetched (paginated):', trainingData.length);
+      debugLog('Selected location:', selectedLocation);
 
       if (trainingError) {
         console.warn('Error fetching training data:', trainingError);
@@ -598,7 +599,7 @@ export default function TrainingMatrixPage() {
         }
       });
 
-      console.log('Staff IDs in training data:', Array.from(staffFromTrainingSet).length);
+      debugLog('Staff IDs in training data:', Array.from(staffFromTrainingSet).length);
 
       // Combine staff from staffData with staff IDs from training data
       const allStaffIds = new Set<string>();
@@ -608,7 +609,7 @@ export default function TrainingMatrixPage() {
         }
       });
       staffFromTrainingSet.forEach(id => allStaffIds.add(id));
-      console.log('Total unique staff:', allStaffIds.size);
+      debugLog('Total unique staff:', allStaffIds.size);
 
       // Get profiles for any staff IDs that aren't in staffData
       let allStaffProfiles: any[] = [];
@@ -621,7 +622,7 @@ export default function TrainingMatrixPage() {
       const missingIds = Array.from(allStaffIds).filter(id => !staffIdsInProfiles.has(id));
 
       if (missingIds.length > 0) {
-        console.log('Fetching missing staff profiles:', missingIds.length);
+        debugLog('Fetching missing staff profiles:', missingIds.length);
         const { data: missingProfiles, error: missingError } = await supabase
           .from('profiles')
           .select('id, full_name')
@@ -727,7 +728,7 @@ export default function TrainingMatrixPage() {
       const combinedListDeduped = [...dedupedStaffWithOrder, ...dividerItems]
         .sort((a, b) => (a.display_order || 9999) - (b.display_order || 9999));
 
-      console.log('Formatted staff for location:', {
+      debugLog('Formatted staff for location:', {
         staffCount: staffWithOrder.length,
         staffCountAfterDedupe: dedupedStaffWithOrder.length,
         dividerCount: dividerItems.length,
@@ -738,11 +739,11 @@ export default function TrainingMatrixPage() {
       setStaffDividers(dividerIds);
       setStaff(combinedListDeduped);
 
-      console.log('DEBUG: filteredCourses =', filteredCourses);
-      console.log('DEBUG: filteredCourses length =', filteredCourses?.length);
+      debugLog('DEBUG: filteredCourses =', filteredCourses);
+      debugLog('DEBUG: filteredCourses length =', filteredCourses?.length);
       if (filteredCourses && filteredCourses.length > 0) {
         setCourses(filteredCourses);
-        console.log('DEBUG: Courses set to state:', filteredCourses);
+        debugLog('DEBUG: Courses set to state:', filteredCourses);
       } else {
         console.warn('DEBUG: No courses found!');
       }
@@ -757,7 +758,7 @@ export default function TrainingMatrixPage() {
         }
       });
 
-      console.log('Matrix initialized with', Object.keys(plainMatrix).length, 'staff');
+      debugLog('Matrix initialized with', Object.keys(plainMatrix).length, 'staff');
 
       // Add training data
       let addedCount = 0;
@@ -787,15 +788,15 @@ export default function TrainingMatrixPage() {
           }
         }
       });
-      console.log(`Added ${addedCount} training records to matrix (${mappedCount} mapped from Careskills variants)`);
+      debugLog(`Added ${addedCount} training records to matrix (${mappedCount} mapped from Careskills variants)`);
 
-      console.log('Final matrix data:', Object.keys(plainMatrix).length, 'staff with data');
+      debugLog('Final matrix data:', Object.keys(plainMatrix).length, 'staff with data');
       // Count total cells
       let totalCells = 0;
       Object.values(plainMatrix).forEach(staffMap => {
         totalCells += Object.keys(staffMap).length;
       });
-      console.log('Total cells with training data:', totalCells);
+      debugLog('Total cells with training data:', totalCells);
 
       setMatrixData(plainMatrix);
     } catch (error) {
@@ -813,7 +814,7 @@ export default function TrainingMatrixPage() {
 
   async function saveCourseChanges(courseId: string, updates: Partial<Course>, skipRefresh = false) {
     try {
-      console.log('Saving course changes:', { courseId, updates });
+      debugLog('Saving course changes:', { courseId, updates });
 
       const response = await fetch('/api/update-course', {
         method: 'POST',
@@ -828,7 +829,7 @@ export default function TrainingMatrixPage() {
         throw new Error(`${result.error} (${result.code || 'UNKNOWN'})`);
       }
 
-      console.log('Course update successful:', result.data);
+      debugLog('Course update successful:', result.data);
       
       // Only refresh if it's not a header-only change
       if (!skipRefresh) {
@@ -2003,7 +2004,7 @@ export default function TrainingMatrixPage() {
         }
       }
 
-      console.log(`Updating ${allTrainings.length} training records for course ${courseId}`);
+      debugLog(`Updating ${allTrainings.length} training records for course ${courseId}`);
 
       if (allTrainings && allTrainings.length > 0) {
         // Update each training record with new expiry date
@@ -2064,7 +2065,7 @@ export default function TrainingMatrixPage() {
         }
       }
 
-      console.log('Saving training:', {
+      debugLog('Saving training:', {
         staffId,
         courseId,
         trainingId,
@@ -2101,7 +2102,7 @@ export default function TrainingMatrixPage() {
         error = fallback.error;
       }
 
-      console.log('Upsert response:', { data, error });
+      debugLog('Upsert response:', { data, error });
 
       if (error) {
         console.error('Save error:', error);
@@ -2122,15 +2123,15 @@ export default function TrainingMatrixPage() {
         .select('*')
         .eq('id', savedRecordId);
       
-      console.log('Verification fetch for record', savedRecordId, ':', verifyData);
+      debugLog('Verification fetch for record', savedRecordId, ':', verifyData);
       
-      console.log('Upsert saved record:', {
+      debugLog('Upsert saved record:', {
         id: data[0].id,
         staff_id: data[0].staff_id,
         course_id: data[0].course_id,
         completed_at_location_id: data[0].completed_at_location_id,
       });
-      console.log('Save successful:', data);
+      debugLog('Save successful:', data);
 
       // Immediately update the matrix with the newly saved record
       // This ensures it appears even if the database fetch doesn't include it yet
@@ -2147,7 +2148,7 @@ export default function TrainingMatrixPage() {
           status: savedRecord.status,
         };
         setMatrixData(updatedMatrix);
-        console.log('Matrix updated with new record immediately');
+        debugLog('Matrix updated with new record immediately');
       }
 
       setEditingCell(null);

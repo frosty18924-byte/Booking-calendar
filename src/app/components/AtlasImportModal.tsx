@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import UniformButton from './UniformButton';
+import { debugLog } from '@/lib/debug';
 
 interface ImportResult {
   success: boolean;
@@ -94,7 +95,7 @@ export default function AtlasImportModal({ onClose }: { onClose?: () => void }) 
       }
 
       const data = await response.json();
-      console.log('Import result:', data);
+      debugLog('Import result:', data);
       setResult(data);
       setShowResult(true);
     } catch (error) {

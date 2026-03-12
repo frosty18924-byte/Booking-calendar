@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
 import UniformButton from './UniformButton';
 import Icon from './Icon';
+import { debugLog } from '@/lib/debug';
 
 const CHECKLIST_ITEMS = [
   'Invoice Number',
@@ -66,7 +67,7 @@ export default function BookingChecklistModal({
   async function fetchChecklist() {
     try {
       setError(null);
-      console.log('Fetching checklist for booking:', bookingId);
+      debugLog('Fetching checklist for booking:', bookingId);
       
       // Fetch or create checklist items
       const { data: existingItems, error: fetchError } = await supabase
@@ -80,10 +81,10 @@ export default function BookingChecklistModal({
         setError(`Failed to fetch checklist items: ${fetchError.message}`);
         return;
       }
-      console.log('Existing items:', existingItems);
+      debugLog('Existing items:', existingItems);
 
       if (!existingItems || existingItems.length === 0) {
-        console.log('Creating new checklist items...');
+        debugLog('Creating new checklist items...');
         // Create checklist items for this booking
         const itemsToInsert = CHECKLIST_ITEMS.map((item, index) => ({
           booking_id: bookingId,
@@ -101,10 +102,10 @@ export default function BookingChecklistModal({
           setError(`Failed to create checklist items: ${insertError.message}`);
           return;
         }
-        console.log('New items created:', newItems);
+        debugLog('New items created:', newItems);
         setChecklist(newItems || []);
       } else {
-        console.log('Using existing items:', existingItems);
+        debugLog('Using existing items:', existingItems);
         setChecklist(existingItems);
       }
 
@@ -119,7 +120,7 @@ export default function BookingChecklistModal({
         setError(`Failed to fetch completions: ${completionError.message}`);
         return;
       }
-      console.log('Completions data:', completionData);
+      debugLog('Completions data:', completionData);
 
       const completionMap: any = {};
       completionData?.forEach(comp => {

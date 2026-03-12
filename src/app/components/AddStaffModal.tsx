@@ -5,6 +5,7 @@ import UniformButton from './UniformButton';
 import { supabase } from '@/lib/supabase';
 import { hasPermission } from '@/lib/permissions';
 import { getEmailTestHeaders } from '@/lib/emailTestMode';
+import { debugLog, debugWarn } from '@/lib/debug';
 
 export default function AddStaffModal({ onClose, onRefresh }: { onClose: () => void; onRefresh: () => void }) {
   const [locations, setLocations] = useState<any[]>([]);
@@ -93,7 +94,7 @@ export default function AddStaffModal({ onClose, onRefresh }: { onClose: () => v
           return;
         }
         
-        console.log('👤 User role loaded:', profile?.role_tier);
+        debugLog('👤 User role loaded:', profile?.role_tier);
         setUserRole(profile?.role_tier || null);
       }
       setRoleLoading(false);
@@ -122,7 +123,7 @@ export default function AddStaffModal({ onClose, onRefresh }: { onClose: () => v
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
-    console.log('handleSave called, editingId:', editingId, 'formData:', formData);
+    debugLog('handleSave called, editingId:', editingId, 'formData:', formData);
     
     if (!hasPermission(userRole, 'STAFF_MANAGEMENT', 'canEdit')) {
       alert('You do not have permission to manage staff');
@@ -172,14 +173,14 @@ export default function AddStaffModal({ onClose, onRefresh }: { onClose: () => v
           role_tier: formData.role_tier,
           managed_houses: formData.managed_houses
         };
-        console.log('Updating staff with ID:', editingId, 'data:', updateData);
+        debugLog('Updating staff with ID:', editingId, 'data:', updateData);
         const { error, data } = await supabase.from('profiles').update(updateData).eq('id', editingId).select();
-        console.log('Update result:', { error, data });
+        debugLog('Update result:', { error, data });
         if (error) throw error;
         
         // Ensure staff location links are fully synced so they appear only on the selected matrix location.
         if (shouldSyncLocationLinks) {
-          console.log('Location link change detected, syncing staff_locations...');
+          debugLog('Location link change detected, syncing staff_locations...');
 
           // Move only relevant training rows:
           // - rows currently attached to old location
@@ -298,8 +299,8 @@ export default function AddStaffModal({ onClose, onRefresh }: { onClose: () => v
             throw insertError;
           }
 
-          console.log('Staff_locations updated successfully (moved one location link)');
-          console.log(`Moved ${movedTrainingCount} matching training row(s) to the new location matrix`);
+          debugLog('Staff_locations updated successfully (moved one location link)');
+          debugLog(`Moved ${movedTrainingCount} matching training row(s) to the new location matrix`);
         }
         
         alert('✅ Staff member updated successfully');
@@ -376,8 +377,8 @@ export default function AddStaffModal({ onClose, onRefresh }: { onClose: () => v
       const headers = lines[0].toLowerCase().split(',').map(h => h.trim());
       const expectedHeaders = ['full_name', 'email', 'home_house', 'role_tier'];
       
-      console.log('CSV Headers:', headers);
-      console.log('Expected Headers:', expectedHeaders);
+      debugLog('CSV Headers:', headers);
+      debugLog('Expected Headers:', expectedHeaders);
       
       const missingHeaders = expectedHeaders.filter(h => !headers.includes(h));
       if (missingHeaders.length > 0) {
@@ -408,8 +409,8 @@ export default function AddStaffModal({ onClose, onRefresh }: { onClose: () => v
           row[header] = values[idx] || '';
         });
 
-        console.log(`Row ${i} raw values:`, values);
-        console.log(`Row ${i} parsed:`, row);
+        debugLog(`Row ${i} raw values:`, values);
+        debugLog(`Row ${i} parsed:`, row);
 
         // Validation
         if (!row.full_name || !row.email) {
@@ -430,18 +431,18 @@ export default function AddStaffModal({ onClose, onRefresh }: { onClose: () => v
         // Check if email is a duplicate within this upload (internal duplicate)
         if (emailsInThisUpload.has(emailLower)) {
           skippedInternalDuplicates++;
-          console.log(`⏭️  Row ${i + 1}: Skipped duplicate email within this upload: ${row.email}`);
+          debugLog(`⏭️  Row ${i + 1}: Skipped duplicate email within this upload: ${row.email}`);
           continue;
         }
 
         // Check if email already exists in database
         if (existingEmails.has(emailLower)) {
           skippedDuplicates++;
-          console.log(`⏭️  Row ${i + 1}: Skipped duplicate email in database: ${row.email}`);
+          debugLog(`⏭️  Row ${i + 1}: Skipped duplicate email in database: ${row.email}`);
           continue;
         }
 
-        console.log(`Row ${i + 1}: ${row.full_name}, email: ${row.email}, location: ${row.home_house}, role: ${row.role_tier}`);
+        debugLog(`Row ${i + 1}: ${row.full_name}, email: ${row.email}, location: ${row.home_house}, role: ${row.role_tier}`);
 
         const normalizedLocationId = resolveLocationId(row.home_house);
         const normalizedLocationName = resolveLocationName(row.home_house);
@@ -480,7 +481,7 @@ export default function AddStaffModal({ onClose, onRefresh }: { onClose: () => v
         return;
       }
 
-      console.log('Bulk upload data:', staffData);
+      debugLog('Bulk upload data:', staffData);
       const { data, error } = await supabase.from('profiles').insert(staffData).select();
       
       if (error) {
@@ -497,16 +498,16 @@ export default function AddStaffModal({ onClose, onRefresh }: { onClose: () => v
         }
         setBulkMessage(message);
       } else {
-        console.log('Upload success:', data);
+        debugLog('Upload success:', data);
         // Check if locations were actually inserted
         if (data && data.length > 0) {
-          console.log('📍 Checking inserted records:');
+          debugLog('📍 Checking inserted records:');
           data.forEach((record, idx) => {
-            console.log(`  Record ${idx + 1}: ${record.full_name} - location: ${record.location}`);
+            debugLog(`  Record ${idx + 1}: ${record.full_name} - location: ${record.location}`);
           });
           const locationsPresent = data.some(record => record.location);
           if (!locationsPresent) {
-            console.warn('⚠️ WARNING: All location values are NULL in inserted records. This is likely an RLS policy issue.');
+            debugWarn('⚠️ WARNING: All location values are NULL in inserted records. This is likely an RLS policy issue.');
           }
 
           // Ensure every inserted staff member is linked in staff_locations for matrix placement.
