@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createServiceClient, requireRole } from '@/lib/apiAuth';
+import { createServiceClient, getScopedLocationIds, requireRole } from '@/lib/apiAuth';
 
 export const dynamic = 'force-dynamic';
 
@@ -9,7 +9,7 @@ interface CourseData {
   expiry: string;
   location: string;
   delivery: string;
-  awaitingTrainingDate: boolean;
+  allocatedTrainingDate: boolean;
   isOneOff: boolean;
 }
 
@@ -90,11 +90,30 @@ export async function GET(request: NextRequest) {
 
     const { searchParams } = new URL(request.url);
     const locationFilter = searchParams.get('locationFilter');
+    const locationFilters = locationFilter ? locationFilter.split(',').map(id => id.trim()).filter(Boolean) : [];
 
     // Use service client after role-gate; RLS on these tables now requires auth context.
     const supabase = createServiceClient();
+    const scopedLocations = await getScopedLocationIds(authz.userId, authz.role, supabase);
+    if (!scopedLocations.all) {
+      const scopedIds = scopedLocations.ids;
+      if (scopedIds.length === 0) {
+        return NextResponse.json([]);
+      }
+      if (locationFilters.length > 0) {
+        const filterSet = new Set(locationFilters);
+        const intersection = scopedIds.filter((id) => filterSet.has(id));
+        if (intersection.length === 0) {
+          return NextResponse.json([]);
+        }
+        locationFilters.length = 0;
+        locationFilters.push(...intersection);
+      } else {
+        locationFilters.push(...scopedIds);
+      }
+    }
 
-    const { data: awaitingCourses, error } = await fetchAllRows(
+    const { data: allocatedCourses, error } = await fetchAllRows(
       supabase,
       'staff_training_matrix',
       `
@@ -110,8 +129,8 @@ export async function GET(request: NextRequest) {
         locations(name)
       `,
       (query) => {
-        let scoped = query.eq('status', 'awaiting');
-        if (locationFilter) scoped = scoped.eq('completed_at_location_id', locationFilter);
+        let scoped = query.in('status', ['allocated', 'awaiting', 'booked']);
+        if (locationFilters.length > 0) scoped = scoped.in('completed_at_location_id', locationFilters);
         return scoped;
       }
     );
@@ -119,7 +138,7 @@ export async function GET(request: NextRequest) {
     if (error) {
       console.error('Supabase error:', error);
       return NextResponse.json(
-        { error: 'Failed to fetch awaiting training courses' },
+        { error: 'Failed to fetch allocated training courses' },
         { status: 500 }
       );
     }
@@ -128,7 +147,7 @@ export async function GET(request: NextRequest) {
       supabase,
       'location_training_courses',
       'location_id, training_course_id, training_courses(name)',
-      (query) => (locationFilter ? query.eq('location_id', locationFilter) : query)
+      (query) => (locationFilters.length > 0 ? query.in('location_id', locationFilters) : query)
     );
     if (locationCourseError) {
       console.error('Supabase error fetching location-course links:', locationCourseError);
@@ -169,7 +188,7 @@ export async function GET(request: NextRequest) {
     const careskillsAliasMap = buildCareskillsAliasMap(trainingCourses || []);
 
     // Transform data
-    const formattedData: CourseData[] = (awaitingCourses || [])
+    const formattedData: CourseData[] = (allocatedCourses || [])
       .filter((record: any) => {
         const primaryKey = buildLocationCourseKey(record.completed_at_location_id, record.course_id);
         const baseCourseId = careskillsAliasMap.get(record.course_id);
@@ -196,17 +215,17 @@ export async function GET(request: NextRequest) {
         return {
           name: profiles?.full_name || 'Unknown',
           course: course?.name || 'Unknown Course',
-          expiry: '-', // No expiry date for awaiting records
+          expiry: '-', // No expiry date for allocated records
           location: locations?.name || 'Unknown Location',
           delivery: 'Standard',
-          awaitingTrainingDate: true,
+          allocatedTrainingDate: true,
           isOneOff,
         };
       });
 
     return NextResponse.json(formattedData);
   } catch (error) {
-    console.error('Error fetching awaiting training courses:', error);
+    console.error('Error fetching allocated training courses:', error);
     return NextResponse.json(
       { error: 'Failed to fetch courses' },
       { status: 500 }

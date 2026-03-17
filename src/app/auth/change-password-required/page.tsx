@@ -42,20 +42,11 @@ export default function ChangePasswordRequiredPage() {
         return;
       }
 
-      // Update profile to mark password as changed
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-
-      if (user) {
-        const { error: profileError } = await supabase
-          .from('profiles')
-          .update({ password_needs_change: false })
-          .eq('id', user.id);
-
-        if (profileError) {
-          console.error('Error updating profile:', profileError);
-        }
+      // Mark password as changed via service role (RLS prevents self-update)
+      const profileRes = await fetch('/api/auth/complete-password-change', { method: 'POST' });
+      if (!profileRes.ok) {
+        const result = await profileRes.json().catch(() => ({}));
+        throw new Error(result?.error || 'Failed to update profile');
       }
 
       // Redirect to dashboard

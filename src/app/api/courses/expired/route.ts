@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createServiceClient, requireRole } from '@/lib/apiAuth';
+import { createServiceClient, getScopedLocationIds, requireRole } from '@/lib/apiAuth';
 
 export const dynamic = 'force-dynamic';
 
@@ -94,9 +94,28 @@ export async function GET(request: NextRequest) {
 
     const { searchParams } = new URL(request.url);
     const locationFilter = searchParams.get('locationFilter');
+    const locationFilters = locationFilter ? locationFilter.split(',').map(id => id.trim()).filter(Boolean) : [];
 
     // Use service client after role-gate; RLS on these tables now requires auth context.
     const supabase = createServiceClient();
+    const scopedLocations = await getScopedLocationIds(authz.userId, authz.role, supabase);
+    if (!scopedLocations.all) {
+      const scopedIds = scopedLocations.ids;
+      if (scopedIds.length === 0) {
+        return NextResponse.json([]);
+      }
+      if (locationFilters.length > 0) {
+        const filterSet = new Set(locationFilters);
+        const intersection = scopedIds.filter((id) => filterSet.has(id));
+        if (intersection.length === 0) {
+          return NextResponse.json([]);
+        }
+        locationFilters.length = 0;
+        locationFilters.push(...intersection);
+      } else {
+        locationFilters.push(...scopedIds);
+      }
+    }
 
     const today = new Date();
     today.setHours(0, 0, 0, 0);
@@ -118,7 +137,7 @@ export async function GET(request: NextRequest) {
       `,
       (query) => {
         let scoped = query.lt('expiry_date', todayStr);
-        if (locationFilter) scoped = scoped.eq('completed_at_location_id', locationFilter);
+        if (locationFilters.length > 0) scoped = scoped.in('completed_at_location_id', locationFilters);
         return scoped;
       }
     );
@@ -135,7 +154,7 @@ export async function GET(request: NextRequest) {
       supabase,
       'location_training_courses',
       'location_id, training_course_id, training_courses(name)',
-      (query) => (locationFilter ? query.eq('location_id', locationFilter) : query)
+      (query) => (locationFilters.length > 0 ? query.in('location_id', locationFilters) : query)
     );
     if (locationCourseError) {
       console.error('Supabase error fetching location-course links:', locationCourseError);

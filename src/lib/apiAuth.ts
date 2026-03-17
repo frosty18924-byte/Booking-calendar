@@ -77,3 +77,74 @@ export async function requireRole(allowedRoles: RoleTier[]) {
 
   return { userId: profile.id as string, role: profile.role_tier as RoleTier, service } as const;
 }
+
+type LocationRow = { id: string; name: string };
+
+export async function getScopedLocationIds(
+  userId: string,
+  role: RoleTier,
+  service: ReturnType<typeof createServiceClient>
+): Promise<{ all: true } | { all: false; ids: string[] }> {
+  if (role === 'admin') {
+    return { all: true };
+  }
+
+  if (role === 'manager' || role === 'scheduler') {
+    const locationMap = new Map<string, LocationRow>();
+
+    const { data: linkedLocations } = await service
+      .from('staff_locations')
+      .select('location_id, locations(id, name)')
+      .eq('staff_id', userId);
+
+    (linkedLocations || []).forEach((sl: any) => {
+      if (sl.locations?.id && sl.locations?.name) {
+        locationMap.set(sl.locations.id, sl.locations);
+      }
+    });
+
+    const { data: userProfile } = await service
+      .from('profiles')
+      .select('managed_houses, location')
+      .eq('id', userId)
+      .single();
+
+    const managedNames = new Set<string>();
+    if (Array.isArray(userProfile?.managed_houses)) {
+      userProfile.managed_houses.forEach((name: any) => {
+        if (typeof name === 'string' && name.trim()) {
+          managedNames.add(name.trim());
+        }
+      });
+    }
+    if (typeof userProfile?.location === 'string' && userProfile.location.trim()) {
+      managedNames.add(userProfile.location.trim());
+    }
+
+    if (managedNames.size > 0) {
+      const { data: managedLocations } = await service
+        .from('locations')
+        .select('id, name')
+        .in('name', Array.from(managedNames));
+
+      (managedLocations || []).forEach((loc: any) => {
+        if (loc.id && loc.name) {
+          locationMap.set(loc.id, loc);
+        }
+      });
+    }
+
+    return { all: false, ids: Array.from(locationMap.keys()) };
+  }
+
+  const { data: staffLocations } = await service
+    .from('staff_locations')
+    .select('locations(id)')
+    .eq('staff_id', userId);
+
+  const ids = (staffLocations || [])
+    .map((sl: any) => sl.locations?.id)
+    .filter((id: any): id is string => Boolean(id));
+
+  return { all: false, ids };
+}

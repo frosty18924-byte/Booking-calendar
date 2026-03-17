@@ -71,7 +71,7 @@ export default function TrainingMatrixPage() {
   const tableScrollContainerRef = useRef<HTMLDivElement>(null);
   const [editingCell, setEditingCell] = useState<{ staffId: string; courseId: string } | null>(null);
   const [editDate, setEditDate] = useState<string>('');
-  const [editStatus, setEditStatus] = useState<'completed' | 'booked' | 'awaiting' | 'na' | null>(null);
+  const [editStatus, setEditStatus] = useState<'completed' | 'allocated' | 'not_yet_due' | 'na' | null>(null);
   const [staffDividers, setStaffDividers] = useState<Set<string>>(new Set());
   const [staffOrder, setStaffOrder] = useState<Map<string, number>>(new Map());
   const [showAddCourse, setShowAddCourse] = useState(false);
@@ -278,7 +278,11 @@ export default function TrainingMatrixPage() {
           new Map<string, any>(scopedLocations.map((loc: any) => [loc.id, loc])).values()
         );
         setLocations(uniqueLocations);
-        setSelectedLocation(uniqueLocations[0].id);
+        const locationIds = new Set(uniqueLocations.map((loc) => loc.id));
+        setSelectedLocation((prev) => {
+          if (prev && locationIds.has(prev)) return prev;
+          return uniqueLocations[0].id;
+        });
       } else {
         setLocations([]);
         setSelectedLocation('');
@@ -869,10 +873,12 @@ export default function TrainingMatrixPage() {
 
   function getStatusDisplay(status: string | null) {
     switch (status) {
+      case 'allocated':
       case 'booked':
-        return { label: 'Booked', color: isDark ? 'bg-blue-900 text-blue-100' : 'bg-blue-100 text-blue-900' };
       case 'awaiting':
-        return { label: 'Awaiting Date', color: isDark ? 'bg-yellow-900 text-yellow-100' : 'bg-yellow-100 text-yellow-900' };
+        return { label: 'Allocated', color: isDark ? 'bg-blue-900 text-blue-100' : 'bg-blue-100 text-blue-900' };
+      case 'not_yet_due':
+        return { label: 'Not Yet Due', color: isDark ? 'bg-purple-900 text-purple-100' : 'bg-purple-100 text-purple-900' };
       case 'na':
         return { label: 'N/A', color: isDark ? 'bg-gray-700 text-gray-200' : 'bg-gray-200 text-gray-900' };
       default:
@@ -1261,8 +1267,8 @@ export default function TrainingMatrixPage() {
       const cell = matrixData[staffId]?.[course.id];
       if (!cell) return '';
 
-      if (cell.status === 'booked') return 'Booked';
-      if (cell.status === 'awaiting') return 'Awaiting Date';
+      if (cell.status === 'booked' || cell.status === 'awaiting' || cell.status === 'allocated') return 'Allocated';
+      if (cell.status === 'not_yet_due') return 'Not Yet Due';
       if (cell.status === 'na') return 'N/A';
 
       if (cell.completion_date) {
@@ -1790,7 +1796,9 @@ export default function TrainingMatrixPage() {
                                 if (canEditMatrix && !isEditing) {
                                   setEditingCell({ staffId: staffMember.id, courseId: course.id });
                                   setEditDate(cell?.completion_date || '');
-                                  setEditStatus(cell?.status as any || 'completed');
+                                  const rawStatus = cell?.status as any;
+                                  const normalizedStatus = rawStatus === 'booked' || rawStatus === 'awaiting' ? 'allocated' : rawStatus;
+                                  setEditStatus(normalizedStatus || 'completed');
                                 }
                               }}
                             >
@@ -1798,23 +1806,18 @@ export default function TrainingMatrixPage() {
                                 <span className={`p-2 rounded ${isDark ? 'bg-blue-900/30' : 'bg-blue-100'} text-blue-600 text-xs font-medium`}>
                                   Editing...
                                 </span>
-                              ) : cell?.status === 'booked' ? (
+                              ) : cell?.status === 'allocated' || cell?.status === 'booked' || cell?.status === 'awaiting' ? (
                                 <div className={`p-2 rounded ${statusDisplay.color}`}>
-                                  <div className="font-semibold text-sm">Booked</div>
+                                  <div className="font-semibold text-sm">Allocated</div>
                                   {cell?.expiry_date && (
                                     <div className="text-xs mt-1">
                                       Exp: {new Date(cell.expiry_date).toLocaleDateString('en-GB')}
                                     </div>
                                   )}
                                 </div>
-                              ) : cell?.status === 'awaiting' ? (
+                              ) : cell?.status === 'not_yet_due' ? (
                                 <div className={`p-2 rounded ${statusDisplay.color}`}>
-                                  <div className="font-semibold text-sm">Awaiting Date</div>
-                                  {cell?.expiry_date && (
-                                    <div className="text-xs mt-1">
-                                      Exp: {new Date(cell.expiry_date).toLocaleDateString('en-GB')}
-                                    </div>
-                                  )}
+                                  <div className="font-semibold text-sm">Not Yet Due</div>
                                 </div>
                               ) : cell?.status === 'na' ? (
                                 <div className={`p-2 rounded ${statusDisplay.color}`}>
@@ -1889,24 +1892,24 @@ export default function TrainingMatrixPage() {
                   In Date
                 </button>
                 <button
-                  onClick={() => setEditStatus('booked')}
+                  onClick={() => setEditStatus('allocated')}
                   className={`px-3 py-2 rounded text-sm font-medium transition-colors ${
-                    editStatus === 'booked'
+                    editStatus === 'allocated'
                       ? isDark ? 'bg-blue-600 text-white' : 'bg-blue-500 text-white'
                       : isDark ? 'bg-gray-700 text-gray-300 hover:bg-gray-600' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
                   }`}
                 >
-                  Booked
+                  Allocated
                 </button>
                 <button
-                  onClick={() => setEditStatus('awaiting')}
+                  onClick={() => setEditStatus('not_yet_due')}
                   className={`px-3 py-2 rounded text-sm font-medium transition-colors ${
-                    editStatus === 'awaiting'
-                      ? isDark ? 'bg-yellow-600 text-white' : 'bg-yellow-500 text-white'
+                    editStatus === 'not_yet_due'
+                      ? isDark ? 'bg-purple-600 text-white' : 'bg-purple-500 text-white'
                       : isDark ? 'bg-gray-700 text-gray-300 hover:bg-gray-600' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
                   }`}
                 >
-                  Awaiting Date
+                  Not Yet Due
                 </button>
                 <button
                   onClick={() => setEditStatus('na')}
@@ -2034,7 +2037,7 @@ export default function TrainingMatrixPage() {
     }
   }
 
-  async function handleSaveTraining(staffId: string, courseId: string, trainingId: string | null, completionDate: string | null = null, status: 'completed' | 'booked' | 'awaiting' | 'na' = 'completed') {
+  async function handleSaveTraining(staffId: string, courseId: string, trainingId: string | null, completionDate: string | null = null, status: 'completed' | 'allocated' | 'not_yet_due' | 'na' = 'completed') {
     try {
       // Verify selectedLocation is set - if not, this will cause the record to not appear on refresh
       if (!selectedLocation || selectedLocation.trim() === '') {
@@ -2057,8 +2060,8 @@ export default function TrainingMatrixPage() {
         const expiryDate = new Date(compDate);
         expiryDate.setMonth(expiryDate.getMonth() + expiryMonths);
         expiryDateString = expiryDate.toISOString().split('T')[0]; // YYYY-MM-DD
-      } else if (status === 'booked' && existingCell?.expiry_date) {
-        // Preserve existing expiry when switching to booked
+      } else if (status === 'allocated' && existingCell?.expiry_date) {
+        // Preserve existing expiry when switching to allocated
         expiryDateString = existingCell.expiry_date;
         if (!effectiveCompletionDate && existingCell.completion_date) {
           effectiveCompletionDate = existingCell.completion_date;

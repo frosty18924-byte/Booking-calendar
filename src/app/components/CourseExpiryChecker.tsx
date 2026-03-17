@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import UniformButton from './UniformButton';
 
 // Import the useMatrixHeaders hook (already defined at the bottom of this file)
@@ -13,7 +14,7 @@ interface CourseData {
   expiryTime?: number;
   location: string;
   delivery: string;
-  awaitingTrainingDate?: boolean;
+  allocatedTrainingDate?: boolean;
   isOneOff?: boolean;
   expiredSince?: string;
 }
@@ -35,7 +36,7 @@ function dedupeRows(rows: CourseData[]): CourseData[] {
   const byKey = new Map<string, CourseData>();
 
   for (const row of rows) {
-    const expiryKey = row.awaitingTrainingDate ? '-' : (row.expiry || '-');
+    const expiryKey = row.allocatedTrainingDate ? '-' : (row.expiry || '-');
     const key = `${row.name}||${row.location}||${expiryKey}||${canonicalCourseName(row.course).toLowerCase()}`;
     const existing = byKey.get(key);
 
@@ -54,18 +55,22 @@ function dedupeRows(rows: CourseData[]): CourseData[] {
 }
 
 export default function CourseExpiryChecker({ isDark }: { isDark: boolean }) {
+  const router = useRouter();
   const [allData, setAllData] = useState<CourseData[]>([]);
   const [filteredData, setFilteredData] = useState<CourseData[]>([]);
   const [loading, setLoading] = useState(false);
   const [status, setStatus] = useState('Ready to search');
-  const [activeTab, setActiveTab] = useState<'expiring' | 'awaiting' | 'expired'>('expiring');
+  const [activeTab, setActiveTab] = useState<'expiring' | 'allocated' | 'expired'>('expiring');
   
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
   const [user, setUser] = useState<any>(null);
-  const [selectedLocation, setSelectedLocation] = useState<string>('');
+  const [selectedLocations, setSelectedLocations] = useState<string[]>([]);
+  const [showLocationDropdown, setShowLocationDropdown] = useState(false);
   const [locations, setLocations] = useState<Array<{ id: string; name: string }>>([]);
-  const selectedLocationName = locations.find(loc => loc.id === selectedLocation)?.name || '';
+  const selectedLocationName = selectedLocations.length === 1
+    ? (locations.find(loc => loc.id === selectedLocations[0])?.name || '')
+    : '';
   // Get matrix headers + atlas course mapping for the selected location
   const matrixHeaderData = useMatrixHeaders(selectedLocationName);
 
@@ -94,6 +99,26 @@ export default function CourseExpiryChecker({ isDark }: { isDark: boolean }) {
   useEffect(() => {
     applyFilters();
   }, [allData, filters]);
+
+  useEffect(() => {
+    if (locations.length === 0) return;
+    const locationIds = new Set(locations.map(loc => loc.id));
+    setSelectedLocations(prev => {
+      const filtered = prev.filter(id => locationIds.has(id));
+      if (filtered.length === 0) {
+        return locations.map(loc => loc.id);
+      }
+      return filtered;
+    });
+  }, [locations]);
+
+  useEffect(() => {
+    const handleClickOutside = () => setShowLocationDropdown(false);
+    if (showLocationDropdown) {
+      window.addEventListener('click', handleClickOutside);
+    }
+    return () => window.removeEventListener('click', handleClickOutside);
+  }, [showLocationDropdown]);
 
   const checkAuth = async (): Promise<void> => {
     try {
@@ -213,6 +238,26 @@ export default function CourseExpiryChecker({ isDark }: { isDark: boolean }) {
     });
   }
 
+  function toggleLocation(id: string) {
+    setSelectedLocations(prev => (
+      prev.includes(id) ? prev.filter(locId => locId !== id) : [...prev, id]
+    ));
+  }
+
+  function toggleAllLocations(checked: boolean) {
+    setSelectedLocations(checked ? locations.map(loc => loc.id) : []);
+  }
+
+  function locationLabel(): string {
+    if (selectedLocations.length === 0 || selectedLocations.length === locations.length) {
+      return 'All Locations';
+    }
+    if (selectedLocations.length === 1) {
+      return locations.find(loc => loc.id === selectedLocations[0])?.name || '1 Location';
+    }
+    return `${selectedLocations.length} locations selected`;
+  }
+
   async function fetchExpiringCourses() {
     if (!startDate || !endDate) {
       setStatus('Please select both dates');
@@ -228,8 +273,8 @@ export default function CourseExpiryChecker({ isDark }: { isDark: boolean }) {
         startDate,
         endDate,
       });
-      if (selectedLocation) {
-        params.append('locationFilter', selectedLocation);
+      if (selectedLocations.length > 0 && selectedLocations.length !== locations.length) {
+        params.append('locationFilter', selectedLocations.join(','));
       }
 
       const response = await fetch(`/api/courses/expiring?${params.toString()}`, {
@@ -255,18 +300,18 @@ export default function CourseExpiryChecker({ isDark }: { isDark: boolean }) {
     }
   }
 
-  async function fetchAwaitingTraining() {
+  async function fetchAllocatedTraining() {
     setLoading(true);
-    setStatus('Fetching courses awaiting training...');
-    setActiveTab('awaiting');
+    setStatus('Fetching courses allocated for training...');
+    setActiveTab('allocated');
 
     try {
       const params = new URLSearchParams();
-      if (selectedLocation) {
-        params.append('locationFilter', selectedLocation);
+      if (selectedLocations.length > 0 && selectedLocations.length !== locations.length) {
+        params.append('locationFilter', selectedLocations.join(','));
       }
 
-      const url = `/api/courses/awaiting-training${params.toString() ? '?' + params.toString() : ''}`;
+      const url = `/api/courses/allocated-training${params.toString() ? '?' + params.toString() : ''}`;
       const response = await fetch(url, {
         headers: await getAuthHeaders(),
       });
@@ -281,7 +326,7 @@ export default function CourseExpiryChecker({ isDark }: { isDark: boolean }) {
 
       setAllData(dedupedData);
       buildFilterOptions(dedupedData);
-      setStatus(`Found ${dedupedData.length} courses awaiting training`);
+      setStatus(`Found ${dedupedData.length} courses allocated for training`);
     } catch (error: any) {
       console.error('Error fetching courses:', error);
       setStatus(error?.message || 'Error loading courses. Please check your Google Sheets connection.');
@@ -297,8 +342,8 @@ export default function CourseExpiryChecker({ isDark }: { isDark: boolean }) {
 
     try {
       const params = new URLSearchParams();
-      if (selectedLocation) {
-        params.append('locationFilter', selectedLocation);
+      if (selectedLocations.length > 0 && selectedLocations.length !== locations.length) {
+        params.append('locationFilter', selectedLocations.join(','));
       }
 
       const url = `/api/courses/expired${params.toString() ? '?' + params.toString() : ''}`;
@@ -407,24 +452,58 @@ export default function CourseExpiryChecker({ isDark }: { isDark: boolean }) {
             </div>
             <div>
               <label className={`block text-sm font-medium mb-2 transition-colors duration-300 ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>
-                Location (Optional)
+                Locations (Optional)
               </label>
-              <select
-                value={selectedLocation}
-                onChange={e => setSelectedLocation(e.target.value)}
-                className={`px-3 py-2 text-sm rounded border w-40 transition-colors duration-300 ${
-                  isDark
-                    ? 'bg-gray-700 border-gray-600 text-white focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20'
-                    : 'bg-white border-gray-300 text-gray-900 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20'
-                }`}
-              >
-                <option value="">All Locations</option>
-                {locations.map(loc => (
-                  <option key={loc.id} value={loc.id}>
-                    {loc.name}
-                  </option>
-                ))}
-              </select>
+              <div className="relative">
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setShowLocationDropdown(!showLocationDropdown);
+                  }}
+                  className={`px-3 py-2 text-sm rounded border w-56 text-left transition-colors duration-300 ${
+                    isDark
+                      ? 'bg-gray-700 border-gray-600 text-white focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20'
+                      : 'bg-white border-gray-300 text-gray-900 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20'
+                  }`}
+                >
+                  {locationLabel()}
+                </button>
+                {showLocationDropdown && (
+                  <div
+                    onClick={(e) => e.stopPropagation()}
+                    className={`absolute z-20 mt-2 w-64 max-h-64 overflow-y-auto rounded-lg border shadow-lg ${
+                    isDark ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'
+                  }`}
+                  >
+                    <label className={`flex items-center gap-2 px-3 py-2 text-sm font-semibold border-b ${
+                      isDark ? 'border-gray-700 text-gray-200' : 'border-gray-200 text-gray-700'
+                    }`}>
+                      <input
+                        type="checkbox"
+                        checked={selectedLocations.length === 0 || selectedLocations.length === locations.length}
+                        onChange={(e) => toggleAllLocations(e.target.checked)}
+                      />
+                      All Locations
+                    </label>
+                    {locations.map(loc => (
+                      <label
+                        key={loc.id}
+                        className={`flex items-center gap-2 px-3 py-2 text-sm cursor-pointer ${
+                          isDark ? 'text-gray-200 hover:bg-gray-700' : 'text-gray-700 hover:bg-gray-50'
+                        }`}
+                      >
+                        <input
+                          type="checkbox"
+                          checked={selectedLocations.includes(loc.id)}
+                          onChange={() => toggleLocation(loc.id)}
+                        />
+                        {loc.name}
+                      </label>
+                    ))}
+                  </div>
+                )}
+              </div>
             </div>
           </div>
 
@@ -440,10 +519,10 @@ export default function CourseExpiryChecker({ isDark }: { isDark: boolean }) {
             <UniformButton
               variant="primary"
               className="px-6 py-3 bg-yellow-500 hover:bg-yellow-600 active:bg-yellow-700 dark:bg-yellow-500 dark:hover:bg-yellow-600 dark:active:bg-yellow-700 text-slate-900"
-              onClick={fetchAwaitingTraining}
+              onClick={fetchAllocatedTraining}
               disabled={loading}
             >
-              ⏳ Awaiting Training
+              ⏳ Allocated Training
             </UniformButton>
             <UniformButton
               variant="danger"
@@ -452,6 +531,13 @@ export default function CourseExpiryChecker({ isDark }: { isDark: boolean }) {
               disabled={loading}
             >
               ⚠️ Expired Courses
+            </UniformButton>
+            <UniformButton
+              variant="secondary"
+              className="px-6 py-3"
+              onClick={() => router.push('/apps/training-course-checker')}
+            >
+              🧭 Course Breakdown
             </UniformButton>
           </div>
         </div>

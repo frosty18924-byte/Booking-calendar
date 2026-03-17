@@ -81,7 +81,8 @@ export default function BookingModal({ event, onClose, onRefresh, onOpenChecklis
     
     const { data: bookings } = await supabase.from('bookings').select('profile_id').eq('event_id', event.id);
     const bookedIds = bookings?.map(b => b.profile_id) || [];
-    setStaff(staffData.filter(s => !bookedIds.includes(s.id)) || []);
+    const availableStaff = staffData.filter(s => !bookedIds.includes(s.id)) || [];
+    setStaff(availableStaff);
     await fetchRoster();
   }
 

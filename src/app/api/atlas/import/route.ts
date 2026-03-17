@@ -467,7 +467,7 @@ export async function POST(request: NextRequest) {
         course_id: string;
         completion_date: string;
         expiry_date: string | null;
-        status: 'completed' | 'awaiting';
+        status: 'completed' | 'allocated';
         completed_at_location_id?: string;
         created_at: string;
       };
@@ -533,7 +533,7 @@ export async function POST(request: NextRequest) {
               course_id: update.course_id,
               completion_date: update.completion_date,
               expiry_date: expiryDate,
-              status: update.completion_date ? 'completed' : 'awaiting',
+              status: update.completion_date ? 'completed' : 'allocated',
               completed_at_location_id: locId,
               created_at: new Date().toISOString()
             },
