@@ -350,8 +350,12 @@ export default function CalendarPage() {
           onClose={() => setSelectedEvent(null)} 
           onRefresh={fetchEvents}
           onOpenChecklist={() => {
-            setShowChecklist(true);
-            setSelectedChecklistEventId(selectedEvent.id);
+            if (userRole === 'admin' || userRole === 'scheduler') {
+              setShowChecklist(true);
+              setSelectedChecklistEventId(selectedEvent.id);
+              return;
+            }
+            alert('Only Schedulers and Admins can access the checklist.');
           }}
         />
       )}

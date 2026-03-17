@@ -41,11 +41,14 @@ export default function BookingChecklistModal({
   const [loading, setLoading] = useState(false);
   const [isDark, setIsDark] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const canAccessChecklist = userRole === 'scheduler' || userRole === 'admin';
 
   useEffect(() => {
     checkTheme();
-    fetchChecklist();
-  }, [bookingId]);
+    if (canAccessChecklist) {
+      fetchChecklist();
+    }
+  }, [bookingId, canAccessChecklist]);
 
   useEffect(() => {
     const handleThemeChange = (event: any) => {
@@ -230,6 +233,32 @@ export default function BookingChecklistModal({
   const completedCount = Object.keys(completions).length;
   const totalCount = checklist.length;
   const progressPercent = totalCount > 0 ? Math.round((completedCount / totalCount) * 100) : 0;
+
+  if (!canAccessChecklist) {
+    return (
+      <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-md flex items-center justify-center p-4 z-50">
+        <div style={{ backgroundColor: isDark ? '#1e293b' : '#ffffff', borderColor: isDark ? '#334155' : '#cbd5e1' }} className="rounded-3xl p-8 w-full max-w-xl shadow-2xl border transition-colors duration-300">
+          <div className="flex justify-between items-center mb-6">
+            <h2 style={{ color: isDark ? '#f1f5f9' : '#1e293b' }} className="text-2xl font-black uppercase tracking-tight">Access Restricted</h2>
+            <UniformButton
+              variant="icon"
+              className="hover:text-red-500 text-2xl transition-colors"
+              style={{ color: isDark ? '#94a3b8' : '#64748b' }}
+              onClick={onClose}
+              aria-label="Close"
+            >
+              <Icon name="close" className="w-6 h-6" />
+            </UniformButton>
+          </div>
+          <div style={{ backgroundColor: isDark ? '#0f172a' : '#f1f5f9', borderColor: isDark ? '#334155' : '#e2e8f0' }} className="p-4 border rounded">
+            <p style={{ color: isDark ? '#cbd5f5' : '#334155' }} className="font-semibold">
+              Only Schedulers and Admins can access the booking checklist.
+            </p>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   if (error) {
     return (

@@ -28,6 +28,16 @@ export default function BookingModal({ event, onClose, onRefresh, onOpenChecklis
   const ABSENCE_REASONS = ["Appointment", "Needed in home", "Rostering", "Transport issues", "Not started yet", "Childcare", "Sickness", "Holiday"];
   const LATE_REASONS = ["Traffic", "Handover delayed", "Public Transport", "Personal", "Other"];
 
+  const canBookPastEvents = userRole === 'admin' || userRole === 'scheduler';
+  const canAccessChecklist = userRole === 'admin' || userRole === 'scheduler';
+  const isPastEvent = (() => {
+    if (!event?.event_date) return false;
+    const eventDate = new Date(`${event.event_date}T00:00:00`);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    return eventDate < today;
+  })();
+
   useEffect(() => {
     checkTheme();
     fetchUserRole();
@@ -67,17 +77,95 @@ export default function BookingModal({ event, onClose, onRefresh, onOpenChecklis
 
   async function fetchInitialData() {
     let staffData: any[] = [];
-    
-    if (userRole === 'manager' && userLocation) {
-      // Managers see staff from their location, plus unassigned staff (exclude deleted)
-      const { data: locationStaff } = await supabase.from('profiles').select('*').eq('location', userLocation).eq('is_deleted', false).order('full_name');
-      const { data: unassignedStaff } = await supabase.from('profiles').select('*').is('location', null).eq('is_deleted', false).order('full_name');
-      staffData = [...(locationStaff || []), ...(unassignedStaff || [])];
-    } else if (userRole === 'admin' || userRole === 'scheduler') {
-      // Admins and schedulers see all active staff (exclude deleted)
-      const { data } = await supabase.from('profiles').select('*').eq('is_deleted', false).order('full_name');
-      staffData = data || [];
+
+    const { data: sessionData } = await supabase.auth.getSession();
+    const token = sessionData.session?.access_token;
+    let scopedLocations: Array<{ id: string; name: string }> = [];
+    if (token) {
+      const response = await fetch('/api/locations/user-locations', {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+      if (response.ok) {
+        const payload = await response.json();
+        scopedLocations = Array.isArray(payload.locations) ? payload.locations : [];
+      }
     }
+
+    const scopedIds = scopedLocations.map(loc => loc.id);
+    const scopedNames = scopedLocations.map(loc => loc.name);
+
+    const staffById = new Map<string, any>();
+
+    const upsertStaff = (profile: any, locationOverride?: string) => {
+      if (!profile?.id || profile.is_deleted) return;
+      const existing = staffById.get(profile.id);
+      const incomingLocation = locationOverride || profile.location || '';
+
+      if (!existing) {
+        staffById.set(profile.id, {
+          ...profile,
+          location: incomingLocation || profile.location || 'Unassigned',
+        });
+        return;
+      }
+
+      const existingLocation = existing.location || '';
+      if (incomingLocation && existingLocation && incomingLocation !== existingLocation) {
+        existing.location = 'Multiple Locations';
+      } else if (!existingLocation && incomingLocation) {
+        existing.location = incomingLocation;
+      }
+    };
+
+    if (userRole === 'admin') {
+      const { data } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('is_deleted', false)
+        .order('full_name');
+      staffData = data || [];
+    } else {
+      if (scopedIds.length > 0) {
+        const { data: staffLinks } = await supabase
+          .from('staff_locations')
+          .select('staff_id, locations(id, name), profiles(id, full_name, is_deleted, location)')
+          .in('location_id', scopedIds);
+
+        (staffLinks || []).forEach((row: any) => {
+          const profile = Array.isArray(row.profiles) ? row.profiles[0] : row.profiles;
+          const locationName = row.locations?.name || profile?.location || '';
+          upsertStaff(profile, locationName);
+        });
+      }
+
+      if (scopedNames.length > 0) {
+        const { data: locationProfiles } = await supabase
+          .from('profiles')
+          .select('*')
+          .in('location', scopedNames)
+          .eq('is_deleted', false)
+          .order('full_name');
+
+        (locationProfiles || []).forEach((profile: any) => upsertStaff(profile));
+      }
+
+      if (userRole === 'manager') {
+        const { data: unassignedStaff } = await supabase
+          .from('profiles')
+          .select('*')
+          .is('location', null)
+          .eq('is_deleted', false)
+          .order('full_name');
+
+        (unassignedStaff || []).forEach((profile: any) => upsertStaff(profile));
+      }
+
+      staffData = Array.from(staffById.values());
+    }
+
+    staffData = staffData.sort((a, b) => (a.full_name || '').localeCompare(b.full_name || ''));
     
     const { data: bookings } = await supabase.from('bookings').select('profile_id').eq('event_id', event.id);
     const bookedIds = bookings?.map(b => b.profile_id) || [];
@@ -151,6 +239,10 @@ export default function BookingModal({ event, onClose, onRefresh, onOpenChecklis
 
   const handleBooking = async () => {
     if (!hasPermission(userRole, 'BOOKINGS', 'canCreate')) return;
+    if (isPastEvent && !canBookPastEvents) {
+      alert('You do not have permission to add staff to past events.');
+      return;
+    }
     if (loading) return;
     const staffIdsToBook = [...selectedIds];
     if (staffIdsToBook.length === 0) return;
@@ -316,13 +408,15 @@ export default function BookingModal({ event, onClose, onRefresh, onOpenChecklis
         {/* Header */}
         <div style={{ backgroundColor: isDark ? '#0f172a' : '#f1f5f9' }} className="p-6 border-b text-center relative flex items-center justify-between">
           <div className="flex gap-2">
-            <button 
-              onClick={() => onOpenChecklist?.()}
-              style={{ backgroundColor: '#8b5cf6' }}
-              className="text-white px-4 py-2 rounded-lg font-bold text-sm hover:opacity-90 transition-all"
-            >
-              📋 Checklist
-            </button>
+            {canAccessChecklist && (
+              <button 
+                onClick={() => onOpenChecklist?.()}
+                style={{ backgroundColor: '#8b5cf6' }}
+                className="text-white px-4 py-2 rounded-lg font-bold text-sm hover:opacity-90 transition-all"
+              >
+                📋 Checklist
+              </button>
+            )}
             <button 
               onClick={handleCancelEvent}
               style={{ backgroundColor: '#ef4444' }}
@@ -415,7 +509,7 @@ export default function BookingModal({ event, onClose, onRefresh, onOpenChecklis
               </div>
               <button
                 onClick={handleBooking}
-                disabled={selectedIds.length === 0 || loading}
+                disabled={selectedIds.length === 0 || loading || (isPastEvent && !canBookPastEvents)}
                 className="w-full mt-6 py-4 bg-blue-600 text-white font-black text-xs uppercase rounded-2xl disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
               >
                 {loading ? (
