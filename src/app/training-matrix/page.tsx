@@ -2060,10 +2060,18 @@ export default function TrainingMatrixPage() {
         const expiryDate = new Date(compDate);
         expiryDate.setMonth(expiryDate.getMonth() + expiryMonths);
         expiryDateString = expiryDate.toISOString().split('T')[0]; // YYYY-MM-DD
-      } else if (status === 'allocated' && existingCell?.expiry_date) {
+      } else if (status === 'allocated') {
         // Preserve existing expiry when switching to allocated
-        expiryDateString = existingCell.expiry_date;
-        if (!effectiveCompletionDate && existingCell.completion_date) {
+        if (existingCell?.expiry_date) {
+          expiryDateString = existingCell.expiry_date;
+        } else if (existingCell?.completion_date && !neverExpires) {
+          // Calculate expiry from completion date if not already stored
+          const compDate = new Date(existingCell.completion_date);
+          const expiryDate = new Date(compDate);
+          expiryDate.setMonth(expiryDate.getMonth() + expiryMonths);
+          expiryDateString = expiryDate.toISOString().split('T')[0];
+        }
+        if (!effectiveCompletionDate && existingCell?.completion_date) {
           effectiveCompletionDate = existingCell.completion_date;
         }
       }
