@@ -4,6 +4,7 @@ import { Fragment, useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import UniformButton from './UniformButton';
 import { supabase } from '@/lib/supabase';
+import { ClockIcon, ExclamationCircleIcon, CalendarIcon } from '@/app/components/icons';
 
 interface CourseRecord {
   name: string;
@@ -484,9 +485,9 @@ export default function TrainingCourseChecker({ isDark }: { isDark: boolean }) {
                     {[
                       { key: 'course', label: 'Course Name', align: 'text-left' },
                       { key: 'total', label: 'Total Need', align: 'text-center' },
-                      { key: 'expiring', label: 'Expiring', align: 'text-center', color: 'text-blue-600 dark:text-blue-400' },
-                      { key: 'expired', label: 'Expired', align: 'text-center', color: 'text-red-600 dark:text-red-400' },
-                      { key: 'allocated', label: 'Allocated', align: 'text-center', color: 'text-sky-600 dark:text-sky-400' },
+                      { key: 'expiring', label: 'Expiring', align: 'text-center', color: 'text-blue-600 dark:text-blue-400', icon: 'clock' },
+                      { key: 'expired', label: 'Expired', align: 'text-center', color: 'text-red-600 dark:text-red-400', icon: 'exclamation' },
+                      { key: 'allocated', label: 'Allocated', align: 'text-center', color: 'text-yellow-600 dark:text-yellow-400', icon: 'calendar' },
                     ].map(col => (
                       <th
                         key={col.key}
@@ -502,7 +503,12 @@ export default function TrainingCourseChecker({ isDark }: { isDark: boolean }) {
                           isDark ? 'text-gray-200 hover:bg-gray-600' : 'text-gray-700 hover:bg-gray-200'
                         }`}
                       >
-                        <span className={col.color || ''}>{col.label}</span>
+                        <span className={`inline-flex items-center gap-1 justify-center ${col.color || ''}`}>
+                          {(col as any).icon === 'clock' && <ClockIcon className="w-4 h-4" />}
+                          {(col as any).icon === 'exclamation' && <ExclamationCircleIcon className="w-4 h-4" />}
+                          {(col as any).icon === 'calendar' && <CalendarIcon className="w-4 h-4" />}
+                          {col.label}
+                        </span>
                         {sortKey === col.key && (sortDir === 'desc' ? ' ↓' : ' ↑')}
                       </th>
                     ))}
@@ -539,13 +545,22 @@ export default function TrainingCourseChecker({ isDark }: { isDark: boolean }) {
                             </span>
                           </td>
                           <td className="px-4 py-3 text-center text-blue-600 dark:text-blue-400 font-semibold">
-                            {row.expiring || '—'}
+                            <span className="inline-flex items-center justify-center gap-1">
+                              <ClockIcon className="w-3.5 h-3.5" />
+                              {row.expiring || '—'}
+                            </span>
                           </td>
                           <td className="px-4 py-3 text-center text-red-600 dark:text-red-400 font-semibold">
-                            {row.expired || '—'}
+                            <span className="inline-flex items-center justify-center gap-1">
+                              <ExclamationCircleIcon className="w-3.5 h-3.5" />
+                              {row.expired || '—'}
+                            </span>
                           </td>
-                          <td className="px-4 py-3 text-center text-sky-600 dark:text-sky-400 font-semibold">
-                            {row.allocated || '—'}
+                          <td className="px-4 py-3 text-center text-yellow-600 dark:text-yellow-400 font-semibold">
+                            <span className="inline-flex items-center justify-center gap-1">
+                              <CalendarIcon className="w-3.5 h-3.5" />
+                              {row.allocated || '—'}
+                            </span>
                           </td>
                           <td className="px-4 py-3 min-w-[120px]">
                             <div className={`${isDark ? 'bg-gray-700' : 'bg-gray-200'} rounded-full h-2 w-full`}>
@@ -574,9 +589,9 @@ export default function TrainingCourseChecker({ isDark }: { isDark: boolean }) {
                                       {loc.location}
                                     </p>
                                     <div className="flex gap-3 mt-1 text-xs">
-                                      <span className="text-blue-600 dark:text-blue-400">⏳ {loc.expiring}</span>
-                                      <span className="text-red-600 dark:text-red-400">⚠ {loc.expired}</span>
-                                      <span className="text-sky-600 dark:text-sky-400">🧑‍🏫 {loc.allocated}</span>
+                                      <span className="inline-flex items-center gap-0.5 text-blue-600 dark:text-blue-400"><ClockIcon className="w-3 h-3" />{loc.expiring}</span>
+                                      <span className="inline-flex items-center gap-0.5 text-red-600 dark:text-red-400"><ExclamationCircleIcon className="w-3 h-3" />{loc.expired}</span>
+                                      <span className="inline-flex items-center gap-0.5 text-yellow-600 dark:text-yellow-400"><CalendarIcon className="w-3 h-3" />{loc.allocated}</span>
                                       <span className={`font-bold ml-auto ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>= {loc.total}</span>
                                     </div>
                                   </div>

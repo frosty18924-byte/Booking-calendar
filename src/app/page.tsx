@@ -203,13 +203,13 @@ export default function CalendarPage() {
 
               <div className="flex items-center justify-end gap-1 md:gap-3">
                 {canViewAdmin && (
-                  <a
-                    href={`/admin?from=${encodeURIComponent(pathname || '/apps/booking-calendar')}`}
+                  <button
+                    onClick={() => router.push(`/admin?from=${encodeURIComponent(pathname || '/apps/booking-calendar')}`)}
                     title="Training Dashboard"
                     className="cursor-pointer bg-emerald-600 text-white px-1 md:px-4 py-1 md:py-2 rounded-lg md:rounded-xl font-black text-[7px] md:text-[10px] uppercase hover:bg-emerald-700 hover:shadow-md hover:scale-105 active:scale-95 transition-all duration-200"
                   >
                     🎓 Training Dashboard
-                  </a>
+                  </button>
                 )}
               </div>
             </div>

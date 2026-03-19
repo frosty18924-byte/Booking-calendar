@@ -143,17 +143,36 @@ export default function AdminPage() {
              <div className="text-2xl sm:text-3xl mb-2">📊</div>
              <h3 style={{ color: isDark ? '#f1f5f9' : '#1e293b' }} className="text-sm sm:text-base font-bold mb-1">Intelligence Hub</h3>
              <p style={{ color: isDark ? '#94a3b8' : '#64748b' }} className="text-xs mb-2">View your performance dashboard.</p>
-             <button 
+             <button
               onClick={(e) => {
                 e.stopPropagation();
                 router.push('/analytics?from=/admin');
               }}
-              style={{ backgroundColor: '#10b981' }} 
-              onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#059669'} 
-              onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#10b981'} 
+              style={{ backgroundColor: '#10b981' }}
+              onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#059669'}
+              onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#10b981'}
               className="w-full py-1 sm:py-1.5 text-white font-bold rounded text-xs hover:scale-105 active:scale-95 shadow-md hover:shadow-lg duration-200"
              >
                📊 View
+             </button>
+          </div>
+
+          {/* FEEDBACK RESULTS */}
+          <div style={{ backgroundColor: isDark ? '#1e293b' : '#ffffff', borderColor: isDark ? '#334155' : '#e2e8f0' }} className="p-3 sm:p-4 rounded-lg border shadow-sm group hover:border-blue-500 transition-all cursor-pointer" onClick={() => router.push('/feedback/results')}>
+             <div className="text-2xl sm:text-3xl mb-2">⭐</div>
+             <h3 style={{ color: isDark ? '#f1f5f9' : '#1e293b' }} className="text-sm sm:text-base font-bold mb-1">Feedback Results</h3>
+             <p style={{ color: isDark ? '#94a3b8' : '#64748b' }} className="text-xs mb-2">Analyse training course feedback from staff.</p>
+             <button
+              onClick={(e) => {
+                e.stopPropagation();
+                router.push('/feedback/results');
+              }}
+              style={{ backgroundColor: '#3b82f6' }}
+              onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#2563eb'}
+              onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#3b82f6'}
+              className="w-full py-1 sm:py-1.5 text-white font-bold rounded text-xs hover:scale-105 active:scale-95 shadow-md hover:shadow-lg duration-200"
+             >
+               ⭐ View Results
              </button>
           </div>
 
