@@ -20,6 +20,9 @@ export default function FeedbackManagerModal({ onClose }: { onClose: () => void 
 
   // Manual Override State
   const [recentEvents, setRecentEvents] = useState<any[]>([]);
+  // Testing Mode State
+  const [isTestMode, setIsTestMode] = useState(true);
+  const [testEmail, setTestEmail] = useState('training@cascade-care.com');
   const [manualLoading, setManualLoading] = useState(false);
 
   useEffect(() => {
@@ -142,7 +145,11 @@ export default function FeedbackManagerModal({ onClose }: { onClose: () => void 
     try {
       const res = await fetch('/api/automations/feedback-emails', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          'x-email-test-mode': isTestMode ? 'true' : 'false',
+          'x-test-email-address': testEmail
+        },
         body: JSON.stringify({ eventId })
       });
       const data = await res.json();
@@ -430,8 +437,32 @@ export default function FeedbackManagerModal({ onClose }: { onClose: () => void 
 
           {activeTab === 'manual' && (
             <div className="space-y-4">
-              <div className="bg-amber-500/10 border border-amber-500/20 p-4 rounded-xl mb-6">
-                <p className="text-xs text-amber-500 font-bold">Manual Override: Send feedback links to participants of recent sessions immediately.</p>
+              <div className="bg-amber-500/10 border border-amber-500/20 p-6 rounded-2xl mb-6 space-y-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h5 className="text-amber-500 font-black text-[10px] uppercase tracking-wider mb-1">Testing Mode</h5>
+                    <p className="text-[10px] text-amber-500/70 font-bold max-w-sm">When enabled, emails will ONLY be sent to the test address below, rather than the session participants.</p>
+                  </div>
+                  <button 
+                    onClick={() => setIsTestMode(!isTestMode)}
+                    className={`w-12 h-6 rounded-full transition-all relative ${isTestMode ? 'bg-amber-500' : 'bg-slate-700'}`}
+                  >
+                    <div className={`absolute top-1 w-4 h-4 bg-white rounded-full transition-all ${isTestMode ? 'left-7' : 'left-1'}`} />
+                  </button>
+                </div>
+
+                {isTestMode && (
+                  <div className="pt-2">
+                    <label className="block text-[8px] font-black uppercase text-amber-500/50 mb-1">Test Recipient Address</label>
+                    <input 
+                      type="email"
+                      value={testEmail}
+                      onChange={(e) => setTestEmail(e.target.value)}
+                      className="w-full bg-slate-900/50 border border-amber-500/30 rounded-lg px-3 py-2 text-xs text-white font-bold outline-none focus:border-amber-500"
+                      placeholder="Enter test email address"
+                    />
+                  </div>
+                )}
               </div>
 
               <div className="space-y-2">
