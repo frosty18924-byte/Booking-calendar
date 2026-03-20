@@ -6,6 +6,7 @@ import { supabase } from '@/lib/supabase';
 import type { User } from '@supabase/supabase-js';
 import CourseManagerModal from '@/app/components/CourseManagerModal';
 import LocationManagerModal from '@/app/components/LocationManagerModal';
+import FeedbackManagerModal from '@/app/components/FeedbackManagerModal';
 import { debugLog } from '@/lib/debug';
 
 export default function AdminPage() {
@@ -15,6 +16,7 @@ export default function AdminPage() {
   const [loading, setLoading] = useState(true);
   const [showCourseModal, setShowCourseModal] = useState(false);
   const [showLocationModal, setShowLocationModal] = useState(false);
+  const [showFeedbackModal, setShowFeedbackModal] = useState(false);
 
   useEffect(() => {
     checkTheme();
@@ -176,12 +178,32 @@ export default function AdminPage() {
              </button>
           </div>
 
+          {/* FEEDBACK & AUTOMATION */}
+          <div style={{ backgroundColor: isDark ? '#1e293b' : '#ffffff', borderColor: isDark ? '#334155' : '#e2e8f0' }} className="p-3 sm:p-4 rounded-lg border shadow-sm group hover:border-pink-500 transition-all cursor-pointer" onClick={() => setShowFeedbackModal(true)}>
+             <div className="text-2xl sm:text-3xl mb-2">⚙️</div>
+             <h3 style={{ color: isDark ? '#f1f5f9' : '#1e293b' }} className="text-sm sm:text-base font-bold mb-1">Feedback & Automations</h3>
+             <p style={{ color: isDark ? '#94a3b8' : '#64748b' }} className="text-xs mb-2">Configure feedback form and email triggers.</p>
+             <button
+              onClick={(e) => {
+                e.stopPropagation();
+                setShowFeedbackModal(true);
+              }}
+              style={{ backgroundColor: '#ec4899' }}
+              onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#db2777'}
+              onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#ec4899'}
+              className="w-full py-1 sm:py-1.5 text-white font-bold rounded text-xs hover:scale-105 active:scale-95 shadow-md hover:shadow-lg duration-200"
+             >
+               ⚙️ Manage
+             </button>
+          </div>
+
         </div>
       </div>
 
       {/* MODALS */}
       {showCourseModal && <CourseManagerModal onClose={() => setShowCourseModal(false)} />}
       {showLocationModal && <LocationManagerModal onClose={() => setShowLocationModal(false)} />}
+      {showFeedbackModal && <FeedbackManagerModal onClose={() => setShowFeedbackModal(false)} />}
     </main>
   );
 }

@@ -1,15 +1,9 @@
 'use client';
 
-import { useState, Suspense } from 'react';
+import { useState, Suspense, useEffect } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 
-const DESCRIPTORS = [
-  'Well tutored', 'Useful', 'Basic', 'Practical', 'Fun',
-  'Nothing New', 'Professional', 'Informative', 'Boring', 'Motivating',
-  'Too Long', 'Educational', 'Hard to follow', 'Vague', 'Participative',
-  'Interactive', 'Disorganised',
-];
 
 function ScaleInput({ label, value, onChange }: { label: string; value: number; onChange: (v: number) => void }) {
   return (
@@ -40,66 +34,74 @@ function FeedbackForm() {
   const eventDate = searchParams?.get('date') || '';
   const eventId = searchParams?.get('event') || '';
 
+  const [fields, setFields] = useState<any[]>([]);
+  const [formResponses, setFormResponses] = useState<Record<string, any>>({});
   const [name, setName] = useState('');
-  const [sessionTime, setSessionTime] = useState('');
-  const [knowledgeBefore, setKnowledgeBefore] = useState(5);
-  const [knowledgeAfter, setKnowledgeAfter] = useState(5);
-  const [confidenceBefore, setConfidenceBefore] = useState(5);
-  const [confidenceAfter, setConfidenceAfter] = useState(5);
-  const [workRoleRelevance, setWorkRoleRelevance] = useState(5);
-  const [selectedDescriptors, setSelectedDescriptors] = useState<string[]>([]);
-  const [skillsGained, setSkillsGained] = useState<boolean | null>(null);
-  const [additionalComments, setAdditionalComments] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [error, setError] = useState('');
 
-  const toggleDescriptor = (d: string) => {
-    setSelectedDescriptors(prev =>
-      prev.includes(d) ? prev.filter(x => x !== d) : [...prev, d]
-    );
-  };
+  useEffect(() => {
+    async function loadConfig() {
+      const { data } = await supabase.from('feedback_settings').select('config').eq('key', 'default_form').single();
+      if (data?.config?.fields) {
+        setFields(data.config.fields);
+        // Initialize responses
+        const initial: any = {};
+        data.config.fields.forEach((f: any) => {
+          if (f.type === 'scale') {
+            initial[`${f.id}_before`] = 5;
+            initial[`${f.id}_after`] = 5;
+          } else if (f.type === 'multi-select' || f.type === 'descriptors') {
+            initial[f.id] = [];
+          } else {
+            initial[f.id] = '';
+          }
+        });
+        setFormResponses(initial);
+      }
+    }
+    loadConfig();
+  }, []);
+
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!name.trim()) { setError('Please enter your name.'); return; }
-    if (!sessionTime) { setError('Please select Morning or Afternoon.'); return; }
-    if (selectedDescriptors.length < 5) { setError('Please select at least 5 words to describe the session.'); return; }
-    if (skillsGained === null) { setError('Please answer whether you gained new skills.'); return; }
+    
+    // Check required fields
+    for (const field of fields) {
+      if (field.required) {
+        const val = formResponses[field.id];
+        if (field.type === 'descriptors' && (val?.length || 0) < 5) {
+          setError(`Please select at least 5 words for: ${field.label}`);
+          return;
+        }
+        if (!val && field.type !== 'scale' && field.type !== 'descriptors') {
+          setError(`Please complete the field: ${field.label}`);
+          return;
+        }
+      }
+    }
 
     setError('');
     setSubmitting(true);
-
-    // Soft duplicate check — same name + course + date
-    if (courseName && eventDate) {
-      const { data: existing } = await supabase
-        .from('course_feedback')
-        .select('id')
-        .eq('respondent_name', name.trim())
-        .eq('course_name', courseName)
-        .eq('event_date', eventDate)
-        .limit(1);
-      if (existing && existing.length > 0) {
-        setError('It looks like you have already submitted feedback for this session. Thank you!');
-        setSubmitting(false);
-        return;
-      }
-    }
 
     const { error: dbError } = await supabase.from('course_feedback').insert({
       event_id: eventId || null,
       course_name: courseName || null,
       event_date: eventDate || null,
       respondent_name: name.trim(),
-      session_time: sessionTime,
-      knowledge_before: knowledgeBefore,
-      knowledge_after: knowledgeAfter,
-      confidence_before: confidenceBefore,
-      confidence_after: confidenceAfter,
-      work_role_relevance: workRoleRelevance,
-      session_descriptors: selectedDescriptors,
-      skills_gained: skillsGained,
-      additional_comments: additionalComments.trim() || null,
+      responses: formResponses,
+      // Legacy columns for backward compatibility / results page
+      session_time: formResponses['session_time'] || 'All Day',
+      knowledge_before: formResponses['knowledge_before'] || 5,
+      knowledge_after: formResponses['knowledge_after'] || 5,
+      confidence_before: formResponses['confidence_before'] || 5,
+      confidence_after: formResponses['confidence_after'] || 5,
+      work_role_relevance: formResponses['relevance'] || 5,
+      session_descriptors: formResponses['descriptors'] || [],
+      additional_comments: formResponses['comments'] || null
     });
 
     setSubmitting(false);
@@ -152,107 +154,114 @@ function FeedbackForm() {
               />
             </div>
 
-            {/* Session Time */}
-            <div>
-              <label className="block text-sm font-semibold text-slate-300 mb-2">Session Time <span className="text-red-400">*</span></label>
-              <div className="flex gap-3">
-                {['Morning', 'Afternoon', 'All Day'].map(t => (
-                  <button
-                    key={t}
-                    type="button"
-                    onClick={() => setSessionTime(t)}
-                    className={`flex-1 py-3 rounded-lg font-semibold text-sm transition-all ${
-                      sessionTime === t
-                        ? 'bg-blue-600 text-white shadow-md'
-                        : 'bg-slate-700 text-slate-400 hover:bg-slate-600'
-                    }`}
-                  >
-                    {t}
-                  </button>
-                ))}
+            {/* Dynamic Rendering of Fields */}
+            {fields.map((field) => (
+              <div key={field.id} className="space-y-4">
+                
+                {field.type === 'scale' ? (
+                  <div className="bg-slate-700/50 rounded-xl p-4">
+                    <h3 className="text-sm font-black text-slate-200 uppercase tracking-wide mb-4">{field.label}</h3>
+                    {field.before_label && (
+                      <ScaleInput 
+                        label={field.before_label} 
+                        value={formResponses[`${field.id}_before`] || 5} 
+                        onChange={v => setFormResponses({...formResponses, [`${field.id}_before`]: v})} 
+                      />
+                    )}
+                    {field.after_label && (
+                      <ScaleInput 
+                        label={field.after_label} 
+                        value={formResponses[`${field.id}_after`] || 5} 
+                        onChange={v => setFormResponses({...formResponses, [`${field.id}_after`]: v})} 
+                      />
+                    )}
+                    {!field.before_label && !field.after_label && (
+                       <ScaleInput 
+                         label={field.label} 
+                         value={formResponses[field.id] || 5} 
+                         onChange={v => setFormResponses({...formResponses, [field.id]: v})} 
+                       />
+                    )}
+                  </div>
+                ) : field.type === 'descriptors' || field.type === 'multi-select' ? (
+                  <div>
+                    <label className="block text-sm font-semibold text-slate-300 mb-2">{field.label}</label>
+                    <div className="flex flex-wrap gap-2">
+                      {(field.options || []).map((opt: string) => {
+                        const isSelected = (formResponses[field.id] || []).includes(opt);
+                        return (
+                          <button
+                            key={opt}
+                            type="button"
+                            onClick={() => {
+                              const current = formResponses[field.id] || [];
+                              const next = isSelected ? current.filter((x: string) => x !== opt) : [...current, opt];
+                              setFormResponses({...formResponses, [field.id]: next});
+                            }}
+                            className={`px-3 py-1.5 rounded-full text-sm font-medium transition-all ${
+                              isSelected ? 'bg-blue-600 text-white shadow-md' : 'bg-slate-700 text-slate-400 hover:bg-slate-600'
+                            }`}
+                          >
+                            {opt}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                ) : field.type === 'select' ? (
+                  <div>
+                    <label className="block text-sm font-semibold text-slate-300 mb-2">{field.label}</label>
+                    <select 
+                      value={formResponses[field.id]}
+                      onChange={e => setFormResponses({...formResponses, [field.id]: e.target.value})}
+                      className="w-full bg-slate-700 border border-slate-600 rounded-lg px-4 py-3 text-white outline-none focus:border-blue-500"
+                    >
+                      <option value="">Select an option...</option>
+                      {(field.options || []).map((opt: string) => <option key={opt} value={opt}>{opt}</option>)}
+                    </select>
+                  </div>
+                ) : field.type === 'radio' ? (
+                  <div>
+                    <label className="block text-sm font-semibold text-slate-300 mb-2">{field.label}</label>
+                    <div className="flex flex-wrap gap-3">
+                      {(field.options || []).map((opt: string) => (
+                        <button
+                          key={opt}
+                          type="button"
+                          onClick={() => setFormResponses({...formResponses, [field.id]: opt})}
+                          className={`flex-1 py-3 px-4 rounded-lg font-semibold text-sm transition-all ${
+                            formResponses[field.id] === opt
+                              ? 'bg-blue-600 text-white shadow-md'
+                              : 'bg-slate-700 text-slate-400 hover:bg-slate-600'
+                          }`}
+                        >
+                          {opt}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                ) : (
+                  <div>
+                    <label className="block text-sm font-semibold text-slate-300 mb-2">{field.label}</label>
+                    {field.type === 'text' ? (
+                      <textarea
+                        value={formResponses[field.id]}
+                        onChange={e => setFormResponses({...formResponses, [field.id]: e.target.value})}
+                        rows={3}
+                        className="w-full bg-slate-700 border border-slate-600 rounded-lg px-4 py-3 text-white focus:outline-none focus:border-blue-500"
+                      />
+                    ) : (
+                      <input
+                        type="text"
+                        value={formResponses[field.id]}
+                        onChange={e => setFormResponses({...formResponses, [field.id]: e.target.value})}
+                        className="w-full bg-slate-700 border border-slate-600 rounded-lg px-4 py-3 text-white focus:outline-none focus:border-blue-500"
+                      />
+                    )}
+                  </div>
+                )}
               </div>
-            </div>
-
-            {/* Knowledge */}
-            <div className="bg-slate-700/50 rounded-xl p-4">
-              <h3 className="text-sm font-black text-slate-200 uppercase tracking-wide mb-4">Knowledge</h3>
-              <ScaleInput label="Before this session" value={knowledgeBefore} onChange={setKnowledgeBefore} />
-              <ScaleInput label="After this session" value={knowledgeAfter} onChange={setKnowledgeAfter} />
-            </div>
-
-            {/* Confidence */}
-            <div className="bg-slate-700/50 rounded-xl p-4">
-              <h3 className="text-sm font-black text-slate-200 uppercase tracking-wide mb-4">Confidence</h3>
-              <ScaleInput label="Before this session" value={confidenceBefore} onChange={setConfidenceBefore} />
-              <ScaleInput label="After this session" value={confidenceAfter} onChange={setConfidenceAfter} />
-            </div>
-
-            {/* Work Role Relevance */}
-            <div className="bg-slate-700/50 rounded-xl p-4">
-              <h3 className="text-sm font-black text-slate-200 uppercase tracking-wide mb-4">Relevance</h3>
-              <ScaleInput label="How relevant was this training to your work role?" value={workRoleRelevance} onChange={setWorkRoleRelevance} />
-            </div>
-
-            {/* Descriptors */}
-            <div>
-              <label className="block text-sm font-semibold text-slate-300 mb-1">
-                Describe this session <span className="text-slate-500 font-normal">(select 5 or more)</span>
-              </label>
-              <p className="text-xs text-slate-500 mb-3">
-                {selectedDescriptors.length < 5
-                  ? `Select at least ${5 - selectedDescriptors.length} more`
-                  : `${selectedDescriptors.length} selected ✓`}
-              </p>
-              <div className="flex flex-wrap gap-2">
-                {DESCRIPTORS.map(d => (
-                  <button
-                    key={d}
-                    type="button"
-                    onClick={() => toggleDescriptor(d)}
-                    className={`px-3 py-1.5 rounded-full text-sm font-medium transition-all ${
-                      selectedDescriptors.includes(d)
-                        ? 'bg-blue-600 text-white shadow-md'
-                        : 'bg-slate-700 text-slate-400 hover:bg-slate-600'
-                    }`}
-                  >
-                    {d}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* Skills Gained */}
-            <div>
-              <label className="block text-sm font-semibold text-slate-300 mb-2">Did you gain new skills? <span className="text-red-400">*</span></label>
-              <div className="flex gap-3">
-                {[{ label: 'Yes', value: true }, { label: 'No', value: false }].map(opt => (
-                  <button
-                    key={opt.label}
-                    type="button"
-                    onClick={() => setSkillsGained(opt.value)}
-                    className={`flex-1 py-3 rounded-lg font-semibold text-sm transition-all ${
-                      skillsGained === opt.value
-                        ? opt.value ? 'bg-green-600 text-white shadow-md' : 'bg-red-600 text-white shadow-md'
-                        : 'bg-slate-700 text-slate-400 hover:bg-slate-600'
-                    }`}
-                  >
-                    {opt.label}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* Additional Comments */}
-            <div>
-              <label className="block text-sm font-semibold text-slate-300 mb-2">Additional Comments</label>
-              <textarea
-                value={additionalComments}
-                onChange={e => setAdditionalComments(e.target.value)}
-                rows={3}
-                placeholder="Anything else you'd like to share..."
-                className="w-full bg-slate-700 border border-slate-600 rounded-lg px-4 py-3 text-white placeholder-slate-500 focus:outline-none focus:border-blue-500 transition-colors resize-none"
-              />
-            </div>
+            ))}
 
             {error && (
               <p className="text-red-400 text-sm font-semibold bg-red-400/10 px-4 py-2 rounded-lg">{error}</p>

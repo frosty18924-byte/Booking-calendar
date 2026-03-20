@@ -1,0 +1,8 @@
+{
+  "crons": [
+    {
+      "path": "/api/automations/feedback-emails",
+      "schedule": "*/10 * * * *"
+    }
+  ]
+}
