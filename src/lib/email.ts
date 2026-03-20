@@ -33,7 +33,7 @@ function createTransporter() {
       auth: process.env.SMTP_USER
         ? {
             user: process.env.SMTP_USER,
-            pass: process.env.SMTP_PASS,
+            pass: process.env.SMTP_PASS?.replace(/\s/g, ''),
           }
         : undefined,
     });
@@ -44,7 +44,7 @@ function createTransporter() {
     service: 'gmail',
     auth: {
       user: process.env.GMAIL_USER,
-      pass: process.env.GMAIL_APP_PASSWORD,
+      pass: process.env.GMAIL_APP_PASSWORD?.replace(/\s/g, ''),
     },
   });
 }
