@@ -29,6 +29,7 @@ interface FeedbackRow {
   session_descriptors: string[];
   skills_gained: boolean;
   additional_comments: string | null;
+  responses?: Record<string, any>;
 }
 
 function avg(nums: number[]) {
@@ -104,14 +105,26 @@ export default function FeedbackResultsPage() {
 
   const stats = useMemo(() => {
     if (!filtered.length) return null;
-    const knowledgeImprovements = filtered.map(f => f.knowledge_after - f.knowledge_before);
-    const confidenceImprovements = filtered.map(f => f.confidence_after - f.confidence_before);
-    const skillsGainedCount = filtered.filter(f => f.skills_gained).length;
+    const knowledgeImprovements = filtered.map(f => {
+      const before = f.responses?.knowledge_before ?? f.knowledge_before;
+      const after = f.responses?.knowledge_after ?? f.knowledge_after;
+      return after - before;
+    });
+    const confidenceImprovements = filtered.map(f => {
+      const before = f.responses?.confidence_before ?? f.confidence_before;
+      const after = f.responses?.confidence_after ?? f.confidence_after;
+      return after - before;
+    });
+    const skillsGainedCount = filtered.filter(f => {
+      const val = f.responses?.skills_gained ?? f.skills_gained;
+      return val === true || val === 'Yes';
+    }).length;
 
     const descriptorCounts: Record<string, number> = {};
     DESCRIPTORS.forEach(d => { descriptorCounts[d] = 0; });
     filtered.forEach(f => {
-      (f.session_descriptors || []).forEach(d => {
+      const descriptors = f.responses?.descriptors ?? f.session_descriptors ?? [];
+      descriptors.forEach((d: string) => {
         if (descriptorCounts[d] !== undefined) descriptorCounts[d]++;
       });
     });
@@ -124,17 +137,17 @@ export default function FeedbackResultsPage() {
 
     return {
       total: filtered.length,
-      avgKnowledgeBefore: avg(filtered.map(f => f.knowledge_before)),
-      avgKnowledgeAfter: avg(filtered.map(f => f.knowledge_after)),
+      avgKnowledgeBefore: avg(filtered.map(f => f.responses?.knowledge_before ?? f.knowledge_before)),
+      avgKnowledgeAfter: avg(filtered.map(f => f.responses?.knowledge_after ?? f.knowledge_after)),
       avgKnowledgeImprovement: avg(knowledgeImprovements),
-      avgConfidenceBefore: avg(filtered.map(f => f.confidence_before)),
-      avgConfidenceAfter: avg(filtered.map(f => f.confidence_after)),
+      avgConfidenceBefore: avg(filtered.map(f => f.responses?.confidence_before ?? f.confidence_before)),
+      avgConfidenceAfter: avg(filtered.map(f => f.responses?.confidence_after ?? f.confidence_after)),
       avgConfidenceImprovement: avg(confidenceImprovements),
-      avgRelevance: avg(filtered.map(f => f.work_role_relevance)),
+      avgRelevance: avg(filtered.map(f => f.responses?.relevance ?? f.work_role_relevance)),
       skillsGainedPct: Math.round((skillsGainedCount / filtered.length) * 100),
       sortedDescriptors,
       maxDescriptorCount,
-      comments: filtered.filter(f => f.additional_comments),
+      comments: filtered.filter(f => f.responses?.comments || f.additional_comments),
     };
   }, [filtered]);
 
@@ -312,8 +325,8 @@ export default function FeedbackResultsPage() {
                         {f.event_date && <span className={`text-xs ml-2 ${subtext}`}>· {new Date(f.event_date + 'T00:00:00').toLocaleDateString('en-GB')}</span>}
                       </div>
                       <div className="flex items-center gap-3">
-                        <span className={`text-xs font-bold px-2 py-1 rounded-full ${f.skills_gained ? 'bg-emerald-900 text-emerald-300' : 'bg-red-900 text-red-300'}`}>
-                          {f.skills_gained ? 'Skills gained' : 'No new skills'}
+                        <span className={`text-xs font-bold px-2 py-1 rounded-full ${ (f.responses?.skills_gained === 'Yes' || f.responses?.skills_gained === true || f.skills_gained) ? 'bg-emerald-900 text-emerald-300' : 'bg-red-900 text-red-300'}`}>
+                          {(f.responses?.skills_gained === 'Yes' || f.responses?.skills_gained === true || f.skills_gained) ? 'Skills gained' : 'No new skills'}
                         </span>
                         <span className={`text-xs ${subtext}`}>{expandedRow === f.id ? '▲' : '▼'}</span>
                       </div>
@@ -322,11 +335,11 @@ export default function FeedbackResultsPage() {
                       <div className={`px-5 pb-4 ${isDark ? 'bg-gray-750' : 'bg-gray-50'}`}>
                         <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-3">
                           {[
-                            { label: 'Knowledge Before', value: f.knowledge_before },
-                            { label: 'Knowledge After', value: f.knowledge_after },
-                            { label: 'Confidence Before', value: f.confidence_before },
-                            { label: 'Confidence After', value: f.confidence_after },
-                            { label: 'Relevance', value: f.work_role_relevance },
+                            { label: 'Knowledge Before', value: f.responses?.knowledge_before ?? f.knowledge_before },
+                            { label: 'Knowledge After', value: f.responses?.knowledge_after ?? f.knowledge_after },
+                            { label: 'Confidence Before', value: f.responses?.confidence_before ?? f.confidence_before },
+                            { label: 'Confidence After', value: f.responses?.confidence_after ?? f.confidence_after },
+                            { label: 'Relevance', value: f.responses?.relevance ?? f.work_role_relevance },
                           ].map(({ label, value }) => (
                             <div key={label} className={`rounded-lg p-3 text-center ${isDark ? 'bg-gray-700' : 'bg-white border border-gray-200'}`}>
                               <p className={`text-xs ${subtext} mb-1`}>{label}</p>
@@ -334,20 +347,20 @@ export default function FeedbackResultsPage() {
                             </div>
                           ))}
                         </div>
-                        {f.session_descriptors?.length > 0 && (
+                        {(f.responses?.descriptors || f.session_descriptors)?.length > 0 && (
                           <div className="mb-3">
                             <p className={`text-xs font-bold uppercase ${subtext} mb-2`}>Descriptors</p>
                             <div className="flex flex-wrap gap-1.5">
-                              {f.session_descriptors.map(d => (
+                              {(f.responses?.descriptors || f.session_descriptors).map((d: string) => (
                                 <span key={d} className={`text-xs px-2 py-1 rounded-full font-medium ${POSITIVE_DESCRIPTORS.has(d) ? 'bg-emerald-900 text-emerald-300' : 'bg-slate-700 text-slate-300'}`}>{d}</span>
                               ))}
                             </div>
                           </div>
                         )}
-                        {f.additional_comments && (
+                        {(f.responses?.comments || f.additional_comments) && (
                           <div className="mb-3">
                             <p className={`text-xs font-bold uppercase ${subtext} mb-1`}>Comments</p>
-                            <p className={`text-sm ${text}`}>{f.additional_comments}</p>
+                            <p className={`text-sm ${text}`}>{f.responses?.comments || f.additional_comments}</p>
                           </div>
                         )}
                         <div className="flex justify-end mt-2">

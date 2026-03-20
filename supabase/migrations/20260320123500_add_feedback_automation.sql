@@ -9,13 +9,16 @@ CREATE TABLE IF NOT EXISTS public.feedback_settings (
 -- Initialize default form config with values from current hardcoded form
 INSERT INTO public.feedback_settings (key, config)
 VALUES ('default_form', '{
-  "descriptors": ["Well tutored", "Useful", "Basic", "Practical", "Fun", "Nothing New", "Professional", "Informative", "Boring", "Motivating", "Too Long", "Educational", "Hard to follow", "Vague", "Participative", "Interactive", "Disorganised"],
-  "scales": [
-    {"id": "knowledge", "label": "Knowledge", "before_label": "Before this session", "after_label": "After this session"},
-    {"id": "confidence", "label": "Confidence", "before_label": "Before this session", "after_label": "After this session"},
-    {"id": "relevance", "label": "Relevance", "label_full": "How relevant was this training to your work role?"}
+  "fields": [
+    { "id": "session_time", "type": "radio", "label": "Session Time", "options": ["Morning", "Afternoon", "All Day"], "required": true },
+    { "id": "knowledge", "type": "scale", "label": "Knowledge", "before_label": "Before this session", "after_label": "After this session", "required": true },
+    { "id": "confidence", "type": "scale", "label": "Confidence", "before_label": "Before this session", "after_label": "After this session", "required": true },
+    { "id": "relevance", "type": "scale", "label": "Relevance", "before_label": "How relevant was this training to your work role?", "required": true },
+    { "id": "descriptors", "type": "descriptors", "label": "Describe this session (select 5 or more)", "options": ["Well tutored", "Useful", "Basic", "Practical", "Fun", "Nothing New", "Professional", "Informative", "Boring", "Motivating", "Too Long", "Educational", "Hard to follow", "Vague", "Participative", "Interactive", "Disorganised"], "required": true },
+    { "id": "skills_gained", "type": "radio", "label": "Did you gain new skills?", "options": ["Yes", "No"], "required": true },
+    { "id": "comments", "type": "text", "label": "Additional Comments", "required": false }
   ]
-}') ON CONFLICT (key) DO NOTHING;
+}') ON CONFLICT (key) DO UPDATE SET config = EXCLUDED.config;
 
 -- Feedback email automation settings
 CREATE TABLE IF NOT EXISTS public.feedback_automation_settings (
