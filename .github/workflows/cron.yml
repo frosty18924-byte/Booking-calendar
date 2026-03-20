@@ -11,7 +11,7 @@ jobs:
       - name: Call Automation Endpoint
         run: |
           # Replace the URL below if your Vercel deployment uses a different one
-          APP_URL="https://training-portal.vercel.app"
+          APP_URL="https://cascade-training-calendar.vercel.app"
           
           echo "Calling automation endpoint at $APP_URL..."
           
