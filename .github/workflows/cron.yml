@@ -1,0 +1,19 @@
+name: Feedback Automation Cron
+on:
+  schedule:
+    - cron: '*/10 * * * *'
+  workflow_dispatch: # Allows manual trigger for testing
+
+jobs:
+  cron:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Call Automation Endpoint
+        run: |
+          # Replace the URL below if your Vercel deployment uses a different one
+          APP_URL="https://training-portal.vercel.app"
+          
+          echo "Calling automation endpoint at $APP_URL..."
+          
+          curl -f -X GET "$APP_URL/api/automations/feedback-emails" \
+          -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}"
