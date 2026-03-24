@@ -6,17 +6,15 @@ import { supabase } from '@/lib/supabase';
 import type { User } from '@supabase/supabase-js';
 import CourseManagerModal from '@/app/components/CourseManagerModal';
 import LocationManagerModal from '@/app/components/LocationManagerModal';
-import FeedbackManagerModal from '@/app/components/FeedbackManagerModal';
 import { debugLog } from '@/lib/debug';
 
 export default function AdminPage() {
   const router = useRouter();
   const [user, setUser] = useState<User | null>(null);
   const [isDark, setIsDark] = useState(true);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false); // Start with false to avoid hydration
   const [showCourseModal, setShowCourseModal] = useState(false);
   const [showLocationModal, setShowLocationModal] = useState(false);
-  const [showFeedbackModal, setShowFeedbackModal] = useState(false);
 
   useEffect(() => {
     checkTheme();
@@ -39,26 +37,33 @@ export default function AdminPage() {
   }, [router]);
 
   useEffect(() => {
-    const html = document.documentElement;
-    if (isDark) {
-      html.classList.add('dark');
-    } else {
-      html.classList.remove('dark');
+    // Only run on client side
+    if (typeof window !== 'undefined') {
+      const html = document.documentElement;
+      if (isDark) {
+        html.classList.add('dark');
+      } else {
+        html.classList.remove('dark');
+      }
     }
   }, [isDark]);
 
   useEffect(() => {
+    // Only run on client side
+    if (typeof window !== 'undefined') {
       const handleThemeChange = (event: Event) => {
-      const themeEvent = event as CustomEvent<{ isDark: boolean }>;
-      debugLog('Theme change detected:', themeEvent.detail.isDark);
-      setIsDark(themeEvent.detail.isDark);
-    };
-    
-    window.addEventListener('themeChange', handleThemeChange);
-    return () => window.removeEventListener('themeChange', handleThemeChange);
+        const themeEvent = event as CustomEvent<{ isDark: boolean }>;
+        debugLog('Theme change detected:', themeEvent.detail.isDark);
+        setIsDark(themeEvent.detail.isDark);
+      };
+      
+      window.addEventListener('themeChange', handleThemeChange);
+      return () => window.removeEventListener('themeChange', handleThemeChange);
+    }
   }, []);
 
   const checkTheme = (): void => {
+    // Only run on client side
     if (typeof window !== 'undefined') {
       const theme = localStorage.getItem('theme');
       const isDarkMode = theme === 'dark' || (!theme && window.matchMedia('(prefers-color-scheme: dark)').matches);
@@ -178,32 +183,43 @@ export default function AdminPage() {
              </button>
           </div>
 
-          {/* FEEDBACK & AUTOMATION */}
-          <div style={{ backgroundColor: isDark ? '#1e293b' : '#ffffff', borderColor: isDark ? '#334155' : '#e2e8f0' }} className="p-3 sm:p-4 rounded-lg border shadow-sm group hover:border-pink-500 transition-all cursor-pointer" onClick={() => setShowFeedbackModal(true)}>
-             <div className="text-2xl sm:text-3xl mb-2">⚙️</div>
-             <h3 style={{ color: isDark ? '#f1f5f9' : '#1e293b' }} className="text-sm sm:text-base font-bold mb-1">Feedback & Automations</h3>
-             <p style={{ color: isDark ? '#94a3b8' : '#64748b' }} className="text-xs mb-2">Configure feedback form and email triggers.</p>
-             <button
-              onClick={(e) => {
-                e.stopPropagation();
-                setShowFeedbackModal(true);
-              }}
-              style={{ backgroundColor: '#ec4899' }}
-              onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#db2777'}
-              onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#ec4899'}
+          {/* FEEDBACK EMAIL TRIGGER */}
+          <div style={{ backgroundColor: isDark ? '#1e293b' : '#ffffff', borderColor: isDark ? '#334155' : '#e2e8f0' }} className="p-3 sm:p-4 rounded-lg border shadow-sm group hover:border-orange-500 transition-all cursor-pointer">
+            <div className="text-2xl sm:text-3xl mb-2">📧</div>
+            <h3 style={{ color: isDark ? '#f1f5f9' : '#1e293b' }} className="text-sm sm:text-base font-bold mb-1">Send Feedback Emails</h3>
+            <p style={{ color: isDark ? '#94a3b8' : '#64748b' }} className="text-xs mb-2">Trigger feedback emails for events ending in 30 minutes.</p>
+            <button
+              onClick={() => router.push('/api/schedule-feedback-emails')}
+              style={{ backgroundColor: '#f97316' }}
+              onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#ea580c'}
+              onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#f97316'}
               className="w-full py-1 sm:py-1.5 text-white font-bold rounded text-xs hover:scale-105 active:scale-95 shadow-md hover:shadow-lg duration-200"
-             >
-               ⚙️ Manage
-             </button>
+            >
+               📧 Send Now
+            </button>
           </div>
 
+          {/* AUTOMATION CONTROL */}
+          <div style={{ backgroundColor: isDark ? '#1e293b' : '#ffffff', borderColor: isDark ? '#334155' : '#e2e8f0' }} className="p-3 sm:p-4 rounded-lg border shadow-sm group hover:border-cyan-500 transition-all cursor-pointer" onClick={() => router.push('/automation-control')}>
+            <div className="text-2xl sm:text-3xl mb-2">🤖</div>
+            <h3 style={{ color: isDark ? '#f1f5f9' : '#1e293b' }} className="text-sm sm:text-base font-bold mb-1">Automation Control</h3>
+            <p style={{ color: isDark ? '#94a3b8' : '#64748b' }} className="text-xs mb-2">Control internal feedback email automation system.</p>
+            <button
+              onClick={() => router.push('/automation-control')}
+              style={{ backgroundColor: '#06b6d4' }}
+              onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#0891b2'}
+              onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#06b6d4'}
+              className="w-full py-1 sm:py-1.5 text-white font-bold rounded text-xs hover:scale-105 active:scale-95 shadow-md hover:shadow-lg duration-200"
+            >
+               🤖 Control Automation
+            </button>
+          </div>
         </div>
       </div>
 
       {/* MODALS */}
       {showCourseModal && <CourseManagerModal onClose={() => setShowCourseModal(false)} />}
       {showLocationModal && <LocationManagerModal onClose={() => setShowLocationModal(false)} />}
-      {showFeedbackModal && <FeedbackManagerModal onClose={() => setShowFeedbackModal(false)} />}
     </main>
   );
 }

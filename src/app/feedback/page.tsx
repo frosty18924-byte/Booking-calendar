@@ -4,6 +4,44 @@ import { useState, Suspense, useEffect } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 
+interface ScaleQuestion {
+  id: string;
+  label: string;
+  questions: Array<{
+    id: string;
+    label: string;
+    required: boolean;
+  }>;
+}
+
+interface BooleanQuestion {
+  id: string;
+  label: string;
+  required: boolean;
+  options: Array<{
+    label: string;
+    value: boolean;
+  }>;
+}
+
+interface TextQuestion {
+  id: string;
+  label: string;
+  type: 'text' | 'textarea';
+  required: boolean;
+  placeholder?: string;
+  rows?: number;
+}
+
+interface FormConfig {
+  descriptor_options: string[];
+  min_descriptors: number;
+  scale_questions: ScaleQuestion[];
+  boolean_questions: BooleanQuestion[];
+  text_questions: TextQuestion[];
+  session_time_options: string[];
+  session_time_required: boolean;
+}
 
 function ScaleInput({ label, value, onChange }: { label: string; value: number; onChange: (v: number) => void }) {
   return (
@@ -34,75 +72,143 @@ function FeedbackForm() {
   const eventDate = searchParams?.get('date') || '';
   const eventId = searchParams?.get('event') || '';
 
-  const [fields, setFields] = useState<any[]>([]);
-  const [formResponses, setFormResponses] = useState<Record<string, any>>({});
-  const [name, setName] = useState('');
+  const [config, setConfig] = useState<FormConfig | null>(null);
+  const [loadingConfig, setLoadingConfig] = useState(true);
+  const [scaleValues, setScaleValues] = useState<Record<string, number>>({});
+  const [booleanValues, setBooleanValues] = useState<Record<string, boolean | null>>({});
+  const [textValues, setTextValues] = useState<Record<string, string>>({});
+  const [selectedDescriptors, setSelectedDescriptors] = useState<string[]>([]);
+  const [sessionTime, setSessionTime] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [error, setError] = useState('');
 
   useEffect(() => {
-    async function loadConfig() {
-      const { data } = await supabase.from('feedback_settings').select('config').eq('key', 'default_form').single();
-      if (data?.config?.fields) {
-        setFields(data.config.fields);
-        // Initialize responses
-        const initial: any = {};
-        data.config.fields.forEach((f: any) => {
-          if (f.type === 'scale') {
-            initial[`${f.id}_before`] = 5;
-            initial[`${f.id}_after`] = 5;
-          } else if (f.type === 'multi-select' || f.type === 'descriptors') {
-            initial[f.id] = [];
-          } else {
-            initial[f.id] = '';
-          }
-        });
-        setFormResponses(initial);
-      }
-    }
-    loadConfig();
+    fetchConfig();
   }, []);
 
+  async function fetchConfig() {
+    const { data } = await supabase
+      .from('feedback_form_config')
+      .select('*')
+      .eq('is_active', true)
+      .single();
+    
+    if (data) {
+      setConfig(data);
+      
+      // Initialize default values
+      const initialScaleValues: Record<string, number> = {};
+      data.scale_questions.forEach(scale => {
+        scale.questions.forEach(question => {
+          initialScaleValues[question.id] = 5;
+        });
+      });
+      setScaleValues(initialScaleValues);
+
+      const initialBooleanValues: Record<string, boolean | null> = {};
+      data.boolean_questions.forEach(question => {
+        initialBooleanValues[question.id] = null;
+      });
+      setBooleanValues(initialBooleanValues);
+
+      const initialTextValues: Record<string, string> = {};
+      data.text_questions.forEach(question => {
+        initialTextValues[question.id] = '';
+      });
+      setTextValues(initialTextValues);
+    }
+    setLoadingConfig(false);
+  }
+
+  const toggleDescriptor = (d: string) => {
+    setSelectedDescriptors(prev =>
+      prev.includes(d) ? prev.filter(x => x !== d) : [...prev, d]
+    );
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!name.trim()) { setError('Please enter your name.'); return; }
-    
-    // Check required fields
-    for (const field of fields) {
-      if (field.required) {
-        const val = formResponses[field.id];
-        if (field.type === 'descriptors' && (val?.length || 0) < 5) {
-          setError(`Please select at least 5 words for: ${field.label}`);
-          return;
-        }
-        if (!val && field.type !== 'scale' && field.type !== 'descriptors') {
-          setError(`Please complete the field: ${field.label}`);
-          return;
-        }
+    if (!config) return;
+
+    // Validate required text fields
+    for (const question of config.text_questions) {
+      if (question.required && !textValues[question.id]?.trim()) {
+        setError(`Please enter ${question.label.toLowerCase()}.`);
+        return;
+      }
+    }
+
+    // Validate session time if required
+    if (config.session_time_required && !sessionTime) {
+      setError('Please select a session time.');
+      return;
+    }
+
+    // Validate descriptors
+    if (selectedDescriptors.length < config.min_descriptors) {
+      setError(`Please select at least ${config.min_descriptors} words to describe the session.`);
+      return;
+    }
+
+    // Validate required boolean fields
+    for (const question of config.boolean_questions) {
+      if (question.required && booleanValues[question.id] === null) {
+        setError(`Please answer: ${question.label}`);
+        return;
       }
     }
 
     setError('');
     setSubmitting(true);
 
-    const { error: dbError } = await supabase.from('course_feedback').insert({
+    // Soft duplicate check — same name + course + date
+    const nameValue = textValues['respondent_name'] || '';
+    if (courseName && eventDate && nameValue) {
+      const { data: existing } = await supabase
+        .from('course_feedback')
+        .select('id')
+        .eq('respondent_name', nameValue.trim())
+        .eq('course_name', courseName)
+        .eq('event_date', eventDate)
+        .limit(1);
+      if (existing && existing.length > 0) {
+        setError('It looks like you have already submitted feedback for this session. Thank you!');
+        setSubmitting(false);
+        return;
+      }
+    }
+
+    // Build the submission data
+    const submissionData: any = {
       event_id: eventId || null,
       course_name: courseName || null,
       event_date: eventDate || null,
-      respondent_name: name.trim(),
-      responses: formResponses,
-      // Legacy columns for backward compatibility / results page
-      session_time: formResponses['session_time'] || 'All Day',
-      knowledge_before: formResponses['knowledge_before'] || 5,
-      knowledge_after: formResponses['knowledge_after'] || 5,
-      confidence_before: formResponses['confidence_before'] || 5,
-      confidence_after: formResponses['confidence_after'] || 5,
-      work_role_relevance: formResponses['relevance'] || 5,
-      session_descriptors: formResponses['descriptors'] || [],
-      additional_comments: formResponses['comments'] || null
+      respondent_name: nameValue.trim(),
+      session_time: sessionTime,
+      session_descriptors: selectedDescriptors,
+    };
+
+    // Add scale values
+    config.scale_questions.forEach(scale => {
+      scale.questions.forEach(question => {
+        submissionData[question.id] = scaleValues[question.id];
+      });
     });
+
+    // Add boolean values
+    config.boolean_questions.forEach(question => {
+      submissionData[question.id] = booleanValues[question.id];
+    });
+
+    // Add text values (excluding respondent_name which is already handled)
+    config.text_questions.forEach(question => {
+      if (question.id !== 'respondent_name') {
+        submissionData[question.id] = textValues[question.id]?.trim() || null;
+      }
+    });
+
+    const { error: dbError } = await supabase.from('course_feedback').insert(submissionData);
 
     setSubmitting(false);
     if (dbError) {
@@ -111,6 +217,30 @@ function FeedbackForm() {
       setSubmitted(true);
     }
   };
+
+  if (loadingConfig) {
+    return (
+      <div className="min-h-screen bg-slate-900 flex items-center justify-center p-4">
+        <div className="bg-slate-800 rounded-2xl p-10 max-w-md w-full text-center shadow-2xl">
+          <div className="text-6xl mb-4">⏳</div>
+          <h2 className="text-2xl font-black text-white mb-2 uppercase">Loading...</h2>
+          <p className="text-slate-400">Preparing your feedback form.</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!config) {
+    return (
+      <div className="min-h-screen bg-slate-900 flex items-center justify-center p-4">
+        <div className="bg-slate-800 rounded-2xl p-10 max-w-md w-full text-center shadow-2xl">
+          <div className="text-6xl mb-4">⚠️</div>
+          <h2 className="text-2xl font-black text-white mb-2 uppercase">Form Not Available</h2>
+          <p className="text-slate-400">The feedback form is not currently configured.</p>
+        </div>
+      </div>
+    );
+  }
 
   if (submitted) {
     return (
@@ -142,124 +272,124 @@ function FeedbackForm() {
 
           <form onSubmit={handleSubmit} className="px-6 py-6 space-y-6">
 
-            {/* Name */}
-            <div>
-              <label className="block text-sm font-semibold text-slate-300 mb-2">Your Name <span className="text-red-400">*</span></label>
-              <input
-                type="text"
-                value={name}
-                onChange={e => setName(e.target.value)}
-                placeholder="Enter your full name"
-                className="w-full bg-slate-700 border border-slate-600 rounded-lg px-4 py-3 text-white placeholder-slate-500 focus:outline-none focus:border-blue-500 transition-colors"
-              />
-            </div>
-
-            {/* Dynamic Rendering of Fields */}
-            {fields.map((field) => (
-              <div key={field.id} className="space-y-4">
-                
-                {field.type === 'scale' ? (
-                  <div className="bg-slate-700/50 rounded-xl p-4">
-                    <h3 className="text-sm font-black text-slate-200 uppercase tracking-wide mb-4">{field.label}</h3>
-                    {field.before_label && (
-                      <ScaleInput 
-                        label={field.before_label} 
-                        value={formResponses[`${field.id}_before`] || 5} 
-                        onChange={v => setFormResponses({...formResponses, [`${field.id}_before`]: v})} 
-                      />
-                    )}
-                    {field.after_label && (
-                      <ScaleInput 
-                        label={field.after_label} 
-                        value={formResponses[`${field.id}_after`] || 5} 
-                        onChange={v => setFormResponses({...formResponses, [`${field.id}_after`]: v})} 
-                      />
-                    )}
-                    {!field.before_label && !field.after_label && (
-                       <ScaleInput 
-                         label={field.label} 
-                         value={formResponses[field.id] || 5} 
-                         onChange={v => setFormResponses({...formResponses, [field.id]: v})} 
-                       />
-                    )}
-                  </div>
-                ) : field.type === 'descriptors' || field.type === 'multi-select' ? (
-                  <div>
-                    <label className="block text-sm font-semibold text-slate-300 mb-2">{field.label}</label>
-                    <div className="flex flex-wrap gap-2">
-                      {(field.options || []).map((opt: string) => {
-                        const isSelected = (formResponses[field.id] || []).includes(opt);
-                        return (
-                          <button
-                            key={opt}
-                            type="button"
-                            onClick={() => {
-                              const current = formResponses[field.id] || [];
-                              const next = isSelected ? current.filter((x: string) => x !== opt) : [...current, opt];
-                              setFormResponses({...formResponses, [field.id]: next});
-                            }}
-                            className={`px-3 py-1.5 rounded-full text-sm font-medium transition-all ${
-                              isSelected ? 'bg-blue-600 text-white shadow-md' : 'bg-slate-700 text-slate-400 hover:bg-slate-600'
-                            }`}
-                          >
-                            {opt}
-                          </button>
-                        );
-                      })}
-                    </div>
-                  </div>
-                ) : field.type === 'select' ? (
-                  <div>
-                    <label className="block text-sm font-semibold text-slate-300 mb-2">{field.label}</label>
-                    <select 
-                      value={formResponses[field.id]}
-                      onChange={e => setFormResponses({...formResponses, [field.id]: e.target.value})}
-                      className="w-full bg-slate-700 border border-slate-600 rounded-lg px-4 py-3 text-white outline-none focus:border-blue-500"
-                    >
-                      <option value="">Select an option...</option>
-                      {(field.options || []).map((opt: string) => <option key={opt} value={opt}>{opt}</option>)}
-                    </select>
-                  </div>
-                ) : field.type === 'radio' ? (
-                  <div>
-                    <label className="block text-sm font-semibold text-slate-300 mb-2">{field.label}</label>
-                    <div className="flex flex-wrap gap-3">
-                      {(field.options || []).map((opt: string) => (
-                        <button
-                          key={opt}
-                          type="button"
-                          onClick={() => setFormResponses({...formResponses, [field.id]: opt})}
-                          className={`flex-1 py-3 px-4 rounded-lg font-semibold text-sm transition-all ${
-                            formResponses[field.id] === opt
-                              ? 'bg-blue-600 text-white shadow-md'
-                              : 'bg-slate-700 text-slate-400 hover:bg-slate-600'
-                          }`}
-                        >
-                          {opt}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
+            {/* Dynamic Text Questions */}
+            {config.text_questions.map((question) => (
+              <div key={question.id}>
+                <label className="block text-sm font-semibold text-slate-300 mb-2">
+                  {question.label} {question.required && <span className="text-red-400">*</span>}
+                </label>
+                {question.type === 'textarea' ? (
+                  <textarea
+                    value={textValues[question.id] || ''}
+                    onChange={e => setTextValues({...textValues, [question.id]: e.target.value})}
+                    rows={question.rows || 3}
+                    placeholder={question.placeholder || ''}
+                    className="w-full bg-slate-700 border border-slate-600 rounded-lg px-4 py-3 text-white placeholder-slate-500 focus:outline-none focus:border-blue-500 transition-colors resize-none"
+                  />
                 ) : (
-                  <div>
-                    <label className="block text-sm font-semibold text-slate-300 mb-2">{field.label}</label>
-                    {field.type === 'text' ? (
-                      <textarea
-                        value={formResponses[field.id]}
-                        onChange={e => setFormResponses({...formResponses, [field.id]: e.target.value})}
-                        rows={3}
-                        className="w-full bg-slate-700 border border-slate-600 rounded-lg px-4 py-3 text-white focus:outline-none focus:border-blue-500"
-                      />
-                    ) : (
-                      <input
-                        type="text"
-                        value={formResponses[field.id]}
-                        onChange={e => setFormResponses({...formResponses, [field.id]: e.target.value})}
-                        className="w-full bg-slate-700 border border-slate-600 rounded-lg px-4 py-3 text-white focus:outline-none focus:border-blue-500"
-                      />
-                    )}
-                  </div>
+                  <input
+                    type="text"
+                    value={textValues[question.id] || ''}
+                    onChange={e => setTextValues({...textValues, [question.id]: e.target.value})}
+                    placeholder={question.placeholder || ''}
+                    className="w-full bg-slate-700 border border-slate-600 rounded-lg px-4 py-3 text-white placeholder-slate-500 focus:outline-none focus:border-blue-500 transition-colors"
+                  />
                 )}
+              </div>
+            ))}
+
+            {/* Session Time */}
+            {config.session_time_options.length > 0 && (
+              <div>
+                <label className="block text-sm font-semibold text-slate-300 mb-2">
+                  Session Time {config.session_time_required && <span className="text-red-400">*</span>}
+                </label>
+                <div className="flex gap-3">
+                  {config.session_time_options.map((time) => (
+                    <button
+                      key={time}
+                      type="button"
+                      onClick={() => setSessionTime(time)}
+                      className={`flex-1 py-3 rounded-lg font-semibold text-sm transition-all ${
+                        sessionTime === time
+                          ? 'bg-blue-600 text-white shadow-md'
+                          : 'bg-slate-700 text-slate-400 hover:bg-slate-600'
+                      }`}
+                    >
+                      {time}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Dynamic Scale Questions */}
+            {config.scale_questions.map((scale) => (
+              <div key={scale.id} className="bg-slate-700/50 rounded-xl p-4">
+                <h3 className="text-sm font-black text-slate-200 uppercase tracking-wide mb-4">{scale.label}</h3>
+                {scale.questions.map((question) => (
+                  <ScaleInput
+                    key={question.id}
+                    label={question.label}
+                    value={scaleValues[question.id] || 5}
+                    onChange={(value) => setScaleValues({...scaleValues, [question.id]: value})}
+                  />
+                ))}
+              </div>
+            ))}
+
+            {/* Descriptors */}
+            {config.descriptor_options.length > 0 && (
+              <div>
+                <label className="block text-sm font-semibold text-slate-300 mb-1">
+                  Describe this session <span className="text-slate-500 font-normal">(select {config.min_descriptors} or more)</span>
+                </label>
+                <p className="text-xs text-slate-500 mb-3">
+                  {selectedDescriptors.length < config.min_descriptors
+                    ? `Select at least ${config.min_descriptors - selectedDescriptors.length} more`
+                    : `${selectedDescriptors.length} selected ✓`}
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  {config.descriptor_options.map((descriptor) => (
+                    <button
+                      key={descriptor}
+                      type="button"
+                      onClick={() => toggleDescriptor(descriptor)}
+                      className={`px-3 py-1.5 rounded-full text-sm font-medium transition-all ${
+                        selectedDescriptors.includes(descriptor)
+                          ? 'bg-blue-600 text-white shadow-md'
+                          : 'bg-slate-700 text-slate-400 hover:bg-slate-600'
+                      }`}
+                    >
+                      {descriptor}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Dynamic Boolean Questions */}
+            {config.boolean_questions.map((question) => (
+              <div key={question.id}>
+                <label className="block text-sm font-semibold text-slate-300 mb-2">
+                  {question.label} {question.required && <span className="text-red-400">*</span>}
+                </label>
+                <div className="flex gap-3">
+                  {question.options.map((option) => (
+                    <button
+                      key={option.label}
+                      type="button"
+                      onClick={() => setBooleanValues({...booleanValues, [question.id]: option.value})}
+                      className={`flex-1 py-3 rounded-lg font-semibold text-sm transition-all ${
+                        booleanValues[question.id] === option.value
+                          ? option.value ? 'bg-green-600 text-white shadow-md' : 'bg-red-600 text-white shadow-md'
+                          : 'bg-slate-700 text-slate-400 hover:bg-slate-600'
+                      }`}
+                    >
+                      {option.label}
+                    </button>
+                  ))}
+                </div>
               </div>
             ))}
 
