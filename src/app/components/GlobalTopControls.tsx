@@ -49,16 +49,19 @@ export default function GlobalTopControls() {
   if (isDashboardPage) return null;
 
   return (
-    <div className="flex max-w-[calc(100vw-1rem)] items-center gap-2 rounded-xl border border-slate-200/70 bg-white/85 p-1.5 shadow-lg backdrop-blur dark:border-slate-700/70 dark:bg-slate-900/85">
-      {!loading && !isAuthPage && isAuthenticated && (
-        <button
-          onClick={handleSignOut}
-          className="px-2 py-1 text-xs sm:text-sm font-bold text-red-600 hover:text-red-700 transition-colors"
-        >
-          Sign Out
-        </button>
-      )}
-      <ThemeToggle />
+    <div className="flex justify-between items-center px-2 sm:px-4">
+      <div></div> {/* Empty div for left side spacing */}
+      <div className="flex items-center gap-2">
+        <ThemeToggle />
+        {!loading && !isAuthPage && isAuthenticated && (
+          <button
+            onClick={handleSignOut}
+            className="p-2 hover:opacity-80 rounded-lg font-bold text-xl sm:text-2xl text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 transition-colors"
+          >
+            Sign Out
+          </button>
+        )}
+      </div>
     </div>
   );
 }
