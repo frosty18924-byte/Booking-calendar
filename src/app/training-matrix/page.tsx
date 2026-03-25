@@ -3,7 +3,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
-import HomeButton from '@/app/components/HomeButton';
 import { parseFirstThreeRowsFromCsvString, CsvHeaderRows } from './csvHeaderUtils';
 import { debugLog } from '@/lib/debug';
 
@@ -1351,7 +1350,7 @@ export default function TrainingMatrixPage() {
       {/* Header */}
       <div className={`p-6 ${isDark ? 'bg-gray-800' : 'bg-white'} border-b ${isDark ? 'border-gray-700' : 'border-gray-200'}`}>
         <div className="flex justify-between items-center mb-4">
-          <HomeButton />
+          <div className="w-10" />
           <h1 className={`text-3xl font-bold ${isDark ? 'text-white' : 'text-gray-900'}`}>Training Matrix</h1>
           <div className="w-10" />
         </div>

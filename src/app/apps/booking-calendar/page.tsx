@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from 'react';
 import CalendarPage from '@/app/page';
-import HomeButton from '@/app/components/HomeButton';
 import { supabase } from '@/lib/supabase';
 
 export default function BookingCalendarPage() {
@@ -32,10 +31,10 @@ export default function BookingCalendarPage() {
   const checkAuth = async (): Promise<void> => {
     try {
       const {
-        data: { user },
-      } = await supabase.auth.getUser();
+        data: { session },
+      } = await supabase.auth.getSession();
 
-      if (!user) {
+      if (!session?.user) {
         window.location.href = '/login';
       }
     } catch (error) {
@@ -46,7 +45,6 @@ export default function BookingCalendarPage() {
 
   return (
     <div className={`min-h-screen transition-colors duration-500 ${isDark ? 'dark' : ''}`}>
-      <HomeButton />
       <div className="relative">
         <CalendarPage />
       </div>

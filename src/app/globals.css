@@ -1,5 +1,8 @@
 @import "tailwindcss";
 
+/* Make `dark:` respond to a `.dark` class (not OS-level media query). */
+@custom-variant dark (&:where(.dark, .dark *));
+
 :root {
   --background: #ffffff;
   --foreground: #171717;
@@ -16,13 +19,28 @@ body {
   font-family: Arial, Helvetica, sans-serif;
 }
 
+html,
+body {
+  height: 100%;
+}
+
+html {
+  scrollbar-gutter: stable;
+}
+
+@supports not (scrollbar-gutter: stable) {
+  html {
+    overflow-y: scroll;
+  }
+}
+
 /* Hover Icon Styles for Buttons */
-button {
+button:not(.no-ui-motion):not(.static):not(.fixed):not(.absolute):not(.relative):not(.sticky) {
   position: relative;
 }
 
 /* Icon hover effect with scale */
-button::before {
+button:not(.no-ui-motion):not(.static):not(.fixed):not(.absolute):not(.relative):not(.sticky)::before {
   content: '';
   position: absolute;
   inset: 0;
@@ -33,14 +51,12 @@ button::before {
 }
 
 /* Enhance icons on hover */
-button:hover {
-  transform: translateY(-1px);
+button:not(.no-ui-motion):not(.static):not(.fixed):not(.absolute):not(.relative):not(.sticky):hover {
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
   transition: all 0.2s ease-in-out;
 }
 
-button:active {
-  transform: translateY(0);
+button:not(.no-ui-motion):not(.static):not(.fixed):not(.absolute):not(.relative):not(.sticky):active {
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 

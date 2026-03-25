@@ -27,9 +27,11 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           } catch (_) {}
         `}} />
       </head>
-      <body className="font-sans antialiased bg-white text-slate-900 dark:bg-[#0f172a] dark:text-white min-h-screen">
+      <body className="font-sans antialiased bg-white text-slate-900 dark:bg-[#0f172a] dark:text-white h-screen overflow-hidden">
         <GlobalTopControls />
-        {children}
+        <div id="app-scroll" className="min-h-screen overflow-y-auto">
+          {children}
+        </div>
       </body>
     </html>
   );

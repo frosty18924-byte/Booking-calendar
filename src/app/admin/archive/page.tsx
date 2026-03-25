@@ -163,14 +163,7 @@ export default function ArchivePage() {
     <main className={`min-h-screen p-4 pt-20 sm:p-8 sm:pt-24 ${isDark ? 'bg-gray-900 text-white' : 'bg-gray-50 text-gray-900'}`}>
       <div className="max-w-5xl mx-auto">
         <div className="flex items-center justify-between mb-10">
-          <button
-            onClick={() => router.push('/dashboard')}
-            className={`px-3 py-2 rounded font-semibold ${isDark ? 'bg-gray-700 hover:bg-gray-600 text-white' : 'bg-gray-200 hover:bg-gray-300 text-gray-900'}`}
-            title="Go to Dashboard"
-            aria-label="Home"
-          >
-            <Icon name="home" className="w-5 h-5" />
-          </button>
+          <div className="w-10" />
           <h1 className="text-xl sm:text-2xl font-black uppercase tracking-tight">Archive</h1>
           <button
             onClick={loadItems}

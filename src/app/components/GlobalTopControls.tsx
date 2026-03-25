@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import ThemeToggle from './ThemeToggle';
+import HomeButton from './HomeButton';
 import { supabase } from '@/lib/supabase';
 
 export default function GlobalTopControls() {
@@ -15,9 +16,9 @@ export default function GlobalTopControls() {
     let mounted = true;
 
     const init = async () => {
-      const { data } = await supabase.auth.getUser();
+      const { data } = await supabase.auth.getSession();
       if (!mounted) return;
-      setIsAuthenticated(!!data.user);
+      setIsAuthenticated(!!data.session?.user);
       setLoading(false);
     };
 
@@ -46,22 +47,26 @@ export default function GlobalTopControls() {
     router.push('/login');
   };
 
-  if (isDashboardPage) return null;
+  if (isAuthPage || isDashboardPage) return null;
+
+  const showSignOut = !loading && isAuthenticated;
 
   return (
-    <div className="flex justify-between items-center px-2 sm:px-4">
-      <div></div> {/* Empty div for left side spacing */}
-      <div className="flex items-center gap-2">
-        <ThemeToggle />
-        {!loading && !isAuthPage && isAuthenticated && (
+    <>
+      <HomeButton />
+      <div style={{ position: 'fixed', top: '4rem', right: '1rem', zIndex: 1000 }}>
+        <div className="flex items-center gap-2 rounded-xl border border-slate-200/70 bg-white/85 p-1.5 shadow-lg backdrop-blur dark:border-slate-700/70 dark:bg-slate-900/85">
           <button
             onClick={handleSignOut}
-            className="p-2 hover:opacity-80 rounded-lg font-bold text-xl sm:text-2xl text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 transition-colors"
+            disabled={!showSignOut}
+            aria-hidden={!showSignOut}
+            className={`no-ui-motion relative px-2 py-1 text-xs sm:text-sm font-bold text-red-600 hover:text-red-700 transition-colors ${showSignOut ? '' : 'invisible pointer-events-none'}`}
           >
             Sign Out
           </button>
-        )}
+          <ThemeToggle className="no-ui-motion relative" />
+        </div>
       </div>
-    </div>
+    </>
   );
 }

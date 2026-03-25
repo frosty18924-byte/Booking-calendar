@@ -130,10 +130,17 @@ export default function CalendarPage() {
   }, [currentMonth]);
 
   async function fetchUser() {
-    const { data: { user: currentUser } } = await supabase.auth.getUser();
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
+    const currentUser = session?.user ?? null;
     setUser(currentUser);
     if (currentUser) {
-      const { data: profile } = await supabase.from('profiles').select('role_tier').eq('id', currentUser.id).single();
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('role_tier')
+        .eq('id', currentUser.id)
+        .single();
       if (profile) setUserRole(profile.role_tier);
     }
   }
