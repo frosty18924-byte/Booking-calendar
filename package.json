@@ -6,22 +6,28 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "test": "npm run test:routes && npm run test:e2e",
+    "test:routes": "node scripts/verify-routes.mjs",
+    "test:e2e": "playwright test",
+    "test:e2e:ui": "playwright test --ui",
+    "test:e2e:report": "playwright show-report"
   },
   "dependencies": {
+    "@aws-sdk/client-s3": "^3.922.0",
     "@supabase/ssr": "^0.8.0",
     "@supabase/supabase-js": "^2.90.1",
-    "@aws-sdk/client-s3": "^3.922.0",
     "date-fns": "^4.1.0",
     "dotenv": "^17.2.3",
     "next": "^15.5.12",
     "nodemailer": "^7.0.12",
-    "read-excel-file": "^6.0.1",
-    "readable-stream": "^4.7.0",
     "react": "^19.0.0",
-    "react-dom": "^19.0.0"
+    "react-dom": "^19.0.0",
+    "read-excel-file": "^6.0.1",
+    "readable-stream": "^4.7.0"
   },
   "devDependencies": {
+    "@playwright/test": "^1.58.2",
     "@tailwindcss/postcss": "^4.0.0",
     "@types/node": "^20",
     "@types/nodemailer": "^7.0.5",
