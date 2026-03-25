@@ -42,6 +42,8 @@ export default function DashboardPage() {
   const [userRole, setUserRole] = useState<string | null>(null);
   const [emailTestMode, setEmailTestMode] = useState(false);
   const [testEmailAddress, setTestEmailAddress] = useState('');
+  const [sendingTestEmail, setSendingTestEmail] = useState(false);
+  const [testEmailMessage, setTestEmailMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const [emailLogs, setEmailLogs] = useState<EmailLogItem[]>([]);
   const [emailLogsLoading, setEmailLogsLoading] = useState(false);
 
@@ -104,6 +106,48 @@ export default function DashboardPage() {
   const handleSaveEmailSettings = () => {
     saveEmailTestSettings({ enabled: emailTestMode, address: testEmailAddress });
     alert(`Email test mode ${emailTestMode ? 'enabled' : 'disabled'}`);
+  };
+
+  const handleSendTestEmail = async () => {
+    const target = testEmailAddress.trim();
+    if (!target) {
+      alert('Enter a test email address first.');
+      return;
+    }
+
+    setSendingTestEmail(true);
+    setTestEmailMessage(null);
+    try {
+      const res = await fetch('/api/test-email', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-email-test-mode': emailTestMode ? 'true' : 'false',
+          'x-test-email-address': target,
+        },
+        body: JSON.stringify({ email: target }),
+      });
+
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        const details = data?.details ? ` (${String(data.details)})` : '';
+        setTestEmailMessage({
+          type: 'error',
+          text: `Failed to send test email${data?.provider ? ` via ${data.provider}` : ''}${details}`,
+        });
+        return;
+      }
+
+      setTestEmailMessage({
+        type: 'success',
+        text: `Test email sent${data?.provider ? ` via ${data.provider}` : ''}${data?.test_mode ? ' (TEST MODE)' : ''}`,
+      });
+      fetchEmailLogs();
+    } catch (error) {
+      setTestEmailMessage({ type: 'error', text: `Failed to send test email (${String(error)})` });
+    } finally {
+      setSendingTestEmail(false);
+    }
   };
 
   const handleSignOut = async () => {
@@ -466,6 +510,21 @@ export default function DashboardPage() {
               >
                 Save Email Settings
               </button>
+
+              <div className="mt-3 flex items-center gap-2">
+                <button
+                  onClick={handleSendTestEmail}
+                  disabled={sendingTestEmail}
+                  className="px-4 py-2 rounded font-semibold text-white bg-emerald-600 hover:bg-emerald-700 disabled:opacity-60"
+                >
+                  {sendingTestEmail ? 'Sending…' : 'Send Test Email'}
+                </button>
+                {testEmailMessage && (
+                  <p className={`text-sm font-semibold ${testEmailMessage.type === 'success' ? 'text-emerald-400' : 'text-red-400'}`}>
+                    {testEmailMessage.text}
+                  </p>
+                )}
+              </div>
             </div>
 
             <div className={`rounded-lg border p-4 ${isDark ? 'border-gray-700 bg-gray-900' : 'border-gray-200 bg-gray-50'}`}>

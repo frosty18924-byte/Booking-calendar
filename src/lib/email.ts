@@ -72,6 +72,16 @@ function getEmailProviderLabel() {
   return 'unknown';
 }
 
+export interface EmailSendDetailedResult {
+  success: boolean;
+  provider: string;
+  testMode: boolean;
+  messageId?: string;
+  errorText?: string;
+  originalRecipients: string[];
+  deliveredRecipients: string[];
+}
+
 async function logEmailSend(entry: {
   subject: string;
   status: 'sent' | 'failed';
@@ -306,6 +316,70 @@ export async function sendBulkEmail(emails: string[], subject: string, htmlConte
   });
 
   return result.success;
+}
+
+export async function sendBulkEmailDetailed(
+  emails: string[],
+  subject: string,
+  htmlContent: string,
+  options?: EmailSendOptions
+): Promise<EmailSendDetailedResult> {
+  const originalRecipients = [...new Set(emails.map((e) => e?.trim()).filter(Boolean))];
+  const { recipients, testMode } = resolveRecipients(emails, options);
+  const provider = getEmailProviderLabel();
+
+  if (recipients.length === 0) {
+    const errorText = 'No valid recipients found for sendBulkEmailDetailed';
+    await logEmailSend({
+      subject,
+      status: 'failed',
+      testMode,
+      errorText,
+      originalRecipients,
+      deliveredRecipients: [],
+    });
+    return {
+      success: false,
+      provider,
+      testMode,
+      errorText,
+      originalRecipients,
+      deliveredRecipients: [],
+    };
+  }
+
+  const finalSubject = testMode ? `[TEST] ${subject}` : subject;
+  const wrappedHtml = testMode
+    ? `
+      <div style="font-family: sans-serif; margin-bottom: 12px; padding: 12px; border: 1px dashed #f59e0b; border-radius: 8px; background: #fffbeb;">
+        <strong>TEST MODE:</strong> Original recipients were suppressed.
+      </div>
+      ${htmlContent}
+    `
+    : htmlContent;
+
+  const mode: RecipientMode = recipients.length > 1 ? 'bcc' : 'to';
+  const result = await sendRawEmail(recipients, finalSubject, wrappedHtml, mode);
+
+  await logEmailSend({
+    subject: finalSubject,
+    status: result.success ? 'sent' : 'failed',
+    testMode,
+    messageId: result.messageId,
+    errorText: result.errorText,
+    originalRecipients,
+    deliveredRecipients: recipients,
+  });
+
+  return {
+    success: result.success,
+    provider,
+    testMode,
+    messageId: result.messageId,
+    errorText: result.errorText,
+    originalRecipients,
+    deliveredRecipients: recipients,
+  };
 }
 
 export { sendEmail };

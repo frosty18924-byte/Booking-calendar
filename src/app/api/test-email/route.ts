@@ -1,7 +1,11 @@
 import { NextResponse } from 'next/server';
-import { sendEmail } from '@/lib/email';
+import { getEmailSendOptionsFromHeaders, sendBulkEmailDetailed } from '@/lib/email';
+import { requireRole } from '@/lib/apiAuth';
 
 export async function POST(request: Request) {
+  const authz = await requireRole(['admin', 'scheduler']);
+  if ('error' in authz) return authz.error;
+
   try {
     const { email } = await request.json();
     
@@ -31,16 +35,29 @@ export async function POST(request: Request) {
       </div>
     `;
 
-    const success = await sendEmail(email, '✅ Email Test - Training Portal', testHtml);
+    const emailOptions = getEmailSendOptionsFromHeaders(
+      request.headers.get('x-email-test-mode'),
+      request.headers.get('x-test-email-address')
+    );
 
-    if (success) {
+    const result = await sendBulkEmailDetailed([email], '✅ Email Test - Training Portal', testHtml, emailOptions);
+
+    if (result.success) {
       return NextResponse.json({ 
         message: 'Test email sent successfully!',
-        sent_to: email
+        sent_to: email,
+        provider: result.provider,
+        test_mode: result.testMode,
+        delivered_recipients: result.deliveredRecipients,
+        message_id: result.messageId || null,
       }, { status: 200 });
     } else {
       return NextResponse.json({ 
-        error: 'Failed to send test email' 
+        error: 'Failed to send test email',
+        provider: result.provider,
+        test_mode: result.testMode,
+        delivered_recipients: result.deliveredRecipients,
+        details: result.errorText || null,
       }, { status: 500 });
     }
 
