@@ -8,10 +8,12 @@ import CourseManagerModal from '@/app/components/CourseManagerModal';
 import LocationManagerModal from '@/app/components/LocationManagerModal';
 import ChecklistTemplateModal from '@/app/components/ChecklistTemplateModal';
 import { debugLog } from '@/lib/debug';
+import { hasPermission } from '@/lib/permissions';
 
 export default function AdminPage() {
   const router = useRouter();
   const [user, setUser] = useState<User | null>(null);
+  const [userRole, setUserRole] = useState<string | null>(null);
   const [isDark, setIsDark] = useState(true);
   const [loading, setLoading] = useState(false); // Start with false to avoid hydration
   const [showCourseModal, setShowCourseModal] = useState(false);
@@ -28,6 +30,19 @@ export default function AdminPage() {
           return;
         }
         setUser(currentUser);
+
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('role_tier')
+          .eq('id', currentUser.id)
+          .single();
+        const role = profile?.role_tier || null;
+        setUserRole(role);
+
+        if (!hasPermission(role, 'ADMIN_DASHBOARD', 'canView')) {
+          router.push('/apps/booking-calendar');
+          return;
+        }
       } catch (err) {
         console.error('Error checking auth:', err);
         router.push('/login');
@@ -77,6 +92,8 @@ export default function AdminPage() {
     router.push('/apps/booking-calendar');
   };
 
+  const isAdmin = (userRole || '').trim().toLowerCase() === 'admin';
+
   if (loading) {
     return (
       <main style={{ backgroundColor: isDark ? '#0f172a' : '#f1f5f9', minHeight: '100vh' }} className="p-8 transition-colors duration-300 flex items-center justify-center">
@@ -109,43 +126,48 @@ export default function AdminPage() {
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2 sm:gap-4">
-          {/* LOCATIONS MANAGEMENT */}
-          <div style={{ backgroundColor: isDark ? '#1e293b' : '#ffffff', borderColor: isDark ? '#334155' : '#e2e8f0' }} className="p-3 sm:p-4 rounded-lg border shadow-sm group hover:border-amber-500 transition-all cursor-pointer" onClick={() => setShowLocationModal(true)}>
-             <div className="text-2xl sm:text-3xl mb-2">📍</div>
-             <h3 style={{ color: isDark ? '#f1f5f9' : '#1e293b' }} className="text-sm sm:text-base font-bold mb-1">Manage Venues</h3>
-             <p style={{ color: isDark ? '#94a3b8' : '#64748b' }} className="text-xs mb-2">Add and manage training locations.</p>
-             <button 
-               onClick={(e) => {
-                 e.stopPropagation();
-                 setShowLocationModal(true);
-               }}
-               style={{ backgroundColor: '#f59e0b' }} 
-               onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#d97706'} 
-               onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#f59e0b'} 
-               className="w-full py-1 sm:py-1.5 text-white font-bold rounded text-xs hover:scale-105 active:scale-95 shadow-md hover:shadow-lg duration-200"
-             >
-               🏢 Manage
-             </button>
-          </div>
+          {/* ADMIN-ONLY MANAGEMENT */}
+          {isAdmin && (
+            <>
+              {/* LOCATIONS MANAGEMENT */}
+              <div style={{ backgroundColor: isDark ? '#1e293b' : '#ffffff', borderColor: isDark ? '#334155' : '#e2e8f0' }} className="p-3 sm:p-4 rounded-lg border shadow-sm group hover:border-amber-500 transition-all cursor-pointer" onClick={() => setShowLocationModal(true)}>
+                 <div className="text-2xl sm:text-3xl mb-2">📍</div>
+                 <h3 style={{ color: isDark ? '#f1f5f9' : '#1e293b' }} className="text-sm sm:text-base font-bold mb-1">Manage Venues</h3>
+                 <p style={{ color: isDark ? '#94a3b8' : '#64748b' }} className="text-xs mb-2">Add and manage training locations.</p>
+                 <button 
+                   onClick={(e) => {
+                     e.stopPropagation();
+                     setShowLocationModal(true);
+                   }}
+                   style={{ backgroundColor: '#f59e0b' }} 
+                   onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#d97706'} 
+                   onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#f59e0b'} 
+                   className="w-full py-1 sm:py-1.5 text-white font-bold rounded text-xs hover:scale-105 active:scale-95 shadow-md hover:shadow-lg duration-200"
+                 >
+                   🏢 Manage
+                 </button>
+              </div>
 
-          {/* CATALOG MANAGEMENT */}
-          <div style={{ backgroundColor: isDark ? '#1e293b' : '#ffffff', borderColor: isDark ? '#334155' : '#e2e8f0' }} className="p-3 sm:p-4 rounded-lg border shadow-sm group hover:border-purple-500 transition-all cursor-pointer" onClick={() => setShowCourseModal(true)}>
-             <div className="text-2xl sm:text-3xl mb-2">📚</div>
-             <h3 style={{ color: isDark ? '#f1f5f9' : '#1e293b' }} className="text-sm sm:text-base font-bold mb-1">Course Catalog</h3>
-             <p style={{ color: isDark ? '#94a3b8' : '#64748b' }} className="text-xs mb-2">Create training types and set capacities.</p>
-             <button 
-               onClick={(e) => {
-                 e.stopPropagation();
-                 setShowCourseModal(true);
-               }}
-               style={{ backgroundColor: '#a855f7' }} 
-               onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#9333ea'} 
-               onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#a855f7'} 
-               className="w-full py-1 sm:py-1.5 text-white font-bold rounded text-xs hover:scale-105 active:scale-95 shadow-md hover:shadow-lg duration-200"
-             >
-               📖 Manage
-             </button>
-          </div>
+              {/* CATALOG MANAGEMENT */}
+              <div style={{ backgroundColor: isDark ? '#1e293b' : '#ffffff', borderColor: isDark ? '#334155' : '#e2e8f0' }} className="p-3 sm:p-4 rounded-lg border shadow-sm group hover:border-purple-500 transition-all cursor-pointer" onClick={() => setShowCourseModal(true)}>
+                 <div className="text-2xl sm:text-3xl mb-2">📚</div>
+                 <h3 style={{ color: isDark ? '#f1f5f9' : '#1e293b' }} className="text-sm sm:text-base font-bold mb-1">Course Catalog</h3>
+                 <p style={{ color: isDark ? '#94a3b8' : '#64748b' }} className="text-xs mb-2">Create training types and set capacities.</p>
+                 <button 
+                   onClick={(e) => {
+                     e.stopPropagation();
+                     setShowCourseModal(true);
+                   }}
+                   style={{ backgroundColor: '#a855f7' }} 
+                   onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#9333ea'} 
+                   onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#a855f7'} 
+                   className="w-full py-1 sm:py-1.5 text-white font-bold rounded text-xs hover:scale-105 active:scale-95 shadow-md hover:shadow-lg duration-200"
+                 >
+                   📖 Manage
+                 </button>
+              </div>
+            </>
+          )}
 
           {/* ANALYTICS SHORTCUT */}
           <div style={{ backgroundColor: isDark ? '#1e293b' : '#ffffff', borderColor: isDark ? '#334155' : '#e2e8f0' }} className="p-3 sm:p-4 rounded-lg border shadow-sm group hover:border-emerald-500 transition-all cursor-pointer" onClick={() => router.push('/analytics?from=/admin')}>
@@ -185,51 +207,56 @@ export default function AdminPage() {
              </button>
           </div>
 
-          {/* CHECKLIST TEMPLATE */}
-          <div
-            style={{ backgroundColor: isDark ? '#1e293b' : '#ffffff', borderColor: isDark ? '#334155' : '#e2e8f0' }}
-            className="p-3 sm:p-4 rounded-lg border shadow-sm group hover:border-indigo-500 transition-all cursor-pointer"
-            onClick={() => setShowChecklistTemplateModal(true)}
-          >
-            <div className="text-2xl sm:text-3xl mb-2">✅</div>
-            <h3 style={{ color: isDark ? '#f1f5f9' : '#1e293b' }} className="text-sm sm:text-base font-bold mb-1">Checklist Template</h3>
-            <p style={{ color: isDark ? '#94a3b8' : '#64748b' }} className="text-xs mb-2">Add/remove booking checklist items.</p>
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                setShowChecklistTemplateModal(true);
-              }}
-              style={{ backgroundColor: '#6366f1' }}
-              onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = '#4f46e5')}
-              onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = '#6366f1')}
-              className="w-full py-1 sm:py-1.5 text-white font-bold rounded text-xs hover:scale-105 active:scale-95 shadow-md hover:shadow-lg duration-200"
-            >
-              ✅ Manage
-            </button>
-          </div>
+          {/* ADMIN-ONLY */}
+          {isAdmin && (
+            <>
+              {/* CHECKLIST TEMPLATE */}
+              <div
+                style={{ backgroundColor: isDark ? '#1e293b' : '#ffffff', borderColor: isDark ? '#334155' : '#e2e8f0' }}
+                className="p-3 sm:p-4 rounded-lg border shadow-sm group hover:border-indigo-500 transition-all cursor-pointer"
+                onClick={() => setShowChecklistTemplateModal(true)}
+              >
+                <div className="text-2xl sm:text-3xl mb-2">✅</div>
+                <h3 style={{ color: isDark ? '#f1f5f9' : '#1e293b' }} className="text-sm sm:text-base font-bold mb-1">Checklist Template</h3>
+                <p style={{ color: isDark ? '#94a3b8' : '#64748b' }} className="text-xs mb-2">Add/remove booking checklist items.</p>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setShowChecklistTemplateModal(true);
+                  }}
+                  style={{ backgroundColor: '#6366f1' }}
+                  onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = '#4f46e5')}
+                  onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = '#6366f1')}
+                  className="w-full py-1 sm:py-1.5 text-white font-bold rounded text-xs hover:scale-105 active:scale-95 shadow-md hover:shadow-lg duration-200"
+                >
+                  ✅ Manage
+                </button>
+              </div>
 
-          {/* AUTOMATION CONTROL */}
-          <div style={{ backgroundColor: isDark ? '#1e293b' : '#ffffff', borderColor: isDark ? '#334155' : '#e2e8f0' }} className="p-3 sm:p-4 rounded-lg border shadow-sm group hover:border-cyan-500 transition-all cursor-pointer" onClick={() => router.push('/automation-control')}>
-            <div className="text-2xl sm:text-3xl mb-2">🤖</div>
-            <h3 style={{ color: isDark ? '#f1f5f9' : '#1e293b' }} className="text-sm sm:text-base font-bold mb-1">Automation Control</h3>
-            <p style={{ color: isDark ? '#94a3b8' : '#64748b' }} className="text-xs mb-2">Control internal feedback email automation system.</p>
-            <button
-              onClick={() => router.push('/automation-control')}
-              style={{ backgroundColor: '#06b6d4' }}
-              onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#0891b2'}
-              onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#06b6d4'}
-              className="w-full py-1 sm:py-1.5 text-white font-bold rounded text-xs hover:scale-105 active:scale-95 shadow-md hover:shadow-lg duration-200"
-            >
-               🤖 Control Automation
-            </button>
-          </div>
+              {/* AUTOMATION CONTROL */}
+              <div style={{ backgroundColor: isDark ? '#1e293b' : '#ffffff', borderColor: isDark ? '#334155' : '#e2e8f0' }} className="p-3 sm:p-4 rounded-lg border shadow-sm group hover:border-cyan-500 transition-all cursor-pointer" onClick={() => router.push('/automation-control')}>
+                <div className="text-2xl sm:text-3xl mb-2">🤖</div>
+                <h3 style={{ color: isDark ? '#f1f5f9' : '#1e293b' }} className="text-sm sm:text-base font-bold mb-1">Automation Control</h3>
+                <p style={{ color: isDark ? '#94a3b8' : '#64748b' }} className="text-xs mb-2">Control internal feedback email automation system.</p>
+                <button
+                  onClick={() => router.push('/automation-control')}
+                  style={{ backgroundColor: '#06b6d4' }}
+                  onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#0891b2'}
+                  onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#06b6d4'}
+                  className="w-full py-1 sm:py-1.5 text-white font-bold rounded text-xs hover:scale-105 active:scale-95 shadow-md hover:shadow-lg duration-200"
+                >
+                   🤖 Control Automation
+                </button>
+              </div>
+            </>
+          )}
         </div>
       </div>
 
       {/* MODALS */}
-      {showCourseModal && <CourseManagerModal onClose={() => setShowCourseModal(false)} />}
-      {showLocationModal && <LocationManagerModal onClose={() => setShowLocationModal(false)} />}
-      {showChecklistTemplateModal && <ChecklistTemplateModal onClose={() => setShowChecklistTemplateModal(false)} />}
+      {isAdmin && showCourseModal && <CourseManagerModal onClose={() => setShowCourseModal(false)} />}
+      {isAdmin && showLocationModal && <LocationManagerModal onClose={() => setShowLocationModal(false)} />}
+      {isAdmin && showChecklistTemplateModal && <ChecklistTemplateModal onClose={() => setShowChecklistTemplateModal(false)} />}
     </main>
   );
 }
