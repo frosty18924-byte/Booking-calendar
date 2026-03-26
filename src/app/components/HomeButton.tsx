@@ -15,7 +15,7 @@ export default function HomeButton() {
     <UniformButton
       variant="secondary"
       style={{ position: 'fixed', top: '4rem', left: '1rem', zIndex: 1000 }}
-      className="no-ui-motion p-2 shadow-md border"
+      className="no-ui-motion hidden sm:flex p-2 shadow-md border"
       onClick={handleHome}
       title="Go to Dashboard"
       aria-label="Home"
