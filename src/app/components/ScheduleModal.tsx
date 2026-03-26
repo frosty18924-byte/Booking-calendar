@@ -30,25 +30,8 @@ export default function ScheduleModal({
   useEffect(() => {
     checkTheme();
     async function fetchData() {
-      // Promise.all ensures both tables load before rendering
-      const catalogNames = [
-        'Team Teach Level 2',
-        'Team Teach Refresher',
-        'Emergency first aid at work',
-        'Fire Safety',
-        'Medication Management',
-        'Edpilepsy awareness',
-        'Essential Autism',
-        'Communication',
-        'RSHE',
-        'Team Teach Advanced',
-        'Oral Health',
-        'Safeguaring adults',
-        'Advance Medication and Audits',
-        'STAR'
-      ];
       const [coursesRes, venuesRes] = await Promise.all([
-        supabase.from('courses').select('*').in('name', catalogNames).order('name'),
+        supabase.from('courses').select('id, name').order('name'),
         supabase.from('venues').select('*').order('name')
       ]);
       setCourses(coursesRes.data || []);
@@ -121,25 +104,6 @@ export default function ScheduleModal({
       .select('id');
 
     if (!error && insertedEvents && insertedEvents.length > 0) {
-      // Send course notification to all staff
-      try {
-        await Promise.allSettled(
-          insertedEvents.map((eventRow) =>
-            fetch('/api/send-course-notification', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json', ...getEmailTestHeaders() },
-              body: JSON.stringify({
-                eventId: eventRow.id,
-                notifyAllStaff: true
-              })
-            })
-          )
-        );
-      } catch (err) {
-        console.error('Failed to send course notification:', err);
-        // Don't fail the event creation if email fails
-      }
-      
       onRefresh();
       onClose();
     } else {
