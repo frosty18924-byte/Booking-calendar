@@ -174,7 +174,7 @@ export default function ChecklistTemplateModal({ onClose }: { onClose: () => voi
     <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-md flex items-center justify-center p-4 z-50">
       <div
         style={{ backgroundColor: isDark ? '#1e293b' : '#ffffff', borderColor: isDark ? '#334155' : '#cbd5e1' }}
-        className="rounded-3xl p-8 w-full max-w-3xl shadow-2xl border transition-colors duration-300 max-h-[90vh] overflow-y-auto"
+        className="rounded-3xl p-4 sm:p-8 w-full max-w-3xl shadow-2xl border transition-colors duration-300 max-h-[90vh] overflow-y-auto"
       >
         <div className="flex justify-between items-center mb-6">
           <div>
@@ -199,7 +199,7 @@ export default function ChecklistTemplateModal({ onClose }: { onClose: () => voi
         <form
           onSubmit={addItem}
           style={{ backgroundColor: isDark ? '#0f172a' : '#f1f5f9', borderColor: isDark ? '#334155' : '#e2e8f0' }}
-          className="p-5 rounded-2xl border mb-6"
+          className="p-4 sm:p-5 rounded-2xl border mb-6"
         >
           <p style={{ color: isDark ? '#94a3b8' : '#64748b' }} className="text-[10px] font-black uppercase mb-3">
             Add Item
@@ -244,9 +244,9 @@ export default function ChecklistTemplateModal({ onClose }: { onClose: () => voi
               <div
                 key={item.id}
                 style={{ backgroundColor: isDark ? '#0f172a' : '#f1f5f9', borderColor: isDark ? '#334155' : '#e2e8f0' }}
-                className="p-4 border rounded-2xl flex items-start gap-3"
+                className="p-4 border rounded-2xl flex flex-col sm:flex-row items-start gap-3"
               >
-                <div className="flex flex-col gap-2 pt-1">
+                <div className="flex flex-row sm:flex-col gap-2 pt-1">
                   <button
                     type="button"
                     disabled={loading || isFirst}
@@ -312,7 +312,7 @@ export default function ChecklistTemplateModal({ onClose }: { onClose: () => voi
                   </div>
                 </div>
 
-                <div className="flex gap-2">
+                <div className="flex gap-2 w-full sm:w-auto justify-end">
                   {isEditing ? (
                     <>
                       <UniformButton
@@ -357,4 +357,3 @@ export default function ChecklistTemplateModal({ onClose }: { onClose: () => voi
     </div>
   );
 }
-

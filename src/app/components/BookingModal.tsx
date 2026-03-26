@@ -430,13 +430,13 @@ export default function BookingModal({ event, onClose, onRefresh, onOpenChecklis
       <div style={{ backgroundColor: isDark ? '#1e293b' : '#ffffff', borderColor: isDark ? '#334155' : '#cbd5e1' }} className="rounded-[40px] w-full max-w-2xl max-h-[90vh] shadow-2xl border overflow-hidden flex flex-col">
         
         {/* Header */}
-        <div style={{ backgroundColor: isDark ? '#0f172a' : '#f1f5f9' }} className="p-6 border-b text-center relative flex items-center justify-between">
-          <div className="flex gap-2">
+        <div style={{ backgroundColor: isDark ? '#0f172a' : '#f1f5f9' }} className="p-4 sm:p-6 border-b text-center relative flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div className="w-full sm:w-auto flex flex-wrap gap-2 justify-center sm:justify-start">
             {canAccessChecklist && (
               <button 
                 onClick={() => onOpenChecklist?.()}
                 style={{ backgroundColor: '#8b5cf6' }}
-                className="text-white px-4 py-2 rounded-lg font-bold text-sm hover:opacity-90 transition-all"
+                className="text-white px-3 sm:px-4 py-2 rounded-lg font-bold text-xs sm:text-sm hover:opacity-90 transition-all"
               >
                 📋 Checklist
               </button>
@@ -444,7 +444,7 @@ export default function BookingModal({ event, onClose, onRefresh, onOpenChecklis
             <button 
               onClick={handleCancelEvent}
               style={{ backgroundColor: '#ef4444' }}
-              className="text-white px-4 py-2 rounded-lg font-bold text-sm hover:opacity-90 transition-all"
+              className="text-white px-3 sm:px-4 py-2 rounded-lg font-bold text-xs sm:text-sm hover:opacity-90 transition-all"
               title="Cancel this event and remove all participants"
             >
               ❌ Cancel Event
@@ -463,7 +463,7 @@ export default function BookingModal({ event, onClose, onRefresh, onOpenChecklis
           </div>
           <UniformButton
             variant="icon"
-            className="text-2xl font-light"
+            className="text-2xl font-light self-end sm:self-auto"
             style={{ color: isDark ? '#94a3b8' : '#64748b' }}
             onClick={onClose}
             aria-label="Close"
@@ -473,7 +473,7 @@ export default function BookingModal({ event, onClose, onRefresh, onOpenChecklis
         </div>
 
         {/* Tabs */}
-        <div style={{ backgroundColor: isDark ? '#1e293b' : '#f1f5f9' }} className="flex p-1.5 m-6 rounded-2xl gap-1.5">
+        <div style={{ backgroundColor: isDark ? '#1e293b' : '#f1f5f9' }} className="flex p-1.5 m-4 sm:m-6 rounded-2xl gap-1.5">
           <UniformButton
             variant={activeTab === 'booking' ? 'primary' : 'secondary'}
             className={`flex-1 py-2 text-xs font-black uppercase rounded-xl transition-all ${activeTab === 'booking' ? '' : ''}`}
@@ -492,7 +492,7 @@ export default function BookingModal({ event, onClose, onRefresh, onOpenChecklis
           </UniformButton>
         </div>
 
-        <div className="px-8 pb-8 flex-1 overflow-y-auto">
+        <div className="px-4 sm:px-8 pb-6 sm:pb-8 flex-1 overflow-y-auto">
           {String(event?.notes || '').trim() && (
             <div
               style={{

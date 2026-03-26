@@ -281,65 +281,70 @@ export default function CalendarPage() {
             </div>
           </div>
 
-          <div style={{ borderColor: isDark ? '#334155' : '#e2e8f0', backgroundColor: isDark ? '#1a2332' : '#f8fafc' }} className="grid grid-cols-7 border-b">
-            {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(day => (
-              <div key={day} style={{ color: isDark ? '#94a3b8' : '#64748b' }} className="p-4 text-center text-[10px] font-black uppercase tracking-widest">{day}</div>
-            ))}
-          </div>
+          {/* Calendar grid: allow horizontal scroll on small screens for readability */}
+          <div className="overflow-x-auto">
+            <div className="min-w-[900px] md:min-w-full">
+              <div style={{ borderColor: isDark ? '#334155' : '#e2e8f0', backgroundColor: isDark ? '#1a2332' : '#f8fafc' }} className="grid grid-cols-7 border-b">
+                {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(day => (
+                  <div key={day} style={{ color: isDark ? '#94a3b8' : '#64748b' }} className="p-2 sm:p-4 text-center text-[8px] sm:text-[10px] font-black uppercase tracking-widest">{day}</div>
+                ))}
+              </div>
 
-          <div className="grid grid-cols-7 gap-0" style={{ minHeight: '700px' }}>
-            {calendarDays.map((day, idx) => {
-              const dayEvents = filteredEvents.filter(e => isSameDay(new Date(e.event_date), day));
-              const isCurrentMonth = isSameMonth(day, currentMonth);
+              <div className="grid grid-cols-7 gap-0" style={{ minHeight: '700px' }}>
+                {calendarDays.map((day, idx) => {
+                  const dayEvents = filteredEvents.filter(e => isSameDay(new Date(e.event_date), day));
+                  const isCurrentMonth = isSameMonth(day, currentMonth);
 
-              return (
-                <div key={idx}
-                  style={{
-                    backgroundColor: isCurrentMonth ? (isDark ? '#0f172a' : '#ffffff') : (isDark ? '#1a2332' : '#f8fafc'),
-                    borderColor: isDark ? '#334155' : '#e2e8f0'
-                  }}
-                  onClick={() => {
-                    if (!canSchedule) return;
-                    setSelectedEvent(null);
-                    setScheduleDefaultDate(format(day, 'yyyy-MM-dd'));
-                    setShowSchedule(true);
-                  }}
-                  className={`border p-3 min-h-[140px] flex flex-col ${!isCurrentMonth ? 'opacity-40' : ''} ${canSchedule ? 'cursor-pointer' : ''}`}
-                >
-                  <span style={{ color: isSameDay(day, new Date()) ? '#3b82f6' : (isDark ? '#94a3b8' : '#64748b') }} className="text-sm font-black mb-2">
-                    {format(day, 'd')}
-                  </span>
-                  <div className="flex-1 space-y-1">
-                    {dayEvents.map(event => {
-                      const colors = getCourseColor(event.courses?.name || 'Unknown');
-                      const participantCount = event.bookings?.length || 0;
-                      const maxCapacity = getMaxCapacity(event);
-                      return (
-                        <button
-                          key={event.id}
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setSelectedEvent(event);
-                          }}
-                          style={{ backgroundColor: colors.bg, color: colors.text }}
-                          className="cursor-pointer w-full text-left p-3 rounded-lg transition-all border border-black/10 shadow-sm hover:brightness-110"
-                        >
-                          <p className="font-black truncate uppercase text-xs">
-                            {event.courses?.name}
-                          </p>
-                          <div className="flex justify-between items-center mt-1 opacity-80 font-bold text-[10px]">
-                            <span>
-                              {event.start_time?.slice(0, 5) || '09:00'} - {event.end_time?.slice(0, 5) || '17:00'}
-                            </span>
-                            <span>{participantCount}/{maxCapacity}</span>
-                          </div>
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-              );
-            })}
+                  return (
+                    <div key={idx}
+                      style={{
+                        backgroundColor: isCurrentMonth ? (isDark ? '#0f172a' : '#ffffff') : (isDark ? '#1a2332' : '#f8fafc'),
+                        borderColor: isDark ? '#334155' : '#e2e8f0'
+                      }}
+                      onClick={() => {
+                        if (!canSchedule) return;
+                        setSelectedEvent(null);
+                        setScheduleDefaultDate(format(day, 'yyyy-MM-dd'));
+                        setShowSchedule(true);
+                      }}
+                      className={`border p-2 sm:p-3 min-h-[110px] sm:min-h-[140px] flex flex-col ${!isCurrentMonth ? 'opacity-40' : ''} ${canSchedule ? 'cursor-pointer' : ''}`}
+                    >
+                      <span style={{ color: isSameDay(day, new Date()) ? '#3b82f6' : (isDark ? '#94a3b8' : '#64748b') }} className="text-xs sm:text-sm font-black mb-2">
+                        {format(day, 'd')}
+                      </span>
+                      <div className="flex-1 space-y-1">
+                        {dayEvents.map(event => {
+                          const colors = getCourseColor(event.courses?.name || 'Unknown');
+                          const participantCount = event.bookings?.length || 0;
+                          const maxCapacity = getMaxCapacity(event);
+                          return (
+                            <button
+                              key={event.id}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setSelectedEvent(event);
+                              }}
+                              style={{ backgroundColor: colors.bg, color: colors.text }}
+                              className="cursor-pointer w-full text-left p-2 sm:p-3 rounded-lg transition-all border border-black/10 shadow-sm hover:brightness-110"
+                            >
+                              <p className="font-black truncate uppercase text-[10px] sm:text-xs">
+                                {event.courses?.name}
+                              </p>
+                              <div className="flex justify-between items-center mt-1 opacity-80 font-bold text-[9px] sm:text-[10px]">
+                                <span>
+                                  {event.start_time?.slice(0, 5) || '09:00'} - {event.end_time?.slice(0, 5) || '17:00'}
+                                </span>
+                                <span>{participantCount}/{maxCapacity}</span>
+                              </div>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
           </div>
         </div>
       </div>

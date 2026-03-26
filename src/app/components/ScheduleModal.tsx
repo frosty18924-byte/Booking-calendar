@@ -116,22 +116,22 @@ export default function ScheduleModal({
 
   return (
     <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-md flex items-center justify-center p-4 z-50 animate-in fade-in duration-200">
-      <div style={{ backgroundColor: isDark ? '#1e293b' : '#ffffff', borderColor: isDark ? '#334155' : '#cbd5e1' }} className="rounded-[40px] w-full max-w-lg shadow-2xl border overflow-hidden flex flex-col transition-colors duration-300">
+      <div style={{ backgroundColor: isDark ? '#1e293b' : '#ffffff', borderColor: isDark ? '#334155' : '#cbd5e1' }} className="rounded-3xl sm:rounded-[40px] w-full max-w-lg shadow-2xl border overflow-hidden flex flex-col transition-colors duration-300">
         
-        <div style={{ backgroundColor: isDark ? '#0f172a' : '#f1f5f9', borderColor: isDark ? '#334155' : '#e2e8f0' }} className="p-8 border-b flex justify-between items-center">
+        <div style={{ backgroundColor: isDark ? '#0f172a' : '#f1f5f9', borderColor: isDark ? '#334155' : '#e2e8f0' }} className="p-5 sm:p-8 border-b flex justify-between items-center">
           <h2 style={{ color: isDark ? '#f1f5f9' : '#1e293b' }} className="text-xl font-black uppercase tracking-tight">Schedule Session</h2>
           <button onClick={onClose} style={{ color: isDark ? '#94a3b8' : '#64748b' }} className="hover:text-red-500 text-3xl font-light transition-colors" aria-label="Close">
             <Icon name="close" className="w-6 h-6" />
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="p-8 space-y-6">
+        <form onSubmit={handleSubmit} className="p-5 sm:p-8 space-y-6">
           <div>
             <label style={{ color: isDark ? '#94a3b8' : '#64748b' }} className="block text-[10px] font-black uppercase mb-2">Select Course</label>
             <select 
               required
               style={{ backgroundColor: isDark ? '#0f172a' : '#f1f5f9', color: isDark ? '#f1f5f9' : '#1e293b', borderColor: isDark ? '#334155' : '#cbd5e1' }}
-              className="w-full px-4 py-3 border rounded-xl focus:ring-2 focus:ring-blue-500 outline-none font-bold text-sm"
+              className="w-full px-4 py-2.5 sm:py-3 border rounded-xl focus:ring-2 focus:ring-blue-500 outline-none font-bold text-sm"
               value={formData.course_id}
               onChange={(e) => setFormData({...formData, course_id: e.target.value})}
             >
@@ -145,7 +145,7 @@ export default function ScheduleModal({
             <select 
               required
               style={{ backgroundColor: isDark ? '#0f172a' : '#f1f5f9', color: isDark ? '#f1f5f9' : '#1e293b', borderColor: isDark ? '#334155' : '#cbd5e1' }}
-              className="w-full px-4 py-3 border rounded-xl focus:ring-2 focus:ring-blue-500 outline-none font-bold text-sm"
+              className="w-full px-4 py-2.5 sm:py-3 border rounded-xl focus:ring-2 focus:ring-blue-500 outline-none font-bold text-sm"
               value={formData.location}
               onChange={(e) => setFormData({...formData, location: e.target.value})}
             >
@@ -170,7 +170,7 @@ export default function ScheduleModal({
               <input 
                 type="date" required
                 style={{ backgroundColor: isDark ? '#0f172a' : '#ffffff', color: isDark ? '#f1f5f9' : '#1e293b', borderColor: isDark ? '#334155' : '#cbd5e1' }}
-                className="w-full px-4 py-3 border rounded-xl outline-none font-bold text-sm"
+                className="w-full px-4 py-2.5 sm:py-3 border rounded-xl outline-none font-bold text-sm"
                 value={formData.event_date}
                 onChange={(e) => setFormData({...formData, event_date: e.target.value})}
               />
@@ -186,7 +186,7 @@ export default function ScheduleModal({
               <input 
                 type="time" required
                 style={{ backgroundColor: isDark ? '#0f172a' : '#ffffff', color: isDark ? '#f1f5f9' : '#1e293b', borderColor: isDark ? '#334155' : '#cbd5e1' }}
-                className="w-full px-4 py-3 border rounded-xl outline-none font-bold text-sm"
+                className="w-full px-4 py-2.5 sm:py-3 border rounded-xl outline-none font-bold text-sm"
                 value={formData.start_time}
                 onChange={(e) => setFormData({...formData, start_time: e.target.value})}
               />
@@ -197,7 +197,7 @@ export default function ScheduleModal({
               <input 
                 type="time" required
                 style={{ backgroundColor: isDark ? '#0f172a' : '#ffffff', color: isDark ? '#f1f5f9' : '#1e293b', borderColor: isDark ? '#334155' : '#cbd5e1' }}
-                className="w-full px-4 py-3 border rounded-xl outline-none font-bold text-sm"
+                className="w-full px-4 py-2.5 sm:py-3 border rounded-xl outline-none font-bold text-sm"
                 value={formData.end_time}
                 onChange={(e) => setFormData({...formData, end_time: e.target.value})}
               />
@@ -211,7 +211,7 @@ export default function ScheduleModal({
             <textarea
               rows={3}
               style={{ backgroundColor: isDark ? '#0f172a' : '#ffffff', color: isDark ? '#f1f5f9' : '#1e293b', borderColor: isDark ? '#334155' : '#cbd5e1' }}
-              className="w-full px-4 py-3 border rounded-xl outline-none font-bold text-sm resize-none"
+              className="w-full px-4 py-2.5 sm:py-3 border rounded-xl outline-none font-bold text-sm resize-none"
               placeholder="e.g. Only Banks House to book, use back door..."
               value={formData.notes}
               onChange={(e) => setFormData({ ...formData, notes: e.target.value })}

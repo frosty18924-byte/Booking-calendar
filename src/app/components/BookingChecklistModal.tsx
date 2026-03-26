@@ -298,7 +298,7 @@ export default function BookingChecklistModal({
   if (!canAccessChecklist) {
     return (
       <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-md flex items-center justify-center p-4 z-50">
-        <div style={{ backgroundColor: isDark ? '#1e293b' : '#ffffff', borderColor: isDark ? '#334155' : '#cbd5e1' }} className="rounded-3xl p-8 w-full max-w-xl shadow-2xl border transition-colors duration-300">
+        <div style={{ backgroundColor: isDark ? '#1e293b' : '#ffffff', borderColor: isDark ? '#334155' : '#cbd5e1' }} className="rounded-3xl p-4 sm:p-8 w-full max-w-xl shadow-2xl border transition-colors duration-300">
           <div className="flex justify-between items-center mb-6">
             <h2 style={{ color: isDark ? '#f1f5f9' : '#1e293b' }} className="text-2xl font-black uppercase tracking-tight">Access Restricted</h2>
             <UniformButton
@@ -324,7 +324,7 @@ export default function BookingChecklistModal({
   if (error) {
     return (
       <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-md flex items-center justify-center p-4 z-50">
-        <div style={{ backgroundColor: isDark ? '#1e293b' : '#ffffff', borderColor: isDark ? '#334155' : '#cbd5e1' }} className="rounded-3xl p-8 w-full max-w-2xl shadow-2xl border transition-colors duration-300">
+        <div style={{ backgroundColor: isDark ? '#1e293b' : '#ffffff', borderColor: isDark ? '#334155' : '#cbd5e1' }} className="rounded-3xl p-4 sm:p-8 w-full max-w-2xl shadow-2xl border transition-colors duration-300">
           <div className="flex justify-between items-center mb-6">
             <h2 style={{ color: '#ef4444' }} className="text-2xl font-black uppercase tracking-tight">Error Loading Checklist</h2>
             <UniformButton
@@ -348,7 +348,7 @@ export default function BookingChecklistModal({
 
   return (
     <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-md flex items-center justify-center p-4 z-50">
-      <div style={{ backgroundColor: isDark ? '#1e293b' : '#ffffff', borderColor: isDark ? '#334155' : '#cbd5e1' }} className="rounded-3xl p-8 w-full max-w-2xl shadow-2xl border transition-colors duration-300 max-h-[90vh] overflow-y-auto">
+      <div style={{ backgroundColor: isDark ? '#1e293b' : '#ffffff', borderColor: isDark ? '#334155' : '#cbd5e1' }} className="rounded-3xl p-4 sm:p-8 w-full max-w-2xl shadow-2xl border transition-colors duration-300 max-h-[90vh] overflow-y-auto">
         <div className="flex justify-between items-center mb-6">
           <div>
             <h2 style={{ color: isDark ? '#f1f5f9' : '#1e293b' }} className="text-2xl font-black uppercase tracking-tight">Booking Checklist</h2>
