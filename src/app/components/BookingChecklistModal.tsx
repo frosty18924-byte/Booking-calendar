@@ -6,21 +6,13 @@ import UniformButton from './UniformButton';
 import Icon from './Icon';
 import { debugLog } from '@/lib/debug';
 
-const CHECKLIST_ITEMS = [
-  'Invoice Number',
-  'Reminder Email Sent?',
-  'Numbers sent to Provider?',
-  'Attendance register printed?',
-  'Feedback forms printed?',
-  'Attendance register scanned?',
-  'Feedback form scanned?',
-  'Attendee Names to Provider',
-  'Attendee Form to Homes NA',
-  'Matrix Updated?',
-  'Monday Updated?',
-  'Invoice/splits sent to finance?',
-  'Certificates in Drive?'
-];
+type TemplateItem = {
+  id: string;
+  item_name: string;
+  item_order: number;
+  is_active: boolean;
+  is_invoice_number: boolean;
+};
 
 export default function BookingChecklistModal({ 
   bookingId, 
@@ -38,6 +30,7 @@ export default function BookingChecklistModal({
   const [checklist, setChecklist] = useState<any[]>([]);
   const [completions, setCompletions] = useState<any>({});
   const [invoiceNumber, setInvoiceNumber] = useState('');
+  const [invoiceItemNames, setInvoiceItemNames] = useState<Set<string>>(new Set(['Invoice Number']));
   const [loading, setLoading] = useState(false);
   const [isDark, setIsDark] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -71,9 +64,29 @@ export default function BookingChecklistModal({
     try {
       setError(null);
       debugLog('Fetching checklist for booking:', bookingId);
+
+      const { data: templateItemsRaw, error: templateError } = await supabase
+        .from('booking_checklist_template_items')
+        .select('id, item_name, item_order, is_active, is_invoice_number')
+        .eq('is_active', true)
+        .order('item_order');
+
+      if (templateError) {
+        console.error('Error fetching checklist template:', templateError);
+        setError(`Failed to fetch checklist template: ${templateError.message}`);
+        return;
+      }
+
+      const templateItems = ((templateItemsRaw as TemplateItem[]) || []).filter((t) => t.item_name);
+      const templateNames = templateItems.map((t) => t.item_name);
+      const templateOrderByName = new Map<string, number>(
+        templateItems.map((t) => [t.item_name, typeof t.item_order === 'number' ? t.item_order : 0])
+      );
+      const invoiceNameSet = new Set<string>(templateItems.filter((t) => t.is_invoice_number).map((t) => t.item_name));
+      setInvoiceItemNames(invoiceNameSet.size > 0 ? invoiceNameSet : new Set(['Invoice Number']));
       
       // Fetch or create checklist items
-      const { data: existingItems, error: fetchError } = await supabase
+      const { data: allExistingItems, error: fetchError } = await supabase
         .from('booking_checklists')
         .select('*')
         .eq('booking_id', bookingId)
@@ -84,32 +97,80 @@ export default function BookingChecklistModal({
         setError(`Failed to fetch checklist items: ${fetchError.message}`);
         return;
       }
-      debugLog('Existing items:', existingItems);
+      debugLog('Existing items:', allExistingItems);
 
-      if (!existingItems || existingItems.length === 0) {
-        debugLog('Creating new checklist items...');
-        // Create checklist items for this booking
-        const itemsToInsert = CHECKLIST_ITEMS.map((item, index) => ({
+      const existingItems = Array.isArray(allExistingItems) ? allExistingItems : [];
+
+      if (templateItems.length === 0) {
+        setError('Checklist template is empty. Add items in Admin → Checklist Template.');
+        return;
+      }
+
+      let finalChecklistItems: any[] = [];
+      if (existingItems.length === 0) {
+        debugLog('Creating new checklist items from template...');
+        const itemsToInsert = templateItems.map((t) => ({
           booking_id: bookingId,
-          item_name: item,
-          item_order: index + 1
+          item_name: t.item_name,
+          item_order: t.item_order,
         }));
 
-        const { data: newItems, error: insertError } = await supabase
-          .from('booking_checklists')
-          .insert(itemsToInsert)
-          .select();
-
+        const { data: newItems, error: insertError } = await supabase.from('booking_checklists').insert(itemsToInsert).select();
         if (insertError) {
           console.error('Error inserting items:', insertError);
           setError(`Failed to create checklist items: ${insertError.message}`);
           return;
         }
         debugLog('New items created:', newItems);
-        setChecklist(newItems || []);
+        finalChecklistItems = (newItems || []).sort((a: any, b: any) => (a.item_order || 0) - (b.item_order || 0));
+        setChecklist(finalChecklistItems);
       } else {
-        debugLog('Using existing items:', existingItems);
-        setChecklist(existingItems);
+        const existingNameSet = new Set(existingItems.map((i: any) => i.item_name).filter(Boolean));
+        const missingTemplateItems = templateItems.filter((t) => !existingNameSet.has(t.item_name));
+
+        if (missingTemplateItems.length > 0) {
+          debugLog('Adding missing checklist items from template:', missingTemplateItems.map((t) => t.item_name));
+          const itemsToInsert = missingTemplateItems.map((t) => ({
+            booking_id: bookingId,
+            item_name: t.item_name,
+            item_order: t.item_order,
+          }));
+          const { error: addMissingError } = await supabase.from('booking_checklists').insert(itemsToInsert);
+          if (addMissingError) {
+            console.error('Error inserting missing items:', addMissingError);
+            setError(`Failed to sync checklist items: ${addMissingError.message}`);
+            return;
+          }
+        }
+
+        const visibleExisting = existingItems.filter((i: any) => templateNames.includes(i.item_name));
+
+        // Ensure the per-booking orders stay aligned with the template order
+        const updates: Array<{ id: string; item_order: number }> = [];
+        for (const row of visibleExisting) {
+          const desired = templateOrderByName.get(row.item_name);
+          if (typeof desired === 'number' && row.item_order !== desired) {
+            updates.push({ id: row.id, item_order: desired });
+          }
+        }
+        for (const u of updates) {
+          await supabase.from('booking_checklists').update({ item_order: u.item_order }).eq('id', u.id);
+        }
+
+        // Re-fetch to ensure we display the synced set, in template order
+        const { data: refreshedItems, error: refreshError } = await supabase
+          .from('booking_checklists')
+          .select('*')
+          .eq('booking_id', bookingId)
+          .in('item_name', templateNames)
+          .order('item_order');
+        if (refreshError) {
+          console.error('Error refreshing synced items:', refreshError);
+          setError(`Failed to refresh checklist items: ${refreshError.message}`);
+          return;
+        }
+        finalChecklistItems = refreshedItems || [];
+        setChecklist(finalChecklistItems);
       }
 
       // Fetch completions
@@ -133,8 +194,8 @@ export default function BookingChecklistModal({
 
       // Set invoice number if it exists
       const invoiceItem = completionData?.find(comp => {
-        const item = existingItems?.find((i: any) => i.id === comp.checklist_item_id);
-        return item?.item_name === 'Invoice Number';
+        const item = finalChecklistItems.find((i: any) => i.id === comp.checklist_item_id);
+        return item?.item_name && invoiceNameSet.has(item.item_name);
       });
       if (invoiceItem?.value) {
         setInvoiceNumber(invoiceItem.value);
@@ -163,7 +224,7 @@ export default function BookingChecklistModal({
             completed_by: userId,
             completed_by_name: userName,
             completed_at: new Date().toISOString(),
-            value: itemName === 'Invoice Number' ? invoiceNumber : null
+            value: invoiceItemNames.has(itemName) ? invoiceNumber : null
           }]);
 
         if (error) throw error;
@@ -194,7 +255,7 @@ export default function BookingChecklistModal({
 
     try {
       // Find the invoice number item
-      const invoiceItem = checklist.find(item => item.item_name === 'Invoice Number');
+      const invoiceItem = checklist.find(item => invoiceItemNames.has(item.item_name));
       if (!invoiceItem) return;
 
       const isCompleted = !!completions[invoiceItem.id];
@@ -326,7 +387,7 @@ export default function BookingChecklistModal({
               {checklist.map((item) => {
                 const isCompleted = !!completions[item.id];
                 const completion = completions[item.id];
-            const isInvoiceNumber = item.item_name === 'Invoice Number';
+            const isInvoiceNumber = invoiceItemNames.has(item.item_name);
 
             return (
               <div

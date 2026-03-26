@@ -6,6 +6,7 @@ import { supabase } from '@/lib/supabase';
 import type { User } from '@supabase/supabase-js';
 import CourseManagerModal from '@/app/components/CourseManagerModal';
 import LocationManagerModal from '@/app/components/LocationManagerModal';
+import ChecklistTemplateModal from '@/app/components/ChecklistTemplateModal';
 import { debugLog } from '@/lib/debug';
 
 export default function AdminPage() {
@@ -15,6 +16,7 @@ export default function AdminPage() {
   const [loading, setLoading] = useState(false); // Start with false to avoid hydration
   const [showCourseModal, setShowCourseModal] = useState(false);
   const [showLocationModal, setShowLocationModal] = useState(false);
+  const [showChecklistTemplateModal, setShowChecklistTemplateModal] = useState(false);
 
   useEffect(() => {
     checkTheme();
@@ -183,6 +185,29 @@ export default function AdminPage() {
              </button>
           </div>
 
+          {/* CHECKLIST TEMPLATE */}
+          <div
+            style={{ backgroundColor: isDark ? '#1e293b' : '#ffffff', borderColor: isDark ? '#334155' : '#e2e8f0' }}
+            className="p-3 sm:p-4 rounded-lg border shadow-sm group hover:border-indigo-500 transition-all cursor-pointer"
+            onClick={() => setShowChecklistTemplateModal(true)}
+          >
+            <div className="text-2xl sm:text-3xl mb-2">✅</div>
+            <h3 style={{ color: isDark ? '#f1f5f9' : '#1e293b' }} className="text-sm sm:text-base font-bold mb-1">Checklist Template</h3>
+            <p style={{ color: isDark ? '#94a3b8' : '#64748b' }} className="text-xs mb-2">Add/remove booking checklist items.</p>
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                setShowChecklistTemplateModal(true);
+              }}
+              style={{ backgroundColor: '#6366f1' }}
+              onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = '#4f46e5')}
+              onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = '#6366f1')}
+              className="w-full py-1 sm:py-1.5 text-white font-bold rounded text-xs hover:scale-105 active:scale-95 shadow-md hover:shadow-lg duration-200"
+            >
+              ✅ Manage
+            </button>
+          </div>
+
           {/* AUTOMATION CONTROL */}
           <div style={{ backgroundColor: isDark ? '#1e293b' : '#ffffff', borderColor: isDark ? '#334155' : '#e2e8f0' }} className="p-3 sm:p-4 rounded-lg border shadow-sm group hover:border-cyan-500 transition-all cursor-pointer" onClick={() => router.push('/automation-control')}>
             <div className="text-2xl sm:text-3xl mb-2">🤖</div>
@@ -204,6 +229,7 @@ export default function AdminPage() {
       {/* MODALS */}
       {showCourseModal && <CourseManagerModal onClose={() => setShowCourseModal(false)} />}
       {showLocationModal && <LocationManagerModal onClose={() => setShowLocationModal(false)} />}
+      {showChecklistTemplateModal && <ChecklistTemplateModal onClose={() => setShowChecklistTemplateModal(false)} />}
     </main>
   );
 }
