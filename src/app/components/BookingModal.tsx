@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { format } from 'date-fns';
 import { supabase } from '@/lib/supabase';
 import { hasPermission } from '@/lib/permissions';
 import { getEmailTestHeaders } from '@/lib/emailTestMode';
@@ -30,6 +31,29 @@ export default function BookingModal({ event, onClose, onRefresh, onOpenChecklis
 
   const canBookPastEvents = userRole === 'admin' || userRole === 'scheduler';
   const canAccessChecklist = userRole === 'admin' || userRole === 'scheduler';
+  const formatEventDate = (value?: string) => {
+    if (!value) return '';
+    try {
+      return format(new Date(`${value}T00:00:00`), 'dd-MM-yyyy');
+    } catch {
+      return value;
+    }
+  };
+
+  const formatEventTime = (value?: string) => {
+    if (!value) return '';
+    const s = String(value).trim();
+    return s.length >= 5 ? s.slice(0, 5) : s;
+  };
+
+  const eventTimeRange = (() => {
+    const start = formatEventTime(event?.start_time);
+    const end = formatEventTime(event?.end_time);
+    if (!start && !end) return '';
+    if (start && end) return `${start} - ${end}`;
+    return start || end;
+  })();
+
   const isPastEvent = (() => {
     if (!event?.event_date) return false;
     const eventDate = new Date(`${event.event_date}T00:00:00`);
@@ -428,7 +452,14 @@ export default function BookingModal({ event, onClose, onRefresh, onOpenChecklis
           </div>
           <div className="flex-1 text-center">
             <h2 style={{ color: isDark ? '#f1f5f9' : '#1e293b' }} className="text-xl font-black uppercase">{event.courses?.name}</h2>
-            <p style={{ color: isDark ? '#94a3b8' : '#64748b' }} className="text-[10px] font-bold uppercase">{event.event_date}</p>
+            <p style={{ color: isDark ? '#94a3b8' : '#64748b' }} className="text-[10px] font-bold uppercase">
+              {formatEventDate(event?.event_date)}
+            </p>
+            {eventTimeRange && (
+              <p style={{ color: isDark ? '#94a3b8' : '#64748b' }} className="text-[10px] font-bold uppercase">
+                {eventTimeRange}
+              </p>
+            )}
           </div>
           <UniformButton
             variant="icon"
