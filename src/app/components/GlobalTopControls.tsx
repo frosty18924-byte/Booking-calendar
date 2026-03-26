@@ -5,6 +5,8 @@ import { usePathname, useRouter } from 'next/navigation';
 import ThemeToggle from './ThemeToggle';
 import HomeButton from './HomeButton';
 import { supabase } from '@/lib/supabase';
+import Icon from './Icon';
+import UniformButton from './UniformButton';
 
 export default function GlobalTopControls() {
   const pathname = usePathname();
@@ -53,7 +55,36 @@ export default function GlobalTopControls() {
 
   return (
     <>
-      <HomeButton />
+      {/* Mobile: single scrollable control strip (prevents cut-off/overlap) */}
+      <div className="sm:hidden" style={{ position: 'fixed', top: '4rem', left: '1rem', right: '1rem', zIndex: 1000 }}>
+        <div className="overflow-x-auto">
+          <div className="min-w-max flex items-center gap-2 rounded-xl border border-slate-200/70 bg-white/85 p-1.5 shadow-lg backdrop-blur dark:border-slate-700/70 dark:bg-slate-900/85">
+            <UniformButton
+              variant="secondary"
+              className="no-ui-motion p-2 shadow-md border"
+              onClick={() => router.push('/dashboard')}
+              title="Go to Dashboard"
+              aria-label="Home"
+            >
+              <Icon name="home" className="w-6 h-6" />
+            </UniformButton>
+            <button
+              onClick={handleSignOut}
+              disabled={!showSignOut}
+              aria-hidden={!showSignOut}
+              className={`no-ui-motion relative px-2 py-1 text-xs font-bold text-red-600 hover:text-red-700 transition-colors ${showSignOut ? '' : 'invisible pointer-events-none'}`}
+            >
+              Sign Out
+            </button>
+            <ThemeToggle className="no-ui-motion relative" />
+          </div>
+        </div>
+      </div>
+
+      {/* Desktop/tablet: keep original fixed layout */}
+      <div className="hidden sm:block">
+        <HomeButton />
+      </div>
       <div className="hidden sm:block" style={{ position: 'fixed', top: '4rem', right: '1rem', zIndex: 1000 }}>
         <div className="flex items-center gap-2 rounded-xl border border-slate-200/70 bg-white/85 p-1.5 shadow-lg backdrop-blur dark:border-slate-700/70 dark:bg-slate-900/85">
           <button
