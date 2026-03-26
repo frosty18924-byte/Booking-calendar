@@ -462,6 +462,19 @@ export default function BookingModal({ event, onClose, onRefresh, onOpenChecklis
         </div>
 
         <div className="px-8 pb-8 flex-1 overflow-y-auto">
+          {String(event?.notes || '').trim() && (
+            <div
+              style={{
+                backgroundColor: isDark ? '#0f172a' : '#fff7ed',
+                borderColor: isDark ? '#334155' : '#fed7aa',
+                color: isDark ? '#f1f5f9' : '#9a3412',
+              }}
+              className="mb-5 p-4 border rounded-2xl"
+            >
+              <p className="text-[10px] font-black uppercase tracking-widest mb-2 opacity-80">Notes</p>
+              <p className="text-sm font-bold whitespace-pre-wrap">{String(event.notes).trim()}</p>
+            </div>
+          )}
           {activeTab === 'booking' ? (
             <>
               <input 

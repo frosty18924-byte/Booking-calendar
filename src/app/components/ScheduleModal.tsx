@@ -24,7 +24,8 @@ export default function ScheduleModal({
     location: '', 
     event_date: defaultDate || '',
     start_time: '09:00',
-    end_time: '17:00'
+    end_time: '17:00',
+    notes: ''
   });
 
   useEffect(() => {
@@ -95,7 +96,8 @@ export default function ScheduleModal({
       ...formData,
       event_date: eventDate,
       start_time: `${formData.start_time}:00`,
-      end_time: `${formData.end_time}:00`
+      end_time: `${formData.end_time}:00`,
+      notes: formData.notes?.trim() || null,
     }));
 
     const { data: insertedEvents, error } = await supabase
@@ -200,6 +202,20 @@ export default function ScheduleModal({
                 onChange={(e) => setFormData({...formData, end_time: e.target.value})}
               />
             </div>
+          </div>
+
+          <div>
+            <label style={{ color: isDark ? '#94a3b8' : '#64748b' }} className="block text-[10px] font-black uppercase mb-2">
+              Notes (shown when booking)
+            </label>
+            <textarea
+              rows={3}
+              style={{ backgroundColor: isDark ? '#0f172a' : '#ffffff', color: isDark ? '#f1f5f9' : '#1e293b', borderColor: isDark ? '#334155' : '#cbd5e1' }}
+              className="w-full px-4 py-3 border rounded-xl outline-none font-bold text-sm resize-none"
+              placeholder="e.g. Only Banks House to book, use back door..."
+              value={formData.notes}
+              onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+            />
           </div>
 
           <button 
