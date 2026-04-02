@@ -34,7 +34,7 @@ export default function SignInPage() {
         setMessageType('error');
         return;
       }
-      router.push('/dashboard');
+      router.push('/');
       router.refresh();
     } catch (error: any) {
       setMessage(error?.message || 'Unable to sign in right now.');

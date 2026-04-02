@@ -8,7 +8,7 @@ export default function HomeButton() {
   const router = useRouter();
 
   const handleHome = () => {
-    router.push('/dashboard');
+    router.push('/');
   };
 
   return (
@@ -17,7 +17,7 @@ export default function HomeButton() {
       style={{ position: 'fixed', top: '4rem', left: '1rem', zIndex: 1000 }}
       className="no-ui-motion p-2 shadow-md border"
       onClick={handleHome}
-      title="Go to Dashboard"
+      title="Go to Portal"
       aria-label="Home"
     >
       <Icon name="home" className="w-6 h-6" />

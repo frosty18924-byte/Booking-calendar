@@ -28,6 +28,12 @@ export const PERMISSIONS = {
     canEdit: ['admin'],
     canDelete: ['admin'],
   },
+  TEMPLATES: {
+    canView: ['staff', 'manager', 'scheduler', 'admin'],
+    canCreate: ['admin'],
+    canEdit: ['admin'],
+    canDelete: ['admin'],
+  },
 } as const;
 
 export function hasPermission(userRole: string | null, permission: keyof typeof PERMISSIONS, action: string): boolean {

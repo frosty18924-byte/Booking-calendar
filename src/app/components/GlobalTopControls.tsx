@@ -3,14 +3,15 @@
 import { useEffect, useState } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import ThemeToggle from './ThemeToggle';
-import HomeButton from './HomeButton';
 import { supabase } from '@/lib/supabase';
 import Icon from './Icon';
 import UniformButton from './UniformButton';
+import { useNavDrawer } from '@/app/components/NavDrawerProvider';
 
 export default function GlobalTopControls() {
   const pathname = usePathname();
   const router = useRouter();
+  const { toggle } = useNavDrawer();
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [loading, setLoading] = useState(true);
 
@@ -62,11 +63,20 @@ export default function GlobalTopControls() {
             <UniformButton
               variant="secondary"
               className="no-ui-motion p-2 shadow-md border"
-              onClick={() => router.push('/dashboard')}
-              title="Go to Dashboard"
-              aria-label="Home"
+              onClick={() => router.push('/')}
+              title="Portal"
+              aria-label="Portal"
             >
               <Icon name="home" className="w-6 h-6" />
+            </UniformButton>
+            <UniformButton
+              variant="secondary"
+              className="no-ui-motion p-2 shadow-md border"
+              onClick={toggle}
+              title="Menu"
+              aria-label="Menu"
+            >
+              <Icon name="menu" className="w-6 h-6" />
             </UniformButton>
             <button
               onClick={handleSignOut}
@@ -82,9 +92,6 @@ export default function GlobalTopControls() {
       </div>
 
       {/* Desktop/tablet: keep original fixed layout */}
-      <div className="hidden sm:block">
-        <HomeButton />
-      </div>
       <div className="hidden sm:block" style={{ position: 'fixed', top: '4rem', right: '1rem', zIndex: 1000 }}>
         <div className="flex items-center gap-2 rounded-xl border border-slate-200/70 bg-white/85 p-1.5 shadow-lg backdrop-blur dark:border-slate-700/70 dark:bg-slate-900/85">
           <button

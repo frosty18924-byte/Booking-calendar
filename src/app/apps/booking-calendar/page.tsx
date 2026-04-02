@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import CalendarPage from '@/app/page';
+import CalendarPage from './CalendarPage';
 import { supabase } from '@/lib/supabase';
 
 export default function BookingCalendarPage() {
