@@ -8,7 +8,7 @@ import { loadEmailTestSettings, saveEmailTestSettings } from '@/lib/emailTestMod
 import ThemeToggle from '@/app/components/ThemeToggle';
 import AddStaffModal from '@/app/components/AddStaffModal';
 import DuplicateRemovalModal from '@/app/components/DuplicateRemovalModal';
-import AtlasImportModal from '@/app/components/AtlasImportModal';
+import MatrixSyncModal from '@/app/components/MatrixSyncModal';
 
 interface EmailLogItem {
   id: string;
@@ -36,8 +36,8 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(true);
   const [showAddStaffModal, setShowAddStaffModal] = useState(false);
   const [showDuplicateRemoval, setShowDuplicateRemoval] = useState(false);
-  const [showAtlasModal, setShowAtlasModal] = useState(false);
   const [showDataToolsModal, setShowDataToolsModal] = useState(false);
+  const [showMatrixSyncModal, setShowMatrixSyncModal] = useState(false);
   const [showNotificationsModal, setShowNotificationsModal] = useState(false);
   const [userRole, setUserRole] = useState<string | null>(null);
   const [emailTestMode, setEmailTestMode] = useState(false);
@@ -257,9 +257,9 @@ export default function DashboardPage() {
                 </div>
               </div>
 
-              {/* Atlas Sync Card */}
+              {/* Matrix Sync Card */}
               <div
-                onClick={() => setShowAtlasModal(true)}
+                onClick={() => setShowMatrixSyncModal(true)}
                 className={`group cursor-pointer p-8 rounded-xl border-2 transition-all duration-300 hover:shadow-lg ${
                   isDark
                     ? 'bg-gray-800 border-gray-700 hover:border-blue-500 hover:bg-gray-750'
@@ -268,10 +268,10 @@ export default function DashboardPage() {
               >
                 <div className="text-5xl mb-4">📥</div>
                 <h3 className={`text-2xl font-bold mb-2 transition-colors duration-300 ${isDark ? 'text-white' : 'text-gray-900'}`}>
-                  Atlas Sync
+                  Matrix Sync
                 </h3>
                 <p className={`transition-colors duration-300 ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
-                  Import Careskills completion dates from Atlas Excel files
+                  Sync via Atlas upload or a full matrix CSV per location.
                 </p>
                 <div className="mt-6 flex items-center text-blue-600 dark:text-blue-400 group-hover:translate-x-1 transition-transform">
                   <span className="font-semibold">Open</span>
@@ -448,29 +448,6 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      {/* Atlas Import Modal */}
-      {showAtlasModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className={`max-w-2xl w-full max-h-[90vh] overflow-y-auto rounded-lg ${isDark ? 'bg-gray-800' : 'bg-white'}`}>
-            <AtlasImportModal 
-              onClose={() => setShowAtlasModal(false)}
-            />
-            <div className="p-6 border-t" style={{ borderColor: isDark ? '#374151' : '#e5e7eb' }}>
-              <button
-                onClick={() => setShowAtlasModal(false)}
-                className={`w-full py-3 rounded-lg font-semibold transition-colors duration-300 ${
-                  isDark
-                    ? 'bg-gray-700 hover:bg-gray-600 text-white'
-                    : 'bg-gray-200 hover:bg-gray-300 text-gray-900'
-                }`}
-              >
-                Close
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
       {/* Notifications Modal */}
       {showNotificationsModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
@@ -605,6 +582,12 @@ export default function DashboardPage() {
               </button>
             </div>
           </div>
+        </div>
+      )}
+
+      {showMatrixSyncModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <MatrixSyncModal onClose={() => setShowMatrixSyncModal(false)} />
         </div>
       )}
     </div>
