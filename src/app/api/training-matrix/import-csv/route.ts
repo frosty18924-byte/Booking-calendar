@@ -224,6 +224,8 @@ export async function POST(request: NextRequest) {
       'staff team',
       'staff on probation',
       'inactive staff',
+      'staff on maternity',
+      'bank staff',
     ].map(normalizeKey));
 
     const ignoredMetaColumns = new Set<string>([
@@ -236,6 +238,13 @@ export async function POST(request: NextRequest) {
       'care certificate',
       'd b s',
       'dbs',
+      'd b s on update',
+      'job role',
+      'able to drive company vehicle',
+      'ofsted only training',
+      'manager only training',
+      "nvq's",
+      'nvqs',
     ].map(normalizeKey));
 
     // Load staff + courses for this location.
@@ -269,6 +278,66 @@ export async function POST(request: NextRequest) {
         neverExpires: typeof c.never_expires === 'boolean' ? c.never_expires : null,
       });
     });
+
+    // Explicit allowlist for course columns we want to track even if not yet configured for the location.
+    const autoCreateCourseHeaders = new Set<string>([
+      'level 3 diploma in residential childcare',
+    ].map(normalizeKey));
+
+    // Create + link allowlisted courses if they are present in the CSV but not yet configured in DB.
+    for (const header of courseNames) {
+      const normalizedHeader = normalizeKey(header);
+      if (!normalizedHeader) continue;
+      if (ignoredMetaColumns.has(normalizedHeader)) continue;
+      if (!autoCreateCourseHeaders.has(normalizedHeader)) continue;
+      if (courseMap.has(normalizedHeader)) continue;
+
+      // Ensure training_courses row exists
+      const { data: existingCourse, error: existingCourseErr } = await authz.service
+        .from('training_courses')
+        .select('id, expiry_months, never_expires')
+        .eq('name', header)
+        .maybeSingle();
+
+      if (existingCourseErr) {
+        if (errorMessages.size < 10) errorMessages.add(existingCourseErr.message);
+        continue;
+      }
+
+      let courseId = existingCourse?.id ? String(existingCourse.id) : '';
+      let expiryMonths: number | null =
+        typeof existingCourse?.expiry_months === 'number' ? existingCourse.expiry_months : 12;
+      let neverExpires: boolean | null =
+        typeof existingCourse?.never_expires === 'boolean' ? existingCourse.never_expires : false;
+
+      if (!courseId) {
+        const { data: inserted, error: insertErr } = await authz.service
+          .from('training_courses')
+          .insert([{ name: header, expiry_months: 12, never_expires: false }])
+          .select('id, expiry_months, never_expires')
+          .single();
+        if (insertErr) {
+          if (errorMessages.size < 10) errorMessages.add(insertErr.message);
+          continue;
+        }
+        courseId = String(inserted.id);
+        expiryMonths = typeof inserted.expiry_months === 'number' ? inserted.expiry_months : 12;
+        neverExpires = typeof inserted.never_expires === 'boolean' ? inserted.never_expires : false;
+      }
+
+      // Link to location
+      const linkRes = await authz.service
+        .from('location_training_courses')
+        .upsert([{ location_id: locationId, training_course_id: courseId, display_order: 9999 }], {
+          onConflict: 'location_id,training_course_id',
+        });
+      if (linkRes.error) {
+        if (errorMessages.size < 10) errorMessages.add(linkRes.error.message);
+        continue;
+      }
+
+      courseMap.set(normalizedHeader, { id: courseId, expiryMonths, neverExpires });
+    }
 
     const unknownCourseColumns: string[] = [];
 
