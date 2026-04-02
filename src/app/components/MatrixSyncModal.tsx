@@ -198,6 +198,32 @@ export default function MatrixSyncModal({ onClose }: { onClose: () => void }) {
               <div>
                 Upserts: <strong>{result.summary.upserts}</strong> · Processed cells: <strong>{result.summary.processedCells}</strong> · Unknown staff: <strong>{result.summary.skippedUnknownStaff}</strong> · Unknown courses: <strong>{result.summary.skippedUnknownCourses}</strong>
               </div>
+              {!result.success && (
+                <div className="mt-2 space-y-2">
+                  {Array.isArray(result.errors) && result.errors.length > 0 && (
+                    <div>
+                      <div className="font-semibold">Errors</div>
+                      <ul className="list-disc pl-5">
+                        {result.errors.slice(0, 3).map((e: string, idx: number) => (
+                          <li key={idx}>{e}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                  {Array.isArray(result.unknownCourses) && result.unknownCourses.length > 0 && (
+                    <div>
+                      <div className="font-semibold">Unknown course columns (sample)</div>
+                      <div className="text-xs opacity-90">{result.unknownCourses.slice(0, 8).join(' · ')}</div>
+                    </div>
+                  )}
+                  {Array.isArray(result.unknownStaff) && result.unknownStaff.length > 0 && (
+                    <div>
+                      <div className="font-semibold">Unknown staff names (sample)</div>
+                      <div className="text-xs opacity-90">{result.unknownStaff.slice(0, 8).join(' · ')}</div>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           )}
 

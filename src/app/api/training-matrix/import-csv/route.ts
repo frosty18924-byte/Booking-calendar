@@ -18,6 +18,31 @@ function cleanCell(value: string): string {
   return value.replace(/\s+/g, ' ').trim();
 }
 
+function normalizeKey(value: string): string {
+  return cleanCell(value)
+    .normalize('NFKC')
+    .toLowerCase()
+    .replace(/[\u2018\u2019\u201B\u2032]/g, "'")
+    .replace(/[\u201C\u201D\u201F\u2033]/g, '"')
+    .replace(/[^a-z0-9]+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function normalizeStaffName(value: string): string {
+  const raw = cleanCell(value).normalize('NFKC').replace(/\s+/g, ' ').trim();
+  if (!raw) return '';
+
+  // Handle "Last, First" -> "First Last"
+  if (raw.includes(',')) {
+    const [last, rest] = raw.split(',', 2).map((s) => s.trim());
+    const recomposed = `${rest || ''} ${last || ''}`.trim();
+    return normalizeKey(recomposed);
+  }
+
+  return normalizeKey(raw);
+}
+
 function parseCsvLine(line: string): string[] {
   const cells: string[] = [];
   let current = '';
@@ -187,6 +212,9 @@ export async function POST(request: NextRequest) {
       errors: 0,
     };
 
+    const unknownStaffSamples = new Set<string>();
+    const errorMessages = new Set<string>();
+
     // Load staff + courses for this location.
     const { data: staffRows, error: staffErr } = await authz.service
       .from('profiles')
@@ -197,7 +225,7 @@ export async function POST(request: NextRequest) {
     const staffMap = new Map<string, string>();
     (staffRows || []).forEach((s: any) => {
       if (!s?.id || !s?.full_name) return;
-      staffMap.set(normalizeName(String(s.full_name)), String(s.id));
+      staffMap.set(normalizeStaffName(String(s.full_name)), String(s.id));
     });
 
     // Courses configured for the selected location.
@@ -212,7 +240,7 @@ export async function POST(request: NextRequest) {
     (locationCourses || []).forEach((lc: any) => {
       const c = Array.isArray(lc.training_courses) ? lc.training_courses[0] : lc.training_courses;
       if (!c?.id || !c?.name) return;
-      courseMap.set(normalizeName(String(c.name)), {
+      courseMap.set(normalizeKey(String(c.name)), {
         id: String(c.id),
         expiryMonths: typeof c.expiry_months === 'number' ? c.expiry_months : null,
         neverExpires: typeof c.never_expires === 'boolean' ? c.never_expires : null,
@@ -222,7 +250,7 @@ export async function POST(request: NextRequest) {
     // Precompute which header columns map to courses.
     const colToCourse: Array<{ col: number; courseId: string; expiryMonths: number | null; neverExpires: boolean | null } | null> = courseNames.map(
       (name, idx) => {
-        const hit = courseMap.get(normalizeName(name));
+        const hit = courseMap.get(normalizeKey(name));
         if (!hit) return null;
         return { col: idx + 1, courseId: hit.id, expiryMonths: hit.expiryMonths, neverExpires: hit.neverExpires };
       }
@@ -236,9 +264,10 @@ export async function POST(request: NextRequest) {
       const staffName = cleanCell(row[0] || '');
       if (!staffName) continue;
 
-      const staffId = staffMap.get(normalizeName(staffName));
+      const staffId = staffMap.get(normalizeStaffName(staffName));
       if (!staffId) {
         summary.skippedUnknownStaff++;
+        if (unknownStaffSamples.size < 25) unknownStaffSamples.add(staffName);
         continue;
       }
 
@@ -283,15 +312,22 @@ export async function POST(request: NextRequest) {
         .upsert(chunk, { onConflict: 'staff_id,course_id' });
       if (error) {
         summary.errors++;
+        if (errorMessages.size < 10) errorMessages.add(error.message);
+        console.error('Full matrix CSV import: upsert chunk failed:', error.message);
       } else {
         summary.upserts += chunk.length;
       }
     }
 
-    return NextResponse.json({ success: summary.errors === 0, summary });
+    return NextResponse.json({
+      success: summary.errors === 0,
+      summary,
+      errors: Array.from(errorMessages.values()),
+      unknownStaff: Array.from(unknownStaffSamples.values()),
+      unknownCourses: courseNames.filter((_, idx) => colToCourse[idx] === null).slice(0, 50),
+    });
   } catch (error) {
     const msg = error instanceof Error ? error.message : String(error);
     return NextResponse.json({ error: msg }, { status: 500 });
   }
 }
-
