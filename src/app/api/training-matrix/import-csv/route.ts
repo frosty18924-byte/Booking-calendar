@@ -215,6 +215,29 @@ export async function POST(request: NextRequest) {
     const unknownStaffSamples = new Set<string>();
     const errorMessages = new Set<string>();
 
+    const dividerLabels = new Set<string>([
+      'notes',
+      'date valid for',
+      'management',
+      'team leaders',
+      'lead support',
+      'staff team',
+      'staff on probation',
+      'inactive staff',
+    ].map(normalizeKey));
+
+    const ignoredMetaColumns = new Set<string>([
+      'start date',
+      'end date',
+      'induction',
+      'end of probation',
+      'probation notes',
+      'qualifications upon entry',
+      'care certificate',
+      'd b s',
+      'dbs',
+    ].map(normalizeKey));
+
     // Load staff + courses for this location.
     const { data: staffRows, error: staffErr } = await authz.service
       .from('profiles')
@@ -247,22 +270,40 @@ export async function POST(request: NextRequest) {
       });
     });
 
+    const unknownCourseColumns: string[] = [];
+
     // Precompute which header columns map to courses.
     const colToCourse: Array<{ col: number; courseId: string; expiryMonths: number | null; neverExpires: boolean | null } | null> = courseNames.map(
       (name, idx) => {
-        const hit = courseMap.get(normalizeKey(name));
+        const normalizedHeader = normalizeKey(name);
+        if (!normalizedHeader) return null;
+        if (ignoredMetaColumns.has(normalizedHeader)) return null;
+
+        const hit = courseMap.get(normalizedHeader);
         if (!hit) return null;
         return { col: idx + 1, courseId: hit.id, expiryMonths: hit.expiryMonths, neverExpires: hit.neverExpires };
       }
     );
 
-    summary.skippedUnknownCourses = colToCourse.filter((x) => x === null).length;
+    courseNames.forEach((name, idx) => {
+      const normalizedHeader = normalizeKey(name);
+      if (!normalizedHeader) return;
+      if (ignoredMetaColumns.has(normalizedHeader)) return;
+      if (colToCourse[idx] === null) unknownCourseColumns.push(name);
+    });
+
+    summary.skippedUnknownCourses = unknownCourseColumns.length;
 
     const upserts: any[] = [];
 
     for (const row of dataRows) {
       const staffName = cleanCell(row[0] || '');
       if (!staffName) continue;
+
+      if (dividerLabels.has(normalizeKey(staffName))) {
+        // Divider / header row in the spreadsheet (not a staff member)
+        continue;
+      }
 
       const staffId = staffMap.get(normalizeStaffName(staffName));
       if (!staffId) {
@@ -307,9 +348,18 @@ export async function POST(request: NextRequest) {
     const chunkSize = 500;
     for (let i = 0; i < upserts.length; i += chunkSize) {
       const chunk = upserts.slice(i, i + chunkSize);
-      const { error } = await authz.service
+      let { error } = await authz.service
         .from('staff_training_matrix')
-        .upsert(chunk, { onConflict: 'staff_id,course_id' });
+        .upsert(chunk, { onConflict: 'staff_id,course_id,completed_at_location_id' });
+
+      // Support deployments that still use the legacy unique key.
+      if (error?.code === '42P10') {
+        const fallback = await authz.service
+          .from('staff_training_matrix')
+          .upsert(chunk, { onConflict: 'staff_id,course_id' });
+        error = fallback.error;
+      }
+
       if (error) {
         summary.errors++;
         if (errorMessages.size < 10) errorMessages.add(error.message);
@@ -324,7 +374,7 @@ export async function POST(request: NextRequest) {
       summary,
       errors: Array.from(errorMessages.values()),
       unknownStaff: Array.from(unknownStaffSamples.values()),
-      unknownCourses: courseNames.filter((_, idx) => colToCourse[idx] === null).slice(0, 50),
+      unknownCourses: unknownCourseColumns.slice(0, 50),
     });
   } catch (error) {
     const msg = error instanceof Error ? error.message : String(error);
