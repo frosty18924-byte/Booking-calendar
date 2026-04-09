@@ -85,12 +85,15 @@ function AdminToolsPageInner() {
           className="rounded-[32px] border shadow-2xl overflow-hidden"
         >
           <div className="p-6 md:p-10 border-b" style={{ borderColor: isDark ? '#1f2937' : '#e2e8f0' }}>
-            <div className="flex items-center justify-between gap-4">
-              <div>
-                <h1 className="text-2xl md:text-4xl font-black tracking-tight">Admin</h1>
-                <p className={`mt-2 text-sm md:text-base ${isDark ? 'text-slate-300' : 'text-slate-600'}`}>Manage staff and system settings.</p>
+            <div className="flex items-start justify-between gap-4">
+              <div className="flex items-start gap-3">
+                <BackButton to="/" />
+                <div>
+                  <h1 className="text-2xl md:text-4xl font-black tracking-tight">Admin</h1>
+                  <p className={`mt-2 text-sm md:text-base ${isDark ? 'text-slate-300' : 'text-slate-600'}`}>Manage staff and system settings.</p>
+                </div>
               </div>
-              <BackButton to="/" />
+              <div />
             </div>
           </div>
 
