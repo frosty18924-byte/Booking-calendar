@@ -7,12 +7,6 @@ import { supabase } from '@/lib/supabase';
 import { hasPermission } from '@/lib/permissions';
 import { useNavDrawer } from '@/app/components/NavDrawerProvider';
 
-type NavItem = {
-  label: string;
-  description?: string;
-  path: string;
-};
-
 export default function SlideOutNav() {
   const router = useRouter();
   const pathname = usePathname() || '';
@@ -66,22 +60,8 @@ export default function SlideOutNav() {
   const isAuthPage = pathname === '/login' || pathname.startsWith('/auth/');
   if (isAuthPage) return null;
 
-  const items = useMemo<NavItem[]>(() => {
-    const out: NavItem[] = [
-      { label: 'Training', description: 'Training dashboard', path: '/dashboard' },
-      { label: 'Template Gallery', description: 'Search and open documents', path: '/templates' },
-      { label: 'Training Matrix', description: 'Staff training records', path: '/training-matrix' },
-      { label: 'Booking Calendar', description: 'Schedule training events', path: '/apps/booking-calendar' },
-      { label: 'Course Expiry', description: 'Expiring and expired courses', path: '/apps/expiry-checker' },
-      { label: 'Course Checker', description: 'Search course data', path: '/apps/training-course-checker' },
-    ];
-
-    if (hasPermission(userRole, 'TEMPLATES', 'canEdit')) {
-      out.splice(3, 0, { label: 'Templates Admin', description: 'Upload and edit templates', path: '/templates/admin' });
-    }
-
-    return out;
-  }, [userRole]);
+  const canTemplatesAdmin = useMemo(() => hasPermission(userRole, 'TEMPLATES', 'canEdit'), [userRole]);
+  const canAdminTools = useMemo(() => hasPermission(userRole, 'STAFF_MANAGEMENT', 'canView'), [userRole]);
 
   const go = (path: string) => {
     close();
@@ -89,7 +69,7 @@ export default function SlideOutNav() {
   };
 
   const showButtonsDesktop = true;
-  const showButtonsMobile = pathname === '/dashboard';
+  const showButtonsMobile = true;
 
   return (
     <>
@@ -166,17 +146,92 @@ export default function SlideOutNav() {
             </div>
 
             <nav className="p-4">
-              <div className="grid gap-3">
-                {items.map(item => (
-                  <button
-                    key={item.path}
-                    onClick={() => go(item.path)}
-                    className="text-left rounded-2xl border border-slate-200 p-4 shadow-sm transition-all hover:bg-slate-50 hover:border-blue-500 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/40 dark:border-slate-800 dark:hover:bg-slate-900/40 dark:hover:border-blue-400"
-                  >
-                    <p className="text-sm font-extrabold text-slate-900 dark:text-white">{item.label}</p>
-                    {item.description && <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">{item.description}</p>}
-                  </button>
-                ))}
+              <div className="grid gap-8">
+                <div>
+                  <p className="mb-3 text-xs font-black uppercase tracking-widest text-slate-500 dark:text-slate-400">Portal</p>
+                  <div className="grid gap-3">
+                    <button
+                      onClick={() => go('/dashboard')}
+                      className="text-left rounded-3xl border p-5 shadow-lg transition-all hover:shadow-xl hover:border-blue-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/40 dark:border-slate-800 dark:hover:border-blue-400"
+                    >
+                      <div className="text-4xl mb-2 leading-none">🎓</div>
+                      <p className="text-sm font-extrabold text-slate-900 dark:text-white">Training</p>
+                      <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">Dashboard and tools</p>
+                    </button>
+
+                    <button
+                      onClick={() => go('/templates')}
+                      className="text-left rounded-3xl border p-5 shadow-lg transition-all hover:shadow-xl hover:border-blue-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/40 dark:border-slate-800 dark:hover:border-blue-400"
+                    >
+                      <div className="text-4xl mb-2 leading-none">📄</div>
+                      <p className="text-sm font-extrabold text-slate-900 dark:text-white">Template Gallery</p>
+                      <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">View, print, or download</p>
+                    </button>
+
+                    {canAdminTools && (
+                      <button
+                        onClick={() => go('/admin-tools')}
+                        className="text-left rounded-3xl border p-5 shadow-lg transition-all hover:shadow-xl hover:border-blue-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/40 dark:border-slate-800 dark:hover:border-blue-400"
+                      >
+                        <div className="text-4xl mb-2 leading-none">🛠️</div>
+                        <p className="text-sm font-extrabold text-slate-900 dark:text-white">Admin</p>
+                        <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">Staff + system tools</p>
+                      </button>
+                    )}
+                  </div>
+                </div>
+
+                <div>
+                  <p className="mb-3 text-xs font-black uppercase tracking-widest text-slate-500 dark:text-slate-400">Apps</p>
+                  <div className="grid gap-3">
+                    <button
+                      onClick={() => go('/training-matrix')}
+                      className="text-left rounded-3xl border p-5 shadow-lg transition-all hover:shadow-xl hover:border-purple-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-purple-500/40 dark:border-slate-800 dark:hover:border-purple-400"
+                    >
+                      <div className="text-4xl mb-2 leading-none">📊</div>
+                      <p className="text-sm font-extrabold text-slate-900 dark:text-white">Training Matrix</p>
+                      <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">Staff training records</p>
+                    </button>
+
+                    <button
+                      onClick={() => go('/apps/booking-calendar')}
+                      className="text-left rounded-3xl border p-5 shadow-lg transition-all hover:shadow-xl hover:border-emerald-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/40 dark:border-slate-800 dark:hover:border-emerald-400"
+                    >
+                      <div className="text-4xl mb-2 leading-none">📆</div>
+                      <p className="text-sm font-extrabold text-slate-900 dark:text-white">Booking Calendar</p>
+                      <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">Schedule and bookings</p>
+                    </button>
+
+                    <button
+                      onClick={() => go('/apps/expiry-checker')}
+                      className="text-left rounded-3xl border p-5 shadow-lg transition-all hover:shadow-xl hover:border-blue-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/40 dark:border-slate-800 dark:hover:border-blue-400"
+                    >
+                      <div className="text-4xl mb-2 leading-none">📅</div>
+                      <p className="text-sm font-extrabold text-slate-900 dark:text-white">Course Expiry</p>
+                      <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">Expiring and expired</p>
+                    </button>
+
+                    <button
+                      onClick={() => go('/apps/training-course-checker')}
+                      className="text-left rounded-3xl border p-5 shadow-lg transition-all hover:shadow-xl hover:border-blue-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/40 dark:border-slate-800 dark:hover:border-blue-400"
+                    >
+                      <div className="text-4xl mb-2 leading-none">🔎</div>
+                      <p className="text-sm font-extrabold text-slate-900 dark:text-white">Course Checker</p>
+                      <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">Search course data</p>
+                    </button>
+
+                    {canTemplatesAdmin && (
+                      <button
+                        onClick={() => go('/templates/admin')}
+                        className="text-left rounded-3xl border p-5 shadow-lg transition-all hover:shadow-xl hover:border-blue-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/40 dark:border-slate-800 dark:hover:border-blue-400"
+                      >
+                        <div className="text-4xl mb-2 leading-none">⬆️</div>
+                        <p className="text-sm font-extrabold text-slate-900 dark:text-white">Templates Admin</p>
+                        <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">Upload and edit</p>
+                      </button>
+                    )}
+                  </div>
+                </div>
               </div>
             </nav>
 
