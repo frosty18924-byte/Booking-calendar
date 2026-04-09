@@ -4,6 +4,8 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import ThemeToggle from '@/app/components/ThemeToggle';
+import MatrixSyncModal from '@/app/components/MatrixSyncModal';
+import { hasPermission } from '@/lib/permissions';
 
 interface DashboardProfile {
   full_name: string | null;
@@ -17,6 +19,7 @@ export default function DashboardPage() {
   const [user, setUser] = useState<DashboardProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [userRole, setUserRole] = useState<string | null>(null);
+  const [showMatrixSyncModal, setShowMatrixSyncModal] = useState(false);
 
   useEffect(() => {
     checkTheme();
@@ -130,6 +133,33 @@ export default function DashboardPage() {
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {hasPermission(userRole, 'STAFF_MANAGEMENT', 'canView') && (
+            <div
+              onClick={() => setShowMatrixSyncModal(true)}
+              className={`group cursor-pointer p-8 rounded-xl border-2 transition-all duration-300 hover:shadow-lg ${
+                isDark
+                  ? 'bg-gray-800 border-gray-700 hover:border-blue-500 hover:bg-gray-750'
+                  : 'bg-white border-gray-200 hover:border-blue-500 hover:bg-blue-50'
+              }`}
+            >
+              <div className="flex items-start justify-between mb-4">
+                <div className="text-5xl">📥</div>
+              </div>
+              <h3 className={`text-2xl font-bold mb-2 transition-colors duration-300 ${isDark ? 'text-white' : 'text-gray-900'}`}>
+                Matrix Sync
+              </h3>
+              <p className={`transition-colors duration-300 ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
+                Sync via Atlas upload or a full matrix CSV per location.
+              </p>
+              <div className="mt-6 flex items-center text-blue-600 dark:text-blue-400 group-hover:translate-x-1 transition-transform">
+                <span className="font-semibold">Open</span>
+                <svg className="w-5 h-5 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                </svg>
+              </div>
+            </div>
+          )}
+
           {/* Training Matrix Card */}
           <div
             onClick={() => router.push('/training-matrix')}
@@ -209,6 +239,12 @@ export default function DashboardPage() {
           </div>
         </div>
       </div>
+
+      {showMatrixSyncModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <MatrixSyncModal onClose={() => setShowMatrixSyncModal(false)} />
+        </div>
+      )}
     </div>
   );
 }

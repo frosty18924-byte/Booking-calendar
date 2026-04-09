@@ -6,7 +6,6 @@ import { hasPermission } from '@/lib/permissions';
 import { loadEmailTestSettings, saveEmailTestSettings } from '@/lib/emailTestMode';
 import AddStaffModal from '@/app/components/AddStaffModal';
 import DuplicateRemovalModal from '@/app/components/DuplicateRemovalModal';
-import MatrixSyncModal from '@/app/components/MatrixSyncModal';
 
 type Props = {
   isDark: boolean;
@@ -32,7 +31,6 @@ export default function AdminToolsPanel({ isDark, userRole }: Props) {
   const [showAddStaffModal, setShowAddStaffModal] = useState(false);
   const [showDuplicateRemoval, setShowDuplicateRemoval] = useState(false);
   const [showDataToolsModal, setShowDataToolsModal] = useState(false);
-  const [showMatrixSyncModal, setShowMatrixSyncModal] = useState(false);
   const [showNotificationsModal, setShowNotificationsModal] = useState(false);
 
   const [emailTestMode, setEmailTestMode] = useState(false);
@@ -125,7 +123,7 @@ export default function AdminToolsPanel({ isDark, userRole }: Props) {
         <p className={`mt-2 transition-colors duration-300 ${isDark ? 'text-slate-300' : 'text-slate-600'}`}>Manage staff and system settings</p>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         <div
           onClick={() => setShowAddStaffModal(true)}
           className={`group cursor-pointer p-6 rounded-3xl border transition-all duration-300 hover:shadow-lg ${
@@ -135,17 +133,6 @@ export default function AdminToolsPanel({ isDark, userRole }: Props) {
           <div className="text-4xl mb-3">👥</div>
           <h3 className={`text-lg font-extrabold mb-1 transition-colors duration-300 ${isDark ? 'text-white' : 'text-slate-900'}`}>Manage Staff</h3>
           <p className={`text-sm transition-colors duration-300 ${isDark ? 'text-slate-300' : 'text-slate-600'}`}>Create and manage staff accounts, assign them to locations</p>
-        </div>
-
-        <div
-          onClick={() => setShowMatrixSyncModal(true)}
-          className={`group cursor-pointer p-6 rounded-3xl border transition-all duration-300 hover:shadow-lg ${
-            isDark ? 'bg-slate-950/40 border-slate-800 hover:border-blue-400 hover:bg-slate-950/60' : 'bg-white border-slate-200 hover:border-blue-500 hover:bg-slate-50'
-          }`}
-        >
-          <div className="text-4xl mb-3">📥</div>
-          <h3 className={`text-lg font-extrabold mb-1 transition-colors duration-300 ${isDark ? 'text-white' : 'text-slate-900'}`}>Matrix Sync</h3>
-          <p className={`text-sm transition-colors duration-300 ${isDark ? 'text-slate-300' : 'text-slate-600'}`}>Sync via Atlas upload or a full matrix CSV per location.</p>
         </div>
 
         <div
@@ -308,13 +295,6 @@ export default function AdminToolsPanel({ isDark, userRole }: Props) {
           </div>
         </div>
       )}
-
-      {showMatrixSyncModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <MatrixSyncModal onClose={() => setShowMatrixSyncModal(false)} />
-        </div>
-      )}
     </div>
   );
 }
-
