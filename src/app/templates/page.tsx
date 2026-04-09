@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import UniformButton from '@/app/components/UniformButton';
+import Icon from '@/app/components/Icon';
 import { supabase } from '@/lib/supabase';
 import { hasPermission } from '@/lib/permissions';
 

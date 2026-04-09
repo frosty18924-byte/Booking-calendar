@@ -3,6 +3,8 @@
 import { useEffect, useMemo, useState } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import Icon from '@/app/components/Icon';
+import UniformButton from '@/app/components/UniformButton';
+import TileButton from '@/app/components/TileButton';
 import { supabase } from '@/lib/supabase';
 import { hasPermission } from '@/lib/permissions';
 import { useNavDrawer } from '@/app/components/NavDrawerProvider';
@@ -14,6 +16,9 @@ export default function SlideOutNav() {
 
   const [userRole, setUserRole] = useState<string | null>(null);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [trainingOpen, setTrainingOpen] = useState(true);
+  const [templatesOpen, setTemplatesOpen] = useState(false);
+  const [adminOpen, setAdminOpen] = useState(false);
 
   useEffect(() => {
     let mounted = true;
@@ -58,10 +63,36 @@ export default function SlideOutNav() {
   }, []);
 
   const isAuthPage = pathname === '/login' || pathname.startsWith('/auth/');
-  if (isAuthPage) return null;
-
   const canTemplatesAdmin = useMemo(() => hasPermission(userRole, 'TEMPLATES', 'canEdit'), [userRole]);
   const canAdminTools = useMemo(() => hasPermission(userRole, 'STAFF_MANAGEMENT', 'canView'), [userRole]);
+
+  useEffect(() => {
+    // Default the open section based on where the user currently is.
+    if (!pathname) return;
+    const isTemplatesPath = pathname === '/templates' || pathname.startsWith('/templates/');
+    const isAdminPath = pathname === '/admin-tools' || pathname.startsWith('/admin-tools/') || pathname === '/admin' || pathname.startsWith('/admin/');
+
+    if (isTemplatesPath) {
+      setTrainingOpen(false);
+      setTemplatesOpen(true);
+      setAdminOpen(false);
+      return;
+    }
+
+    if (isAdminPath) {
+      setTrainingOpen(false);
+      setTemplatesOpen(false);
+      setAdminOpen(true);
+      return;
+    }
+
+    setTrainingOpen(true);
+    setTemplatesOpen(false);
+    setAdminOpen(false);
+  }, [pathname]);
+
+  // Important: do not return before all hooks have run (Rules of Hooks).
+  if (isAuthPage) return null;
 
   const go = (path: string) => {
     close();
@@ -77,24 +108,26 @@ export default function SlideOutNav() {
       {showButtonsDesktop && (
         <div className="hidden sm:block" style={{ position: 'fixed', top: '4rem', left: '1rem', zIndex: 1000 }}>
           <div className="flex items-center gap-2 rounded-xl border border-slate-200/70 bg-white/85 p-1.5 shadow-lg backdrop-blur dark:border-slate-700/70 dark:bg-slate-900/85">
-            <button
+            <UniformButton
+              variant="secondary"
+              size="sm"
               onClick={() => go('/')}
-              className="no-ui-motion inline-flex items-center justify-center rounded-lg border px-2 py-2 shadow-sm transition-colors dark:border-slate-700"
-              style={{ backgroundColor: 'transparent' }}
+              className="no-ui-motion p-2 shadow-md border"
               title="Portal"
               aria-label="Portal"
             >
               <Icon name="home" className="w-6 h-6" />
-            </button>
-            <button
+            </UniformButton>
+            <UniformButton
+              variant="secondary"
+              size="sm"
               onClick={toggle}
-              className="no-ui-motion inline-flex items-center justify-center rounded-lg border px-2 py-2 shadow-sm transition-colors dark:border-slate-700"
-              style={{ backgroundColor: 'transparent' }}
+              className="no-ui-motion p-2 shadow-md border"
               title="Menu"
               aria-label="Menu"
             >
               <Icon name="menu" className="w-6 h-6" />
-            </button>
+            </UniformButton>
           </div>
         </div>
       )}
@@ -103,24 +136,26 @@ export default function SlideOutNav() {
       {showButtonsMobile && (
         <div className="sm:hidden" style={{ position: 'fixed', top: '4rem', left: '1rem', zIndex: 1000 }}>
           <div className="flex items-center gap-2 rounded-xl border border-slate-200/70 bg-white/85 p-1.5 shadow-lg backdrop-blur dark:border-slate-700/70 dark:bg-slate-900/85">
-            <button
+            <UniformButton
+              variant="secondary"
+              size="sm"
               onClick={() => go('/')}
-              className="no-ui-motion inline-flex items-center justify-center rounded-lg border px-2 py-2 shadow-sm transition-colors dark:border-slate-700"
-              style={{ backgroundColor: 'transparent' }}
+              className="no-ui-motion p-2 shadow-md border"
               title="Portal"
               aria-label="Portal"
             >
               <Icon name="home" className="w-6 h-6" />
-            </button>
-            <button
+            </UniformButton>
+            <UniformButton
+              variant="secondary"
+              size="sm"
               onClick={toggle}
-              className="no-ui-motion inline-flex items-center justify-center rounded-lg border px-2 py-2 shadow-sm transition-colors dark:border-slate-700"
-              style={{ backgroundColor: 'transparent' }}
+              className="no-ui-motion p-2 shadow-md border"
               title="Menu"
               aria-label="Menu"
             >
               <Icon name="menu" className="w-6 h-6" />
-            </button>
+            </UniformButton>
           </div>
         </div>
       )}
@@ -131,107 +166,128 @@ export default function SlideOutNav() {
           <div className="absolute inset-0 bg-black/50" onClick={close} />
           <aside className="absolute left-0 top-0 h-full w-[92vw] max-w-sm border-r border-slate-200 bg-white shadow-2xl dark:border-slate-800 dark:bg-slate-950">
             <div className="flex items-center justify-between gap-3 border-b border-slate-200 p-4 dark:border-slate-800">
-              <div className="min-w-0">
-                <p className="text-sm font-extrabold tracking-tight text-slate-900 dark:text-white">Menu</p>
-                <p className="text-xs text-slate-500 dark:text-slate-400 truncate">{isAuthenticated ? 'Signed in' : 'Not signed in'}</p>
-              </div>
-              <button
-                onClick={close}
-                className="inline-flex items-center justify-center rounded-lg border border-slate-200 px-2 py-2 text-slate-700 shadow-sm dark:border-slate-800 dark:text-slate-200"
-                aria-label="Close menu"
-                title="Close"
-              >
-                <Icon name="close" className="w-5 h-5" />
-              </button>
-            </div>
+	              <div className="min-w-0">
+	                <p className="text-sm font-extrabold tracking-tight text-slate-900 dark:text-white">Menu</p>
+	                <p className="text-xs text-slate-500 dark:text-slate-400 truncate">{isAuthenticated ? 'Signed in' : 'Not signed in'}</p>
+	              </div>
+	              <UniformButton
+	                variant="secondary"
+	                size="sm"
+	                onClick={close}
+	                className="no-ui-motion p-2 shadow-md border"
+	                aria-label="Close menu"
+	                title="Close"
+	              >
+	                <Icon name="close" className="w-5 h-5" />
+	              </UniformButton>
+	            </div>
 
             <nav className="p-4">
-              <div className="grid gap-8">
-                <div>
-                  <p className="mb-3 text-xs font-black uppercase tracking-widest text-slate-500 dark:text-slate-400">Portal</p>
-                  <div className="grid gap-3">
+              <div className="grid gap-4">
+                {/* Training */}
+                <section className="rounded-3xl border border-slate-200 shadow-sm dark:border-slate-800">
+                  <button
+                    type="button"
+                    onClick={() => setTrainingOpen(v => !v)}
+                    aria-expanded={trainingOpen}
+                    aria-controls="nav-training-items"
+                    className="w-full text-left p-5 rounded-3xl transition-colors hover:bg-slate-50 dark:hover:bg-slate-900/40"
+                  >
+                    <div className="flex items-center justify-between gap-3">
+                      <div className="min-w-0">
+                        <p className="text-sm font-extrabold text-slate-900 dark:text-white">Training</p>
+                        <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">Dashboard and apps</p>
+                      </div>
+                      <span className="text-xs font-black uppercase tracking-widest text-slate-500 dark:text-slate-400">
+                        {trainingOpen ? 'Hide' : 'Show'}
+                      </span>
+                    </div>
+                  </button>
+
+	                  {trainingOpen && (
+	                    <div id="nav-training-items" className="px-5 pb-5">
+	                      <div className="grid gap-3">
+	                        <TileButton title="Dashboard" description="Overview and tools" size="sm" accent="blue" onClick={() => go('/dashboard')} />
+
+	                        <TileButton title="Training Matrix" description="Staff training records" size="sm" accent="purple" onClick={() => go('/training-matrix')} />
+
+	                        <TileButton title="Booking Calendar" description="Schedule and bookings" size="sm" accent="emerald" onClick={() => go('/apps/booking-calendar')} />
+
+	                        <TileButton title="Course Expiry" description="Expiring and expired" size="sm" accent="blue" onClick={() => go('/apps/expiry-checker')} />
+
+	                        <TileButton title="Course Checker" description="Search course data" size="sm" accent="blue" onClick={() => go('/apps/training-course-checker')} />
+	                      </div>
+	                    </div>
+	                  )}
+	                </section>
+
+                {/* Templates */}
+                <section className="rounded-3xl border border-slate-200 shadow-sm dark:border-slate-800">
+                  <button
+                    type="button"
+                    onClick={() => setTemplatesOpen(v => !v)}
+                    aria-expanded={templatesOpen}
+                    aria-controls="nav-templates-items"
+                    className="w-full text-left p-5 rounded-3xl transition-colors hover:bg-slate-50 dark:hover:bg-slate-900/40"
+                  >
+                    <div className="flex items-center justify-between gap-3">
+                      <div className="min-w-0">
+                        <p className="text-sm font-extrabold text-slate-900 dark:text-white">Templates</p>
+                        <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">Gallery and admin</p>
+                      </div>
+                      <span className="text-xs font-black uppercase tracking-widest text-slate-500 dark:text-slate-400">
+                        {templatesOpen ? 'Hide' : 'Show'}
+                      </span>
+                    </div>
+                  </button>
+
+	                  {templatesOpen && (
+	                    <div id="nav-templates-items" className="px-5 pb-5">
+	                      <div className="grid gap-3">
+	                        <TileButton title="Template Gallery" description="View, print, or download" size="sm" accent="blue" onClick={() => go('/templates')} />
+
+	                        {canTemplatesAdmin && (
+	                          <TileButton title="Templates Admin" description="Upload and edit" size="sm" accent="blue" onClick={() => go('/templates/admin')} />
+	                        )}
+	                      </div>
+	                    </div>
+	                  )}
+	                </section>
+
+                {/* Admin */}
+                {canAdminTools && (
+                  <section className="rounded-3xl border border-slate-200 shadow-sm dark:border-slate-800">
                     <button
-                      onClick={() => go('/dashboard')}
-                      className="text-left rounded-3xl border p-5 shadow-lg transition-all hover:shadow-xl hover:border-blue-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/40 dark:border-slate-800 dark:hover:border-blue-400"
+                      type="button"
+                      onClick={() => setAdminOpen(v => !v)}
+                      aria-expanded={adminOpen}
+                      aria-controls="nav-admin-items"
+                      className="w-full text-left p-5 rounded-3xl transition-colors hover:bg-slate-50 dark:hover:bg-slate-900/40"
                     >
-                      <div className="text-4xl mb-2 leading-none">🎓</div>
-                      <p className="text-sm font-extrabold text-slate-900 dark:text-white">Training</p>
-                      <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">Dashboard and tools</p>
+                      <div className="flex items-center justify-between gap-3">
+                        <div className="min-w-0">
+                          <p className="text-sm font-extrabold text-slate-900 dark:text-white">Admin</p>
+                          <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">Staff and system tools</p>
+                        </div>
+                        <span className="text-xs font-black uppercase tracking-widest text-slate-500 dark:text-slate-400">
+                          {adminOpen ? 'Hide' : 'Show'}
+                        </span>
+                      </div>
                     </button>
 
-                    <button
-                      onClick={() => go('/templates')}
-                      className="text-left rounded-3xl border p-5 shadow-lg transition-all hover:shadow-xl hover:border-blue-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/40 dark:border-slate-800 dark:hover:border-blue-400"
-                    >
-                      <div className="text-4xl mb-2 leading-none">📄</div>
-                      <p className="text-sm font-extrabold text-slate-900 dark:text-white">Template Gallery</p>
-                      <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">View, print, or download</p>
-                    </button>
+	                    {adminOpen && (
+	                      <div id="nav-admin-items" className="px-5 pb-5">
+	                        <div className="grid gap-3">
+	                          <TileButton title="Manage Staff" description="Create, edit, and assign staff" size="sm" accent="blue" onClick={() => go('/admin-tools?open=staff')} />
 
-                    {canAdminTools && (
-                      <button
-                        onClick={() => go('/admin-tools')}
-                        className="text-left rounded-3xl border p-5 shadow-lg transition-all hover:shadow-xl hover:border-blue-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/40 dark:border-slate-800 dark:hover:border-blue-400"
-                      >
-                        <div className="text-4xl mb-2 leading-none">🛠️</div>
-                        <p className="text-sm font-extrabold text-slate-900 dark:text-white">Admin</p>
-                        <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">Staff + system tools</p>
-                      </button>
-                    )}
-                  </div>
-                </div>
+	                          <TileButton title="Notifications" description="Email test mode and activity" size="sm" accent="blue" onClick={() => go('/admin-tools?open=notifications')} />
 
-                <div>
-                  <p className="mb-3 text-xs font-black uppercase tracking-widest text-slate-500 dark:text-slate-400">Apps</p>
-                  <div className="grid gap-3">
-                    <button
-                      onClick={() => go('/training-matrix')}
-                      className="text-left rounded-3xl border p-5 shadow-lg transition-all hover:shadow-xl hover:border-purple-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-purple-500/40 dark:border-slate-800 dark:hover:border-purple-400"
-                    >
-                      <div className="text-4xl mb-2 leading-none">📊</div>
-                      <p className="text-sm font-extrabold text-slate-900 dark:text-white">Training Matrix</p>
-                      <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">Staff training records</p>
-                    </button>
-
-                    <button
-                      onClick={() => go('/apps/booking-calendar')}
-                      className="text-left rounded-3xl border p-5 shadow-lg transition-all hover:shadow-xl hover:border-emerald-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/40 dark:border-slate-800 dark:hover:border-emerald-400"
-                    >
-                      <div className="text-4xl mb-2 leading-none">📆</div>
-                      <p className="text-sm font-extrabold text-slate-900 dark:text-white">Booking Calendar</p>
-                      <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">Schedule and bookings</p>
-                    </button>
-
-                    <button
-                      onClick={() => go('/apps/expiry-checker')}
-                      className="text-left rounded-3xl border p-5 shadow-lg transition-all hover:shadow-xl hover:border-blue-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/40 dark:border-slate-800 dark:hover:border-blue-400"
-                    >
-                      <div className="text-4xl mb-2 leading-none">📅</div>
-                      <p className="text-sm font-extrabold text-slate-900 dark:text-white">Course Expiry</p>
-                      <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">Expiring and expired</p>
-                    </button>
-
-                    <button
-                      onClick={() => go('/apps/training-course-checker')}
-                      className="text-left rounded-3xl border p-5 shadow-lg transition-all hover:shadow-xl hover:border-blue-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/40 dark:border-slate-800 dark:hover:border-blue-400"
-                    >
-                      <div className="text-4xl mb-2 leading-none">🔎</div>
-                      <p className="text-sm font-extrabold text-slate-900 dark:text-white">Course Checker</p>
-                      <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">Search course data</p>
-                    </button>
-
-                    {canTemplatesAdmin && (
-                      <button
-                        onClick={() => go('/templates/admin')}
-                        className="text-left rounded-3xl border p-5 shadow-lg transition-all hover:shadow-xl hover:border-blue-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/40 dark:border-slate-800 dark:hover:border-blue-400"
-                      >
-                        <div className="text-4xl mb-2 leading-none">⬆️</div>
-                        <p className="text-sm font-extrabold text-slate-900 dark:text-white">Templates Admin</p>
-                        <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">Upload and edit</p>
-                      </button>
-                    )}
-                  </div>
-                </div>
+	                          <TileButton title="Housekeeping" description="Duplicate cleanup and archive" size="sm" accent="blue" onClick={() => go('/admin-tools?open=housekeeping')} />
+	                        </div>
+	                      </div>
+	                    )}
+	                  </section>
+	                )}
               </div>
             </nav>
 

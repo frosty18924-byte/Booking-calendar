@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import UniformButton from '@/app/components/UniformButton';
-import Icon from '@/app/components/Icon';
+import BackButton from '@/app/components/BackButton';
 import { supabase } from '@/lib/supabase';
 
 type TemplateListRow = {
@@ -195,17 +195,7 @@ export default function TemplatesAdminClient({ selectedFromQuery }: { selectedFr
           <div className="p-6 md:p-10 border-b" style={{ borderColor: isDark ? '#1f2937' : '#e2e8f0' }}>
             <div className="flex items-center justify-between gap-4">
               <div className="flex items-center gap-3">
-                <UniformButton
-                  variant="secondary"
-                  className="no-ui-motion border shadow-sm"
-                  onClick={() => router.push('/templates')}
-                  title="Back to gallery"
-                >
-                  <span className="inline-flex items-center gap-2">
-                    <Icon name="back" className="w-5 h-5" />
-                    <span className="hidden sm:inline">Back</span>
-                  </span>
-                </UniformButton>
+                <BackButton to="/templates" label="Back" labelClassName="hidden sm:inline" title="Back to gallery" />
                 <h1 className="text-2xl md:text-4xl font-black tracking-tight">Manage Templates</h1>
               </div>
               <UniformButton variant="secondary" className="no-ui-motion border shadow-sm" onClick={loadTemplates} disabled={loading}>
@@ -392,4 +382,3 @@ export default function TemplatesAdminClient({ selectedFromQuery }: { selectedFr
     </main>
   );
 }
-

@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
-import Icon from '@/app/components/Icon';
+import BackButton from '@/app/components/BackButton';
 import { debugLog, debugWarn } from '@/lib/debug';
 
 export default function AnalyticsDashboard() {
@@ -318,7 +318,8 @@ export default function AnalyticsDashboard() {
 
         {/* Header row with back button and title */}
         <div className="flex justify-between items-center mb-8 px-4">
-          <button 
+          <BackButton
+            label="Back"
             onClick={() => {
               if (typeof window !== 'undefined') {
                 const fromParam = new URLSearchParams(window.location.search).get('from');
@@ -329,12 +330,7 @@ export default function AnalyticsDashboard() {
               }
               router.push('/admin');
             }}
-            style={{ color: isDark ? '#94a3b8' : '#475569' }}
-            className="p-2 hover:opacity-80 rounded-lg font-bold text-2xl hover:scale-125 active:scale-100 transition-transform duration-200"
-            aria-label="Back"
-          >
-            <Icon name="back" className="w-6 h-6" />
-          </button>
+          />
           <h1 style={{ color: isDark ? '#f1f5f9' : '#1e293b' }} className="text-3xl font-black uppercase tracking-tighter">Intelligence Hub</h1>
           <div />
         </div>

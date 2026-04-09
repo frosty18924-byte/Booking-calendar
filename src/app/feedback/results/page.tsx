@@ -3,6 +3,8 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
+import BackButton from '@/app/components/BackButton';
+import UniformButton from '@/app/components/UniformButton';
 
 const DESCRIPTORS = [
   'Well tutored', 'Useful', 'Basic', 'Practical', 'Fun',
@@ -162,12 +164,7 @@ export default function FeedbackResultsPage() {
 
         {/* Header */}
         <div className="flex items-center gap-4 mb-6">
-          <button
-            onClick={() => router.push('/admin')}
-            className={`text-sm font-semibold px-3 py-1.5 rounded-lg transition-colors ${isDark ? 'bg-gray-800 text-gray-300 hover:bg-gray-700' : 'bg-white text-gray-600 hover:bg-gray-100'} border ${isDark ? 'border-gray-700' : 'border-gray-200'}`}
-          >
-            ← Back
-          </button>
+          <BackButton to="/admin" />
           <div>
             <h1 className={`text-2xl font-black uppercase tracking-tight ${text}`}>Feedback Results</h1>
             <p className={`text-sm ${subtext}`}>Training course feedback analysis</p>
@@ -188,12 +185,9 @@ export default function FeedbackResultsPage() {
                 {courseOptions.map(c => <option key={c} value={c}>{c}</option>)}
               </select>
             </div>
-            <button
-              onClick={fetchFeedback}
-              className="ml-auto text-sm font-semibold px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors"
-            >
+            <UniformButton onClick={fetchFeedback} className="ml-auto">
               Refresh
-            </button>
+            </UniformButton>
           </div>
         </div>
 

@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { login } from './actions';
+import UniformButton from '@/app/components/UniformButton';
 
 export default function SignInPage() {
   const router = useRouter();
@@ -72,13 +73,14 @@ export default function SignInPage() {
             />
           </div>
 
-          <button
+          <UniformButton
             type="submit"
             disabled={loading}
-            className="w-full py-3 bg-blue-600 text-white font-bold rounded-xl hover:bg-blue-700 transition shadow-md disabled:bg-blue-300"
+            size="lg"
+            className="w-full shadow-md"
           >
             {loading ? 'Logging in...' : 'Sign In'}
-          </button>
+          </UniformButton>
         </form>
 
         {message && (

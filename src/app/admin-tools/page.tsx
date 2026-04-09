@@ -1,16 +1,36 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { Suspense, useEffect, useState } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import { hasPermission } from '@/lib/permissions';
 import AdminToolsPanel from '@/app/components/AdminToolsPanel';
+import BackButton from '@/app/components/BackButton';
 
 export default function AdminToolsPage() {
+  return (
+    <Suspense
+      fallback={
+        <main className="min-h-screen px-4 py-8">
+          <div className="max-w-5xl mx-auto text-sm text-slate-600">Loading…</div>
+        </main>
+      }
+    >
+      <AdminToolsPageInner />
+    </Suspense>
+  );
+}
+
+function AdminToolsPageInner() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [isDark, setIsDark] = useState(true);
   const [userRole, setUserRole] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+
+  const openParam = (searchParams.get('open') || '').trim().toLowerCase();
+  const initialModal =
+    openParam === 'staff' ? 'staff' : openParam === 'notifications' ? 'notifications' : openParam === 'housekeeping' ? 'housekeeping' : null;
 
   useEffect(() => {
     const checkTheme = () => setIsDark(document.documentElement.classList.contains('dark'));
@@ -70,23 +90,15 @@ export default function AdminToolsPage() {
                 <h1 className="text-2xl md:text-4xl font-black tracking-tight">Admin</h1>
                 <p className={`mt-2 text-sm md:text-base ${isDark ? 'text-slate-300' : 'text-slate-600'}`}>Manage staff and system settings.</p>
               </div>
-              <button
-                onClick={() => router.push('/')}
-                className={`rounded-2xl border px-4 py-2 text-sm font-semibold shadow-sm ${
-                  isDark ? 'border-slate-700 bg-slate-900/40 text-slate-100 hover:bg-slate-900/60' : 'border-slate-200 bg-white text-slate-800 hover:bg-slate-50'
-                }`}
-              >
-                Back
-              </button>
+              <BackButton to="/" />
             </div>
           </div>
 
           <div className="p-6 md:p-10">
-            <AdminToolsPanel isDark={isDark} userRole={userRole} />
+            <AdminToolsPanel isDark={isDark} userRole={userRole} initialModal={initialModal} />
           </div>
         </div>
       </div>
     </main>
   );
 }
-

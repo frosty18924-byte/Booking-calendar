@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import Icon from '@/app/components/Icon';
+import TileButton from '@/app/components/TileButton';
 import { supabase } from '@/lib/supabase';
 import { hasPermission } from '@/lib/permissions';
 
@@ -74,95 +74,33 @@ export default function LandingPage() {
               </p>
             </div>
 
-            <div className="mt-8 grid gap-4 md:gap-6 md:grid-cols-2">
-              <button
+            <div className={`mt-8 grid gap-4 md:gap-6 ${canAdmin ? 'md:grid-cols-3' : 'md:grid-cols-2'}`}>
+              <TileButton
+                title="Training"
+                description="Open the training dashboard."
+                emoji="🎓"
+                showChevron
                 onClick={() => router.push('/dashboard')}
-                className={`group text-left rounded-3xl border p-6 md:p-8 shadow-lg transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/40 ${
-                  isDark
-                    ? 'bg-slate-950/40 border-slate-800 hover:bg-slate-950/60 hover:border-blue-400'
-                    : 'bg-white border-slate-200 hover:bg-slate-50 hover:border-blue-500'
-                }`}
-              >
-                <div className="flex items-start justify-between gap-4">
-                  <div>
-                    <div className="text-5xl mb-4 leading-none">🎓</div>
-                    <h2 className="text-xl md:text-2xl font-extrabold">Training</h2>
-                    <p className={`mt-2 text-sm ${isDark ? 'text-slate-300' : 'text-slate-600'}`}>
-                      Open the training dashboard.
-                    </p>
-                  </div>
-                  <span
-                    className={`shrink-0 inline-flex items-center justify-center rounded-2xl border p-3 transition-colors ${
-                      isDark
-                        ? 'border-slate-700 bg-slate-900/40 group-hover:bg-slate-900/60'
-                        : 'border-slate-200 bg-slate-50 group-hover:bg-white'
-                    }`}
-                  >
-                    <Icon name="chevron-right" className="w-6 h-6" />
-                  </span>
-                </div>
-              </button>
+              />
 
-              <button
+              <TileButton
+                title="Template Gallery"
+                description="Search, view, print, or download templates."
+                emoji="📄"
+                showChevron
                 onClick={() => router.push('/templates')}
-                className={`group text-left rounded-3xl border p-6 md:p-8 shadow-lg transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/40 ${
-                  isDark
-                    ? 'bg-slate-950/40 border-slate-800 hover:bg-slate-950/60 hover:border-blue-400'
-                    : 'bg-white border-slate-200 hover:bg-slate-50 hover:border-blue-500'
-                }`}
-              >
-                <div className="flex items-start justify-between gap-4">
-                  <div>
-                    <div className="text-5xl mb-4 leading-none">📄</div>
-                    <h2 className="text-xl md:text-2xl font-extrabold">Template Gallery</h2>
-                    <p className={`mt-2 text-sm ${isDark ? 'text-slate-300' : 'text-slate-600'}`}>
-                      Search, view, print, or download templates.
-                    </p>
-                  </div>
-                  <span
-                    className={`shrink-0 inline-flex items-center justify-center rounded-2xl border p-3 transition-colors ${
-                      isDark
-                        ? 'border-slate-700 bg-slate-900/40 group-hover:bg-slate-900/60'
-                        : 'border-slate-200 bg-slate-50 group-hover:bg-white'
-                    }`}
-                  >
-                    <Icon name="chevron-right" className="w-6 h-6" />
-                  </span>
-                </div>
-              </button>
-            </div>
+              />
 
-            {canAdmin && (
-              <div className="mt-8">
-                <button
+              {canAdmin && (
+                <TileButton
+                  title="Admin"
+                  description="Manage staff and system tools."
+                  emoji="🛠️"
+                  showChevron
                   onClick={() => router.push('/admin-tools')}
-                  className={`w-full text-left rounded-3xl border p-6 shadow-lg transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/40 ${
-                    isDark
-                      ? 'bg-slate-950/40 border-slate-800 hover:bg-slate-950/60 hover:border-blue-400'
-                      : 'bg-white border-slate-200 hover:bg-slate-50 hover:border-blue-500'
-                  }`}
-                >
-                  <div className="flex items-start justify-between gap-4">
-                    <div>
-                      <div className="text-5xl mb-4 leading-none">🛠️</div>
-                      <h2 className="text-xl md:text-2xl font-extrabold">Admin</h2>
-                      <p className={`mt-2 text-sm ${isDark ? 'text-slate-300' : 'text-slate-600'}`}>
-                        Manage staff and system tools.
-                      </p>
-                    </div>
-                    <span
-                      className={`shrink-0 inline-flex items-center justify-center rounded-2xl border p-3 transition-colors ${
-                        isDark
-                          ? 'border-slate-700 bg-slate-900/40'
-                          : 'border-slate-200 bg-slate-50'
-                      }`}
-                    >
-                      <Icon name="chevron-right" className="w-6 h-6" />
-                    </span>
-                  </div>
-                </button>
-              </div>
-            )}
+                />
+              )}
+            </div>
           </div>
         </div>
       </div>

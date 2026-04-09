@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import Icon from './Icon';
+import UniformButton from './UniformButton';
 
 function readThemeState(): boolean {
   if (typeof document !== 'undefined') {
@@ -62,13 +63,14 @@ export default function ThemeToggle({ className = '' }: { className?: string }) 
   if (!mounted) return null;
 
   return (
-    <button 
+    <UniformButton
       onClick={toggleTheme}
-      className={`p-2 sm:p-3 rounded-xl sm:rounded-2xl hover:opacity-80 transition-all text-lg sm:text-xl ${className}`}
-      style={{ backgroundColor: isDark ? '#334155' : '#e2e8f0' }}
+      variant="secondary"
+      size="sm"
+      className={`no-ui-motion shadow-md border ${className}`.trim()}
       aria-label="Toggle theme"
     >
       {isDark ? <Icon name="sun" className="w-6 h-6" /> : <Icon name="moon" className="w-6 h-6" />}
-    </button>
+    </UniformButton>
   );
 }

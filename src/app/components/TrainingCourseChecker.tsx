@@ -3,6 +3,7 @@
 import { Fragment, useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import UniformButton from './UniformButton';
+import BackButton from '@/app/components/BackButton';
 import { supabase } from '@/lib/supabase';
 import { ClockIcon, ExclamationCircleIcon, CalendarIcon } from '@/app/components/icons';
 
@@ -374,13 +375,7 @@ export default function TrainingCourseChecker({ isDark }: { isDark: boolean }) {
       <div className={`border-b transition-colors duration-300 ${isDark ? 'border-gray-800 bg-gray-800' : 'border-gray-200 bg-white'}`}>
         <div className="px-4 sm:px-6 lg:px-8 py-8 max-w-7xl mx-auto">
           <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mb-6">
-            <UniformButton
-              variant="secondary"
-              className="text-blue-600 dark:text-blue-400 font-bold text-sm sm:text-base px-3 py-1"
-              onClick={() => router.push('/apps/expiry-checker')}
-            >
-              ← Back
-            </UniformButton>
+            <BackButton to="/apps/expiry-checker" />
             <div className="flex-1" />
           </div>
           <div className="text-center">

@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import UniformButton from '@/app/components/UniformButton';
-import Icon from '@/app/components/Icon';
+import BackButton from '@/app/components/BackButton';
 import { supabase } from '@/lib/supabase';
 import { hasPermission } from '@/lib/permissions';
 
@@ -168,17 +168,7 @@ export default function TemplateDetailPage() {
             <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
               <div className="min-w-0">
                 <div className="flex items-center gap-3">
-                  <UniformButton
-                    variant="secondary"
-                    className="no-ui-motion border shadow-sm"
-                    onClick={() => router.push('/templates')}
-                    title="Back to gallery"
-                  >
-                    <span className="inline-flex items-center gap-2">
-                      <Icon name="back" className="w-5 h-5" />
-                      <span className="hidden sm:inline">Back</span>
-                    </span>
-                  </UniformButton>
+                  <BackButton to="/templates" label="Back" labelClassName="hidden sm:inline" title="Back to gallery" />
                   <h1 className="text-xl md:text-3xl font-black tracking-tight truncate">
                     {loading ? 'Loading…' : template?.name || 'Template'}
                   </h1>
@@ -258,4 +248,3 @@ export default function TemplateDetailPage() {
     </main>
   );
 }
-

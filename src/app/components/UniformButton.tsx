@@ -5,11 +5,24 @@ import React from 'react';
 interface UniformButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
   children: React.ReactNode;
   variant?: 'primary' | 'secondary' | 'danger' | 'icon';
+  size?: 'sm' | 'md' | 'lg';
   className?: string;
 }
 
 const base =
-  'inline-flex items-center justify-center font-sans font-bold rounded-lg transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-blue-400 disabled:opacity-60 disabled:cursor-not-allowed';
+  'inline-flex items-center justify-center font-sans font-bold rounded-xl transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-blue-400 disabled:opacity-60 disabled:cursor-not-allowed';
+
+const sizes = {
+  sm: 'px-3 py-1.5 text-sm',
+  md: 'px-4 py-2 text-sm',
+  lg: 'px-5 py-2.5 text-base',
+} as const;
+
+const iconSizes = {
+  sm: 'p-2',
+  md: 'p-2.5',
+  lg: 'p-3',
+} as const;
 
 const variants = {
   primary:
@@ -25,12 +38,14 @@ const variants = {
 export default function UniformButton({
   children,
   variant = 'primary',
+  size = 'md',
   className = '',
   ...props
 }: UniformButtonProps) {
+  const padding = variant === 'icon' ? iconSizes[size] : sizes[size];
   return (
     <button
-      className={`${base} ${variants[variant]} px-4 py-2 ${className}`.trim()}
+      className={`${base} ${variants[variant]} ${padding} ${className}`.trim()}
       {...props}
     >
       {children}

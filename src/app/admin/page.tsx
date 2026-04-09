@@ -9,6 +9,8 @@ import LocationManagerModal from '@/app/components/LocationManagerModal';
 import ChecklistTemplateModal from '@/app/components/ChecklistTemplateModal';
 import { debugLog } from '@/lib/debug';
 import { hasPermission } from '@/lib/permissions';
+import BackButton from '@/app/components/BackButton';
+import UniformButton from '@/app/components/UniformButton';
 
 export default function AdminPage() {
   const router = useRouter();
@@ -114,13 +116,7 @@ export default function AdminPage() {
 
         {/* Header row with back button and title */}
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8 sm:mb-12 px-2 sm:px-4">
-          <button 
-            onClick={handleBack}
-            style={{ color: isDark ? '#94a3b8' : '#475569' }}
-            className="p-2 hover:opacity-80 rounded-lg font-bold text-xl sm:text-2xl"
-          >
-            ←
-          </button>
+          <BackButton onClick={handleBack} />
           <h1 style={{ color: isDark ? '#f1f5f9' : '#1e293b' }} className="text-xl sm:text-2xl md:text-3xl font-black uppercase tracking-tighter">Training Control Centre</h1>
           <div />
         </div>
@@ -134,18 +130,17 @@ export default function AdminPage() {
                  <div className="text-2xl sm:text-3xl mb-2">📍</div>
                  <h3 style={{ color: isDark ? '#f1f5f9' : '#1e293b' }} className="text-sm sm:text-base font-bold mb-1">Manage Venues</h3>
                  <p style={{ color: isDark ? '#94a3b8' : '#64748b' }} className="text-xs mb-2">Add and manage training locations.</p>
-                 <button 
+                 <UniformButton
+                   variant="primary"
+                   size="sm"
+                   className="w-full"
                    onClick={(e) => {
                      e.stopPropagation();
                      setShowLocationModal(true);
                    }}
-                   style={{ backgroundColor: '#f59e0b' }} 
-                   onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#d97706'} 
-                   onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#f59e0b'} 
-                   className="w-full py-1 sm:py-1.5 text-white font-bold rounded text-xs hover:scale-105 active:scale-95 shadow-md hover:shadow-lg duration-200"
                  >
                    🏢 Manage
-                 </button>
+                 </UniformButton>
               </div>
 
               {/* CATALOG MANAGEMENT */}
@@ -153,18 +148,17 @@ export default function AdminPage() {
                  <div className="text-2xl sm:text-3xl mb-2">📚</div>
                  <h3 style={{ color: isDark ? '#f1f5f9' : '#1e293b' }} className="text-sm sm:text-base font-bold mb-1">Course Catalog</h3>
                  <p style={{ color: isDark ? '#94a3b8' : '#64748b' }} className="text-xs mb-2">Create training types and set capacities.</p>
-                 <button 
+                 <UniformButton
+                   variant="primary"
+                   size="sm"
+                   className="w-full"
                    onClick={(e) => {
                      e.stopPropagation();
                      setShowCourseModal(true);
                    }}
-                   style={{ backgroundColor: '#a855f7' }} 
-                   onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#9333ea'} 
-                   onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#a855f7'} 
-                   className="w-full py-1 sm:py-1.5 text-white font-bold rounded text-xs hover:scale-105 active:scale-95 shadow-md hover:shadow-lg duration-200"
                  >
                    📖 Manage
-                 </button>
+                 </UniformButton>
               </div>
             </>
           )}
@@ -174,18 +168,17 @@ export default function AdminPage() {
              <div className="text-2xl sm:text-3xl mb-2">📊</div>
              <h3 style={{ color: isDark ? '#f1f5f9' : '#1e293b' }} className="text-sm sm:text-base font-bold mb-1">Intelligence Hub</h3>
              <p style={{ color: isDark ? '#94a3b8' : '#64748b' }} className="text-xs mb-2">View your performance dashboard.</p>
-             <button
+             <UniformButton
+              variant="primary"
+              size="sm"
+              className="w-full"
               onClick={(e) => {
                 e.stopPropagation();
                 router.push('/analytics?from=/admin');
               }}
-              style={{ backgroundColor: '#10b981' }}
-              onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#059669'}
-              onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#10b981'}
-              className="w-full py-1 sm:py-1.5 text-white font-bold rounded text-xs hover:scale-105 active:scale-95 shadow-md hover:shadow-lg duration-200"
              >
                📊 View
-             </button>
+             </UniformButton>
           </div>
 
           {/* FEEDBACK RESULTS */}
@@ -193,18 +186,17 @@ export default function AdminPage() {
              <div className="text-2xl sm:text-3xl mb-2">⭐</div>
              <h3 style={{ color: isDark ? '#f1f5f9' : '#1e293b' }} className="text-sm sm:text-base font-bold mb-1">Feedback Results</h3>
              <p style={{ color: isDark ? '#94a3b8' : '#64748b' }} className="text-xs mb-2">Analyse training course feedback from staff.</p>
-             <button
+             <UniformButton
+              variant="primary"
+              size="sm"
+              className="w-full"
               onClick={(e) => {
                 e.stopPropagation();
                 router.push('/feedback/results');
               }}
-              style={{ backgroundColor: '#3b82f6' }}
-              onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#2563eb'}
-              onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#3b82f6'}
-              className="w-full py-1 sm:py-1.5 text-white font-bold rounded text-xs hover:scale-105 active:scale-95 shadow-md hover:shadow-lg duration-200"
              >
                ⭐ View Results
-             </button>
+             </UniformButton>
           </div>
 
           {/* ADMIN-ONLY */}
@@ -219,18 +211,17 @@ export default function AdminPage() {
                 <div className="text-2xl sm:text-3xl mb-2">✅</div>
                 <h3 style={{ color: isDark ? '#f1f5f9' : '#1e293b' }} className="text-sm sm:text-base font-bold mb-1">Checklist Template</h3>
                 <p style={{ color: isDark ? '#94a3b8' : '#64748b' }} className="text-xs mb-2">Add/remove booking checklist items.</p>
-                <button
+                <UniformButton
+                  variant="primary"
+                  size="sm"
+                  className="w-full"
                   onClick={(e) => {
                     e.stopPropagation();
                     setShowChecklistTemplateModal(true);
                   }}
-                  style={{ backgroundColor: '#6366f1' }}
-                  onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = '#4f46e5')}
-                  onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = '#6366f1')}
-                  className="w-full py-1 sm:py-1.5 text-white font-bold rounded text-xs hover:scale-105 active:scale-95 shadow-md hover:shadow-lg duration-200"
                 >
                   ✅ Manage
-                </button>
+                </UniformButton>
               </div>
 
               {/* AUTOMATION CONTROL */}
@@ -238,15 +229,17 @@ export default function AdminPage() {
                 <div className="text-2xl sm:text-3xl mb-2">🤖</div>
                 <h3 style={{ color: isDark ? '#f1f5f9' : '#1e293b' }} className="text-sm sm:text-base font-bold mb-1">Automation Control</h3>
                 <p style={{ color: isDark ? '#94a3b8' : '#64748b' }} className="text-xs mb-2">Control internal feedback email automation system.</p>
-                <button
-                  onClick={() => router.push('/automation-control')}
-                  style={{ backgroundColor: '#06b6d4' }}
-                  onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#0891b2'}
-                  onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#06b6d4'}
-                  className="w-full py-1 sm:py-1.5 text-white font-bold rounded text-xs hover:scale-105 active:scale-95 shadow-md hover:shadow-lg duration-200"
+                <UniformButton
+                  variant="primary"
+                  size="sm"
+                  className="w-full"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    router.push('/automation-control');
+                  }}
                 >
                    🤖 Control Automation
-                </button>
+                </UniformButton>
               </div>
             </>
           )}

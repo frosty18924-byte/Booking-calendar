@@ -6,10 +6,12 @@ import { hasPermission } from '@/lib/permissions';
 import { loadEmailTestSettings, saveEmailTestSettings } from '@/lib/emailTestMode';
 import AddStaffModal from '@/app/components/AddStaffModal';
 import DuplicateRemovalModal from '@/app/components/DuplicateRemovalModal';
+import UniformButton from '@/app/components/UniformButton';
 
 type Props = {
   isDark: boolean;
   userRole: string | null;
+  initialModal?: 'staff' | 'notifications' | 'housekeeping' | null;
 };
 
 type EmailLogItem = {
@@ -25,7 +27,7 @@ type EmailLogItem = {
   delivered_recipients: string[];
 };
 
-export default function AdminToolsPanel({ isDark, userRole }: Props) {
+export default function AdminToolsPanel({ isDark, userRole, initialModal = null }: Props) {
   const router = useRouter();
 
   const [showAddStaffModal, setShowAddStaffModal] = useState(false);
@@ -45,6 +47,27 @@ export default function AdminToolsPanel({ isDark, userRole }: Props) {
     setEmailTestMode(saved.enabled);
     setTestEmailAddress(saved.address);
   }, []);
+
+  useEffect(() => {
+    if (!initialModal) return;
+    if (initialModal === 'staff') {
+      setShowAddStaffModal(true);
+      setShowNotificationsModal(false);
+      setShowDataToolsModal(false);
+      return;
+    }
+    if (initialModal === 'notifications') {
+      setShowAddStaffModal(false);
+      setShowNotificationsModal(true);
+      setShowDataToolsModal(false);
+      return;
+    }
+    if (initialModal === 'housekeeping') {
+      setShowAddStaffModal(false);
+      setShowNotificationsModal(false);
+      setShowDataToolsModal(true);
+    }
+  }, [initialModal]);
 
   const fetchEmailLogs = async () => {
     setEmailLogsLoading(true);
@@ -184,9 +207,9 @@ export default function AdminToolsPanel({ isDark, userRole }: Props) {
           <div className={`max-w-3xl w-full max-h-[90vh] overflow-y-auto rounded-lg p-6 ${isDark ? 'bg-gray-800' : 'bg-white'}`}>
             <div className="flex justify-between items-center mb-4">
               <h3 className={`text-xl font-bold ${isDark ? 'text-white' : 'text-gray-900'}`}>Notifications</h3>
-              <button onClick={() => setShowNotificationsModal(false)} className={`px-3 py-1 rounded ${isDark ? 'bg-gray-700 text-white' : 'bg-gray-200 text-gray-900'}`}>
+              <UniformButton variant="secondary" size="sm" onClick={() => setShowNotificationsModal(false)}>
                 Close
-              </button>
+              </UniformButton>
             </div>
 
             <div className={`rounded-lg border p-4 mb-4 ${isDark ? 'border-gray-700 bg-gray-900' : 'border-gray-200 bg-gray-50'}`}>
@@ -202,18 +225,14 @@ export default function AdminToolsPanel({ isDark, userRole }: Props) {
                 onChange={(e) => setTestEmailAddress(e.target.value)}
                 className={`w-full px-3 py-2 rounded border text-sm mb-3 ${isDark ? 'bg-gray-800 border-gray-600 text-gray-100' : 'bg-white border-gray-300 text-gray-900'}`}
               />
-              <button onClick={handleSaveEmailSettings} className="px-4 py-2 rounded font-semibold text-white bg-sky-600 hover:bg-sky-700">
+              <UniformButton variant="primary" size="sm" onClick={handleSaveEmailSettings}>
                 Save Email Settings
-              </button>
+              </UniformButton>
 
               <div className="mt-3 flex items-center gap-2">
-                <button
-                  onClick={handleSendTestEmail}
-                  disabled={sendingTestEmail}
-                  className="px-4 py-2 rounded font-semibold text-white bg-emerald-600 hover:bg-emerald-700 disabled:opacity-60"
-                >
+                <UniformButton variant="primary" size="sm" onClick={handleSendTestEmail} disabled={sendingTestEmail}>
                   {sendingTestEmail ? 'Sending…' : 'Send Test Email'}
-                </button>
+                </UniformButton>
                 {testEmailMessage && (
                   <p className={`text-sm font-semibold ${testEmailMessage.type === 'success' ? 'text-emerald-400' : 'text-red-400'}`}>{testEmailMessage.text}</p>
                 )}
@@ -223,9 +242,9 @@ export default function AdminToolsPanel({ isDark, userRole }: Props) {
             <div className={`rounded-lg border p-4 ${isDark ? 'border-gray-700 bg-gray-900' : 'border-gray-200 bg-gray-50'}`}>
               <div className="flex items-center justify-between mb-3">
                 <h4 className={`text-base font-semibold ${isDark ? 'text-white' : 'text-gray-900'}`}>Recent Email Activity</h4>
-                <button onClick={fetchEmailLogs} className="px-3 py-1 rounded text-sm font-semibold text-white bg-sky-600 hover:bg-sky-700">
+                <UniformButton variant="secondary" size="sm" onClick={fetchEmailLogs} disabled={emailLogsLoading}>
                   Refresh
-                </button>
+                </UniformButton>
               </div>
 
               {emailLogsLoading ? (
@@ -267,30 +286,32 @@ export default function AdminToolsPanel({ isDark, userRole }: Props) {
           <div className={`max-w-xl w-full rounded-lg p-6 ${isDark ? 'bg-gray-800' : 'bg-white'}`}>
             <div className="flex justify-between items-center mb-4">
               <h3 className={`text-xl font-bold ${isDark ? 'text-white' : 'text-gray-900'}`}>Data Housekeeping</h3>
-              <button onClick={() => setShowDataToolsModal(false)} className={`px-3 py-1 rounded ${isDark ? 'bg-gray-700 text-white' : 'bg-gray-200 text-gray-900'}`}>
+              <UniformButton variant="secondary" size="sm" onClick={() => setShowDataToolsModal(false)}>
                 Close
-              </button>
+              </UniformButton>
             </div>
             <p className={`mb-4 ${isDark ? 'text-gray-300' : 'text-gray-600'}`}>Choose a tool:</p>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              <button
+              <UniformButton
                 onClick={() => {
                   setShowDataToolsModal(false);
                   setShowDuplicateRemoval(true);
                 }}
-                className="py-3 rounded font-semibold text-white bg-red-600 hover:bg-red-700"
+                variant="danger"
+                className="w-full"
               >
                 Clean Duplicates
-              </button>
-              <button
+              </UniformButton>
+              <UniformButton
                 onClick={() => {
                   setShowDataToolsModal(false);
                   router.push('/admin/archive');
                 }}
-                className="py-3 rounded font-semibold text-white bg-orange-600 hover:bg-orange-700"
+                variant="primary"
+                className="w-full"
               >
                 Archive & Restore
-              </button>
+              </UniformButton>
             </div>
           </div>
         </div>

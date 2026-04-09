@@ -78,14 +78,11 @@ export default function GlobalTopControls() {
             >
               <Icon name="menu" className="w-6 h-6" />
             </UniformButton>
-            <button
-              onClick={handleSignOut}
-              disabled={!showSignOut}
-              aria-hidden={!showSignOut}
-              className={`no-ui-motion relative px-2 py-1 text-xs font-bold text-red-600 hover:text-red-700 transition-colors ${showSignOut ? '' : 'invisible pointer-events-none'}`}
-            >
-              Sign Out
-            </button>
+            {showSignOut ? (
+              <UniformButton variant="danger" size="sm" className="no-ui-motion shadow-md" onClick={handleSignOut}>
+                Sign Out
+              </UniformButton>
+            ) : null}
             <ThemeToggle className="no-ui-motion relative" />
           </div>
         </div>
@@ -94,14 +91,11 @@ export default function GlobalTopControls() {
       {/* Desktop/tablet: keep original fixed layout */}
       <div className="hidden sm:block" style={{ position: 'fixed', top: '4rem', right: '1rem', zIndex: 1000 }}>
         <div className="flex items-center gap-2 rounded-xl border border-slate-200/70 bg-white/85 p-1.5 shadow-lg backdrop-blur dark:border-slate-700/70 dark:bg-slate-900/85">
-          <button
-            onClick={handleSignOut}
-            disabled={!showSignOut}
-            aria-hidden={!showSignOut}
-            className={`no-ui-motion relative px-2 py-1 text-xs sm:text-sm font-bold text-red-600 hover:text-red-700 transition-colors ${showSignOut ? '' : 'invisible pointer-events-none'}`}
-          >
-            Sign Out
-          </button>
+          {showSignOut ? (
+            <UniformButton variant="danger" size="sm" className="no-ui-motion shadow-md" onClick={handleSignOut}>
+              Sign Out
+            </UniformButton>
+          ) : null}
           <ThemeToggle className="no-ui-motion relative" />
         </div>
       </div>
