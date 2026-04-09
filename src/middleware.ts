@@ -8,6 +8,8 @@ export async function middleware(request: NextRequest) {
     },
   })
 
+  const pathname = request.nextUrl.pathname
+
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
@@ -48,11 +50,11 @@ export async function middleware(request: NextRequest) {
     })
   }
 
-  const isLoginPage = request.nextUrl.pathname === '/login'
-  const isChangePasswordPage = request.nextUrl.pathname === '/auth/change-password-required'
+  const isLoginPage = pathname === '/login'
+  const isChangePasswordPage = pathname === '/auth/change-password-required'
 
   // 1. If NOT logged in and NOT on login page and NOT on auth callback -> FORCE to /login
-  if (!user && !isLoginPage && !request.nextUrl.pathname.startsWith('/auth')) {
+  if (!user && !isLoginPage && !pathname.startsWith('/auth')) {
     const url = request.nextUrl.clone()
     url.pathname = '/login'
     return NextResponse.redirect(url)
@@ -70,7 +72,7 @@ export async function middleware(request: NextRequest) {
     try {
       const { data: profile, error: profileError } = await supabase
         .from('profiles')
-        .select('password_needs_change, is_deleted')
+        .select('password_needs_change, is_deleted, role_tier')
         .eq('id', user.id)
         .single()
 
@@ -91,6 +93,21 @@ export async function middleware(request: NextRequest) {
         const url = request.nextUrl.clone()
         url.pathname = '/auth/change-password-required'
         return NextResponse.redirect(url)
+      }
+
+      // 4. Staff users: templates-only experience.
+      const role = String(profile?.role_tier || '').trim().toLowerCase()
+      if (role === 'staff') {
+        const allowed =
+          pathname === '/templates' ||
+          pathname.startsWith('/templates/') ||
+          pathname.startsWith('/auth/')
+
+        if (!allowed) {
+          const url = request.nextUrl.clone()
+          url.pathname = '/templates'
+          return NextResponse.redirect(url)
+        }
       }
     } catch (error) {
       console.error('Error checking password status:', error)

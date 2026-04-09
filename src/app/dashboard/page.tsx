@@ -74,6 +74,11 @@ export default function DashboardPage() {
           return;
         }
 
+        if (String(profile?.role_tier || '').trim().toLowerCase() === 'staff') {
+          router.push('/templates');
+          return;
+        }
+
         setUser(profile as DashboardProfile);
         setUserRole(profile?.role_tier || null);
         setLoading(false);

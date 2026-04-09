@@ -34,11 +34,18 @@ export default function LandingPage() {
       if (!user) return;
       setUserEmail(user.email ?? null);
       const { data: profile } = await supabase.from('profiles').select('role_tier, full_name').eq('id', user.id).single();
-      setUserRole(profile?.role_tier ?? null);
+      const role = (profile?.role_tier ?? null) as string | null;
+      setUserRole(role);
       setUserName(profile?.full_name ?? null);
+
+      if (String(role || '').trim().toLowerCase() === 'staff') {
+        router.replace('/templates');
+      }
     };
     loadRole();
-  }, []);
+  }, [router]);
+
+  const showTraining = String(userRole || '').trim().toLowerCase() !== 'staff';
 
   return (
     <main
@@ -71,6 +78,7 @@ export default function LandingPage() {
             </div>
 
             <div className="mt-8 grid gap-4 md:gap-6 md:grid-cols-2">
+              {showTraining && (
               <button
                 onClick={() => router.push('/dashboard')}
                 className={`group text-left rounded-3xl border p-6 md:p-8 shadow-lg transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/40 ${
@@ -98,6 +106,7 @@ export default function LandingPage() {
                   </span>
                 </div>
               </button>
+              )}
 
               <button
                 onClick={() => router.push('/templates')}
