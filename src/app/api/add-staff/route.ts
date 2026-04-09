@@ -156,37 +156,36 @@ export async function POST(request: NextRequest) {
           continue;
         }
 
-        // Staff are roster-only. Non-staff require a real auth account for login.
+        // Everyone now has login access (including staff).
         let profileId = crypto.randomUUID();
         let createdAuthUserId: string | null = null;
         const providedPassword = (staff.password || '').trim();
-        const needsLogin = staff.role_tier !== 'staff';
+        const needsLogin = true;
+        const needsPasswordChange = !providedPassword;
 
-        if (needsLogin) {
-          const initialPassword = providedPassword || `Temp-${crypto.randomUUID()}Aa1!`;
-          const { data: createdAuth, error: createAuthError } = await supabaseAdmin.auth.admin.createUser({
-            email: emailToCheck,
-            password: initialPassword,
-            email_confirm: true,
-            user_metadata: {
-              full_name: staff.full_name,
-            },
+        const initialPassword = providedPassword || `Temp-${crypto.randomUUID()}Aa1!`;
+        const { data: createdAuth, error: createAuthError } = await supabaseAdmin.auth.admin.createUser({
+          email: emailToCheck,
+          password: initialPassword,
+          email_confirm: true,
+          user_metadata: {
+            full_name: staff.full_name,
+          },
+        });
+
+        if (createAuthError || !createdAuth?.user?.id) {
+          results.push({
+            email: staff.email,
+            success: false,
+            error: `Failed to create login account: ${createAuthError?.message || 'Unknown auth error'}`,
           });
-
-          if (createAuthError || !createdAuth?.user?.id) {
-            results.push({
-              email: staff.email,
-              success: false,
-              error: `Failed to create login account: ${createAuthError?.message || 'Unknown auth error'}`,
-            });
-            continue;
-          }
-
-          createdAuthUserId = createdAuth.user.id;
-          profileId = createdAuth.user.id;
+          continue;
         }
+
+        createdAuthUserId = createdAuth.user.id;
+        profileId = createdAuth.user.id;
         
-        console.log('Creating roster-only profile for:', staff.email, 'with ID:', profileId);
+        console.log('Creating profile for:', staff.email, 'with ID:', profileId);
         
         // Create profile only (no auth user)
         const { error: profileError } = await supabaseAdmin
@@ -198,7 +197,7 @@ export async function POST(request: NextRequest) {
               email: emailToCheck,
               location: normalizedLocationName,
               role_tier: staff.role_tier,
-              password_needs_change: needsLogin,
+              password_needs_change: needsPasswordChange,
               is_deleted: false,
               deleted_at: null,
             },
@@ -234,8 +233,8 @@ export async function POST(request: NextRequest) {
           console.warn('Staff member added to profiles but not staff_locations. They may not appear in training matrix.');
         }
 
-        // For login-enabled users with no provided password, send password setup link.
-        if (needsLogin && !providedPassword) {
+        // If we created a temp password, send a password setup link so they can set their own.
+        if (needsPasswordChange) {
           try {
             const { data: linkData, error: linkError } = await supabaseAdmin.auth.admin.generateLink({
               type: 'magiclink',
@@ -263,9 +262,7 @@ export async function POST(request: NextRequest) {
         results.push({
           email: staff.email,
           success: true,
-          message: needsLogin
-            ? `${staff.full_name} created with login access`
-            : `${staff.full_name} added to roster and training matrix`,
+          message: `${staff.full_name} created with login access`,
         });
       } catch (error: any) {
         console.error('Error adding staff:', error);

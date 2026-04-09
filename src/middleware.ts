@@ -94,21 +94,6 @@ export async function middleware(request: NextRequest) {
         url.pathname = '/auth/change-password-required'
         return NextResponse.redirect(url)
       }
-
-      // 4. Staff users: templates-only experience.
-      const role = String(profile?.role_tier || '').trim().toLowerCase()
-      if (role === 'staff') {
-        const allowed =
-          pathname === '/templates' ||
-          pathname.startsWith('/templates/') ||
-          pathname.startsWith('/auth/')
-
-        if (!allowed) {
-          const url = request.nextUrl.clone()
-          url.pathname = '/templates'
-          return NextResponse.redirect(url)
-        }
-      }
     } catch (error) {
       console.error('Error checking password status:', error)
     }

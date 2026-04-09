@@ -235,12 +235,7 @@ export default function TrainingMatrixPage() {
         .select('role_tier')
         .eq('id', user.id)
         .single();
-      const role = (profile?.role_tier || 'staff') as string;
-      if (String(role).trim().toLowerCase() === 'staff') {
-        router.push('/templates');
-        return;
-      }
-      setUserRole(role);
+      setUserRole(profile?.role_tier || 'staff');
     } catch (error) {
       console.error('Auth check error:', error);
       router.push('/login');

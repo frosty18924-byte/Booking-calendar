@@ -67,13 +67,6 @@ export default function SlideOutNav() {
   if (isAuthPage) return null;
 
   const items = useMemo<NavItem[]>(() => {
-    const role = (userRole || '').trim().toLowerCase();
-
-    // Staff users: templates-only.
-    if (role === 'staff') {
-      return [{ label: 'Template Gallery', description: 'Search and open documents', path: '/templates' }];
-    }
-
     const out: NavItem[] = [
       { label: 'Training', description: 'Training dashboard', path: '/dashboard' },
       { label: 'Template Gallery', description: 'Search and open documents', path: '/templates' },

@@ -5,7 +5,7 @@ export const dynamic = 'force-dynamic';
 
 export async function GET(_request: NextRequest) {
   try {
-    const authz = await requireRole(['admin', 'scheduler', 'manager']);
+    const authz = await requireRole(['admin', 'scheduler', 'manager', 'staff']);
     if ('error' in authz) return authz.error;
 
     const deploymentUrl = process.env.NEXT_PUBLIC_GOOGLE_APPS_SCRIPT_URL;
