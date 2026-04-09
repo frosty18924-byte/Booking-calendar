@@ -332,12 +332,11 @@ export default function AddStaffModal({ onClose, onRefresh }: { onClose: () => v
           throw new Error(result.results[0].error || 'Failed to create user');
         }
 
-        if (formData.role_tier === 'staff') {
-          alert(`✅ Staff member created and added to roster!\n\nThey do not have login access.`);
-        } else if (formData.password) {
-          alert(`✅ ${formData.role_tier.charAt(0).toUpperCase() + formData.role_tier.slice(1)} created!\n\nPassword set: ${formData.password}\n\nThey will be prompted to change it on first login.`);
+        const roleLabel = formData.role_tier.charAt(0).toUpperCase() + formData.role_tier.slice(1);
+        if (formData.password) {
+          alert(`✅ ${roleLabel} created!\n\nPassword set.\n\nThey can now log in with their email and this password.`);
         } else {
-          alert(`✅ ${formData.role_tier.charAt(0).toUpperCase() + formData.role_tier.slice(1)} created!\n\nPassword reset email has been sent to ${formData.email}`);
+          alert(`✅ ${roleLabel} created!\n\nA password setup email has been sent to ${formData.email}.\n\nThey must set a password before they can log in.`);
         }
       }
       
@@ -891,12 +890,12 @@ Charlie Scheduler,charlie@example.com,Banks House,manager`;
                 </select>
               </div>
 
-              {!editingId && formData.role_tier !== 'staff' && (
+              {!editingId && (
                 <div>
                   <label style={{ color: isDark ? '#94a3b8' : '#64748b' }} className="text-[10px] font-black uppercase mb-1 block">Password (Optional)</label>
                   <input 
                     type="password" 
-                    placeholder="Leave blank to send them a reset email"
+                    placeholder="Leave blank to email a setup link"
                     style={{ backgroundColor: isDark ? '#0f172a' : '#f1f5f9', color: isDark ? '#f1f5f9' : '#1e293b', borderColor: isDark ? '#334155' : '#cbd5e1' }}
                     className="w-full p-3 border rounded-xl outline-none focus:ring-2 focus:ring-blue-500" 
                     value={formData.password} 
@@ -904,15 +903,15 @@ Charlie Scheduler,charlie@example.com,Banks House,manager`;
                   />
                   <p style={{ color: isDark ? '#64748b' : '#94a3b8' }} className="text-xs mt-1">
                     {formData.password 
-                      ? '✓ They must change this password on first login' 
-                      : '✓ They will receive a password reset email'}
+                      ? '✓ They can log in with this password (you can still send a reset link later)' 
+                      : '✓ They will receive an email link to set a password (required before they can log in)'}
                   </p>
                 </div>
               )}
               
-              {!editingId && formData.role_tier === 'staff' && (
+              {!editingId && (
                 <div style={{ backgroundColor: isDark ? '#0f172a' : '#f1f5f9', borderColor: isDark ? '#334155' : '#e2e8f0', color: isDark ? '#cbd5e1' : '#1e293b' }} className="p-4 border rounded-xl text-xs font-bold">
-                  ℹ️ Staff members are roster-only and do not have login access
+                  ℹ️ All roles (including Staff) now get login access. If you don&apos;t set a password here, they&apos;ll get an email to set one.
                 </div>
               )}
 
