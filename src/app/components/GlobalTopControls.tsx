@@ -60,7 +60,7 @@ export default function GlobalTopControls() {
   return (
     <>
       {/* Mobile: control buttons positioned below header on sides - prevents content overlap */}
-      <div className="sm:hidden" style={{ position: 'fixed', top: 'calc(7.5rem + env(safe-area-inset-top))', right: '1rem', zIndex: 1000 }}>
+      <div className="sm:hidden" style={{ position: 'fixed', top: 'calc(5.5rem + env(safe-area-inset-top))', right: '1rem', zIndex: 1000 }}>
         <div className="flex items-center gap-1 rounded-lg border border-slate-200/70 bg-white/85 p-1 shadow-md backdrop-blur dark:border-slate-700/70 dark:bg-slate-900/85">
           <UniformButton
             variant="secondary"

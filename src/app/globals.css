@@ -78,13 +78,12 @@ button:not(.no-ui-motion):not(.static):not(.fixed):not(.absolute):not(.relative)
 /* Mobile viewport adjustments to prevent floating buttons from hiding content */
 @media (max-width: 640px) {
   #app-scroll {
-    /* Add top padding for mobile to prevent content overlap with buttons below header */
-    padding-top: 7rem;
+    /* No top padding - let content flow naturally, buttons positioned below header */
     padding-bottom: calc(1rem + env(safe-area-inset-bottom, 0.5rem));
   }
 }
 
-/* Tablet and above - no special top padding needed */
+/* Tablet and above */
 @media (min-width: 641px) {
   #app-scroll {
     padding-bottom: 1rem;
