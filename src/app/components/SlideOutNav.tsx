@@ -104,9 +104,9 @@ export default function SlideOutNav() {
 
   return (
     <>
-      {/* Desktop buttons (Home + Menu) */}
+      {/* Desktop buttons (Home + Menu) - positioned below header on all sizes */}
       {showButtonsDesktop && (
-        <div className="hidden sm:block" style={{ position: 'fixed', top: '4rem', left: '1rem', zIndex: 1000 }}>
+        <div className="hidden sm:block" style={{ position: 'fixed', top: 'calc(4.5rem + env(safe-area-inset-top))', left: '1rem', zIndex: 1000 }}>
           <div className="flex items-center gap-2 rounded-xl border border-slate-200/70 bg-white/85 p-1.5 shadow-lg backdrop-blur dark:border-slate-700/70 dark:bg-slate-900/85">
             <UniformButton
               variant="secondary"
