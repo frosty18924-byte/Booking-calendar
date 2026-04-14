@@ -59,10 +59,9 @@ export default function GlobalTopControls() {
 
   return (
     <>
-      {/* Mobile: single scrollable control strip (prevents cut-off/overlap) - positioned below header with smaller buttons */}
-      <div className="sm:hidden" style={{ position: 'fixed', top: 0, left: '1rem', right: '1rem', zIndex: 1000, paddingTop: 'calc(4rem + env(safe-area-inset-top))' }}>
-        <div className="overflow-x-auto">
-          <div className="min-w-max flex items-center gap-1 rounded-lg border border-slate-200/70 bg-white/85 p-1 shadow-md backdrop-blur dark:border-slate-700/70 dark:bg-slate-900/85">
+      {/* Mobile: control buttons positioned below header on sides - prevents content overlap */}
+      <div className="sm:hidden" style={{ position: 'fixed', top: 'calc(4.5rem + env(safe-area-inset-top))', right: '1rem', zIndex: 1000 }}>
+        <div className="flex items-center gap-1 rounded-lg border border-slate-200/70 bg-white/85 p-1 shadow-md backdrop-blur dark:border-slate-700/70 dark:bg-slate-900/85">
             <UniformButton
               variant="secondary"
               className="no-ui-motion p-1 shadow-sm border text-sm"
