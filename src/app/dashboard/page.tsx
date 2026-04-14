@@ -98,8 +98,6 @@ export default function DashboardPage() {
                 Welcome, {user?.full_name || 'User'}
               </p>
             </div>
-            <div className="flex items-center gap-2 rounded-xl border border-slate-200/70 bg-white/85 p-1.5 shadow-lg backdrop-blur dark:border-slate-700/70 dark:bg-slate-900/85">
-            </div>
           </div>
         </div>
       </div>
