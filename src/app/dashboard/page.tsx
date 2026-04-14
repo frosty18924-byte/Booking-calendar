@@ -74,15 +74,6 @@ export default function DashboardPage() {
     }
   };
 
-  const handleSignOut = async () => {
-    const { error } = await supabase.auth.signOut();
-    if (error) {
-      console.error('Error signing out:', error);
-      return;
-    }
-    router.push('/login');
-  };
-
   if (loading) {
     return (
       <div className={`min-h-screen flex items-center justify-center transition-colors duration-500 ${isDark ? 'bg-gray-900' : 'bg-gray-50'}`}>
@@ -109,12 +100,6 @@ export default function DashboardPage() {
               </p>
             </div>
             <div className="flex items-center gap-2 rounded-xl border border-slate-200/70 bg-white/85 p-1.5 shadow-lg backdrop-blur dark:border-slate-700/70 dark:bg-slate-900/85">
-              <button
-                onClick={handleSignOut}
-                className="px-2 py-1 text-xs sm:text-sm font-bold text-red-600 hover:text-red-700 transition-colors"
-              >
-                Sign Out
-              </button>
               <ThemeToggle />
             </div>
           </div>

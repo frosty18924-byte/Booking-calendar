@@ -50,11 +50,6 @@ export default function AppSidebar({ isDark }: { isDark: boolean }) {
     (pathname.startsWith(app.path) && app.id !== 'dashboard')
   );
 
-  async function handleSignOut() {
-    await supabase.auth.signOut();
-    router.push('/login');
-  }
-
   useEffect(() => {
     // Close mobile sidebar when route changes
     setShowMobileSidebar(false);
@@ -143,21 +138,7 @@ export default function AppSidebar({ isDark }: { isDark: boolean }) {
           ))}
         </nav>
 
-        {/* Footer */}
-        <div className={`p-4 border-t transition-colors duration-300 ${isDark ? 'border-gray-800' : 'border-gray-200'}`}>
-          <button
-            onClick={handleSignOut}
-            className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-all duration-300 ${
-              isDark
-                ? 'text-gray-400 hover:text-red-400 hover:bg-gray-800'
-                : 'text-gray-600 hover:text-red-600 hover:bg-gray-100'
-            }`}
-            title={isCollapsed ? 'Sign Out' : ''}
-          >
-            <span className="text-xl"><Icon name="logout" className="w-6 h-6" /></span>
-            {!isCollapsed && <span className="font-semibold text-sm">Sign Out</span>}
-          </button>
-        </div>
+
       </aside>
 
       {/* Mobile Menu Toggle (for small screens) - positioned with safe area inset, smaller on mobile */}
