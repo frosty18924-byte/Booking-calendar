@@ -89,8 +89,8 @@ export default function GlobalTopControls() {
         </div>
       </div>
 
-      {/* Tablet and Desktop: keep buttons at top-right but position below header on smaller screens */}
-      <div className="hidden sm:block" style={{ position: 'fixed', top: 'calc(7.5rem + env(safe-area-inset-top))', right: '1rem', zIndex: 1000 }}>
+      {/* Tablet and Desktop: buttons positioned well below header text */}
+      <div className="hidden sm:block" style={{ position: 'fixed', top: 'calc(9rem + env(safe-area-inset-top))', right: '1rem', zIndex: 1000 }}>
         <div className="flex items-center gap-2 rounded-xl border border-slate-200/70 bg-white/85 p-1.5 shadow-lg backdrop-blur dark:border-slate-700/70 dark:bg-slate-900/85">
           {showSignOut ? (
             <UniformButton variant="danger" size="sm" className="no-ui-motion shadow-md" onClick={handleSignOut}>
