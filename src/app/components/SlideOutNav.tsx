@@ -164,8 +164,8 @@ export default function SlideOutNav() {
       {isOpen && (
         <div className="fixed inset-0 z-[1100]">
           <div className="absolute inset-0 bg-black/50" onClick={close} />
-          <aside className="absolute left-0 top-0 h-full w-[92vw] max-w-sm border-r border-slate-200 bg-white shadow-2xl dark:border-slate-800 dark:bg-slate-950">
-            <div className="flex items-center justify-between gap-3 border-b border-slate-200 p-4 dark:border-slate-800">
+          <aside className="absolute left-0 top-0 h-full w-[92vw] max-w-sm border-r border-slate-200 bg-white shadow-2xl dark:border-slate-800 dark:bg-slate-950 flex flex-col">
+            <div className="flex items-center justify-between gap-3 border-b border-slate-200 p-4 dark:border-slate-800 flex-shrink-0">
 	              <div className="min-w-0">
 	                <p className="text-sm font-extrabold tracking-tight text-slate-900 dark:text-white">Menu</p>
 	                <p className="text-xs text-slate-500 dark:text-slate-400 truncate">{isAuthenticated ? 'Signed in' : 'Not signed in'}</p>
@@ -182,7 +182,7 @@ export default function SlideOutNav() {
 	              </UniformButton>
 	            </div>
 
-            <nav className="p-4">
+            <nav className="p-4 overflow-y-auto flex-1">
               <div className="grid gap-4">
                 {/* Training */}
                 <section className="rounded-3xl border border-slate-200 shadow-sm dark:border-slate-800">
