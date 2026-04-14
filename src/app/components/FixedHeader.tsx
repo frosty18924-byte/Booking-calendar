@@ -3,17 +3,14 @@
 import { useNavDrawer } from '@/app/components/NavDrawerProvider';
 import Icon from './Icon';
 import UniformButton from './UniformButton';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 
 export default function FixedHeader() {
   const { toggle } = useNavDrawer();
   const pathname = usePathname();
+  const router = useRouter();
   
-  // Hide header on auth and dashboard pages
-  const isAuthPage = pathname === '/login' || pathname?.startsWith('/auth/');
-  const isDashboardPage = pathname === '/dashboard';
-  
-  if (isAuthPage || isDashboardPage) return null;
+  // Header is now visible on all pages
 
   return (
     <header className="fixed top-0 left-0 right-0 z-50 bg-white dark:bg-slate-950 border-b border-slate-200 dark:border-slate-800 shadow-sm">
@@ -32,8 +29,16 @@ export default function FixedHeader() {
         {/* Center title area for future use */}
         <div className="flex-1" />
         
-        {/* Right side for future controls */}
-        <div />
+        {/* Home button on the right */}
+        <UniformButton
+          variant="secondary"
+          className="no-ui-motion p-2 shadow-sm border"
+          onClick={() => router.push('/')}
+          title="Home"
+          aria-label="Home"
+        >
+          <Icon name="home" className="w-6 h-6" />
+        </UniformButton>
       </div>
     </header>
   );

@@ -92,7 +92,7 @@ export default function SlideOutNav() {
   }, [pathname]);
 
   // Important: do not return before all hooks have run (Rules of Hooks).
-  if (isAuthPage) return null;
+  // Drawer is now available on all pages for navigation flexibility
 
   const go = (path: string) => {
     close();
@@ -125,6 +125,15 @@ export default function SlideOutNav() {
 
             <nav className="p-4 overflow-y-auto flex-1">
               <div className="grid gap-4">
+                {/* Home Button */}
+                <TileButton 
+                  title="Home" 
+                  description="Back to portal" 
+                  size="sm" 
+                  accent="blue" 
+                  onClick={() => go('/')} 
+                />
+                
                 {/* Training */}
                 <section className="rounded-3xl border border-slate-200 shadow-sm dark:border-slate-800">
                   <button
