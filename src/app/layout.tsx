@@ -34,8 +34,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <NavDrawerProvider>
           <SlideOutNav />
           <GlobalTopControls />
-          {/* Main content area with top margin to prevent overlap with fixed buttons on mobile */}
-          <div id="app-scroll" className="min-h-screen sm:mt-0">
+          {/* Main content area - buttons positioned on sides below header on mobile */}
+          <div id="app-scroll" className="min-h-screen">
             {children}
           </div>
         </NavDrawerProvider>
