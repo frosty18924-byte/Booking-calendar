@@ -3,7 +3,6 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
-import ThemeToggle from '@/app/components/ThemeToggle';
 import MatrixSyncModal from '@/app/components/MatrixSyncModal';
 import { hasPermission } from '@/lib/permissions';
 
@@ -100,7 +99,6 @@ export default function DashboardPage() {
               </p>
             </div>
             <div className="flex items-center gap-2 rounded-xl border border-slate-200/70 bg-white/85 p-1.5 shadow-lg backdrop-blur dark:border-slate-700/70 dark:bg-slate-900/85">
-              <ThemeToggle />
             </div>
           </div>
         </div>
