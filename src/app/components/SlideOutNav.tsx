@@ -132,29 +132,29 @@ export default function SlideOutNav() {
         </div>
       )}
 
-      {/* Mobile buttons (Dashboard only) - positioned below header */}
+      {/* Mobile buttons (Dashboard only) - positioned below header with smaller buttons */}
       {showButtonsMobile && (
         <div className="sm:hidden" style={{ position: 'fixed', top: 0, left: '1rem', zIndex: 1000, paddingTop: 'calc(4rem + env(safe-area-inset-top))' }}>
-          <div className="flex items-center gap-2 rounded-xl border border-slate-200/70 bg-white/85 p-1.5 shadow-lg backdrop-blur dark:border-slate-700/70 dark:bg-slate-900/85">
+          <div className="flex items-center gap-1 rounded-lg border border-slate-200/70 bg-white/85 p-1 shadow-md backdrop-blur dark:border-slate-700/70 dark:bg-slate-900/85">
             <UniformButton
               variant="secondary"
               size="sm"
               onClick={() => go('/')}
-              className="no-ui-motion p-2 shadow-md border"
+              className="no-ui-motion p-1 shadow-sm border text-sm"
               title="Portal"
               aria-label="Portal"
             >
-              <Icon name="home" className="w-6 h-6" />
+              <Icon name="home" className="w-4 h-4" />
             </UniformButton>
             <UniformButton
               variant="secondary"
               size="sm"
               onClick={toggle}
-              className="no-ui-motion p-2 shadow-md border"
+              className="no-ui-motion p-1 shadow-sm border text-sm"
               title="Menu"
               aria-label="Menu"
             >
-              <Icon name="menu" className="w-6 h-6" />
+              <Icon name="menu" className="w-4 h-4" />
             </UniformButton>
           </div>
         </div>

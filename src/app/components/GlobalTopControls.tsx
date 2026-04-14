@@ -56,30 +56,30 @@ export default function GlobalTopControls() {
 
   return (
     <>
-      {/* Mobile: single scrollable control strip (prevents cut-off/overlap) - positioned below header */}
+      {/* Mobile: single scrollable control strip (prevents cut-off/overlap) - positioned below header with smaller buttons */}
       <div className="sm:hidden" style={{ position: 'fixed', top: 0, left: '1rem', right: '1rem', zIndex: 1000, paddingTop: 'calc(4rem + env(safe-area-inset-top))' }}>
         <div className="overflow-x-auto">
-          <div className="min-w-max flex items-center gap-2 rounded-xl border border-slate-200/70 bg-white/85 p-1.5 shadow-lg backdrop-blur dark:border-slate-700/70 dark:bg-slate-900/85">
+          <div className="min-w-max flex items-center gap-1 rounded-lg border border-slate-200/70 bg-white/85 p-1 shadow-md backdrop-blur dark:border-slate-700/70 dark:bg-slate-900/85">
             <UniformButton
               variant="secondary"
-              className="no-ui-motion p-2 shadow-md border"
+              className="no-ui-motion p-1 shadow-sm border text-sm"
               onClick={() => router.push('/')}
               title="Portal"
               aria-label="Portal"
             >
-              <Icon name="home" className="w-6 h-6" />
+              <Icon name="home" className="w-4 h-4" />
             </UniformButton>
             <UniformButton
               variant="secondary"
-              className="no-ui-motion p-2 shadow-md border"
+              className="no-ui-motion p-1 shadow-sm border text-sm"
               onClick={toggle}
               title="Menu"
               aria-label="Menu"
             >
-              <Icon name="menu" className="w-6 h-6" />
+              <Icon name="menu" className="w-4 h-4" />
             </UniformButton>
             {showSignOut ? (
-              <UniformButton variant="danger" size="sm" className="no-ui-motion shadow-md" onClick={handleSignOut}>
+              <UniformButton variant="danger" size="sm" className="no-ui-motion shadow-sm text-xs" onClick={handleSignOut}>
                 Sign Out
               </UniformButton>
             ) : null}

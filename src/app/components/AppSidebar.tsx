@@ -160,18 +160,18 @@ export default function AppSidebar({ isDark }: { isDark: boolean }) {
         </div>
       </aside>
 
-      {/* Mobile Menu Toggle (for small screens) - positioned with safe area inset */}
+      {/* Mobile Menu Toggle (for small screens) - positioned with safe area inset, smaller on mobile */}
       {!showMobileSidebar && (
         <button
           onClick={() => setShowMobileSidebar(true)}
-          className={`fixed lg:hidden z-30 p-3 rounded-full shadow-lg transition-all duration-300 ${
+          className={`fixed lg:hidden z-30 p-2 rounded-full shadow-md transition-all duration-300 sm:p-3 sm:shadow-lg ${
             isDark ? 'bg-blue-600 hover:bg-blue-700' : 'bg-blue-600 hover:bg-blue-700'
           } text-white`}
           style={{ bottom: 'calc(1.5rem + env(safe-area-inset-bottom))', left: 'calc(1.5rem + env(safe-area-inset-left))' }}
           title="Open sidebar"
           aria-label="Open sidebar"
         >
-          <Icon name="menu" className="w-6 h-6" />
+          <Icon name="menu" className="w-4 h-4 sm:w-6 sm:h-6" />
         </button>
       )}
     </>
