@@ -75,3 +75,23 @@ button:not(.no-ui-motion):not(.static):not(.fixed):not(.absolute):not(.relative)
 .icon-button:active {
   transform: scale(0.95);
 }
+/* Mobile viewport adjustments to prevent floating buttons from hiding content */
+@media (max-width: 640px) {
+  #app-scroll {
+    /* Add padding at top and bottom for mobile to prevent content overlap with fixed buttons */
+    padding-top: env(safe-area-inset-top, 0.5rem);
+    padding-bottom: calc(5.5rem + env(safe-area-inset-bottom, 0.5rem));
+  }
+  
+  /* Ensure content within pages also respects the button areas */
+  main {
+    padding-top: max(1rem, env(safe-area-inset-top, 0.5rem));
+  }
+}
+
+/* Tablet and above - standard spacing */
+@media (min-width: 641px) {
+  #app-scroll {
+    padding-bottom: 1rem;
+  }
+}

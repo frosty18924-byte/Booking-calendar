@@ -160,13 +160,14 @@ export default function AppSidebar({ isDark }: { isDark: boolean }) {
         </div>
       </aside>
 
-      {/* Mobile Menu Toggle (for small screens) */}
+      {/* Mobile Menu Toggle (for small screens) - positioned with safe area inset */}
       {!showMobileSidebar && (
         <button
           onClick={() => setShowMobileSidebar(true)}
-          className={`fixed bottom-6 left-6 lg:hidden z-30 p-3 rounded-full shadow-lg transition-all duration-300 ${
+          className={`fixed lg:hidden z-30 p-3 rounded-full shadow-lg transition-all duration-300 ${
             isDark ? 'bg-blue-600 hover:bg-blue-700' : 'bg-blue-600 hover:bg-blue-700'
           } text-white`}
+          style={{ bottom: 'calc(1.5rem + env(safe-area-inset-bottom))', left: 'calc(1.5rem + env(safe-area-inset-left))' }}
           title="Open sidebar"
           aria-label="Open sidebar"
         >

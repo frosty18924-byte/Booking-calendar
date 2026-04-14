@@ -132,9 +132,9 @@ export default function SlideOutNav() {
         </div>
       )}
 
-      {/* Mobile buttons (Dashboard only) */}
+      {/* Mobile buttons (Dashboard only) - positioned with safe area inset */}
       {showButtonsMobile && (
-        <div className="sm:hidden" style={{ position: 'fixed', top: '4rem', left: '1rem', zIndex: 1000 }}>
+        <div className="sm:hidden" style={{ position: 'fixed', top: 'calc(4rem + env(safe-area-inset-top))', left: '1rem', zIndex: 1000 }}>
           <div className="flex items-center gap-2 rounded-xl border border-slate-200/70 bg-white/85 p-1.5 shadow-lg backdrop-blur dark:border-slate-700/70 dark:bg-slate-900/85">
             <UniformButton
               variant="secondary"
