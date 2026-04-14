@@ -40,6 +40,9 @@ export default function GlobalTopControls() {
 
   const isAuthPage = pathname === '/login' || pathname?.startsWith('/auth/');
   const isDashboardPage = pathname === '/dashboard';
+  
+  // Only show Sign Out button on main hub pages
+  const isMainPage = pathname === '/' || pathname === '/training-matrix' || pathname === '/templates' || pathname === '/admin' || pathname === '/admin-tools';
 
   const handleSignOut = async () => {
     const { error } = await supabase.auth.signOut();
@@ -52,7 +55,7 @@ export default function GlobalTopControls() {
 
   if (isAuthPage || isDashboardPage) return null;
 
-  const showSignOut = !loading && isAuthenticated;
+  const showSignOut = !loading && isAuthenticated && isMainPage;
 
   return (
     <>
