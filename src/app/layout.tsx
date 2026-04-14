@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import FixedHeader from '@/app/components/FixedHeader';
 import SlideOutNav from '@/app/components/SlideOutNav';
+import SessionTimeout from '@/app/components/SessionTimeout';
 import { NavDrawerProvider } from '@/app/components/NavDrawerProvider';
 
 export const metadata: Metadata = {
@@ -32,6 +33,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       </head>
       <body className="font-sans antialiased bg-white text-slate-900 dark:bg-[#0f172a] dark:text-white min-h-screen overflow-x-hidden">
         <NavDrawerProvider>
+          <SessionTimeout />
           <FixedHeader />
           <SlideOutNav />
           {/* Main content area with top padding for fixed header */}
