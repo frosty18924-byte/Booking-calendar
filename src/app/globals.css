@@ -75,10 +75,9 @@ button:not(.no-ui-motion):not(.static):not(.fixed):not(.absolute):not(.relative)
 .icon-button:active {
   transform: scale(0.95);
 }
-/* Mobile viewport adjustments to prevent floating buttons from hiding content */
+/* Mobile viewport adjustments */
 @media (max-width: 640px) {
   #app-scroll {
-    /* No top padding - let content flow naturally, buttons positioned below header */
     padding-bottom: calc(1rem + env(safe-area-inset-bottom, 0.5rem));
   }
 }
