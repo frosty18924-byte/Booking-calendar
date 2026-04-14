@@ -99,67 +99,8 @@ export default function SlideOutNav() {
     router.push(path);
   };
 
-  const showButtonsDesktop = true;
-  const showButtonsMobile = true;
-
   return (
     <>
-      {/* Desktop buttons (Home + Menu) - positioned well below header text */}
-      {showButtonsDesktop && (
-        <div className="hidden sm:block" style={{ position: 'fixed', top: 'calc(9rem + env(safe-area-inset-top))', left: '1rem', zIndex: 1000 }}>
-          <div className="flex items-center gap-2 rounded-xl border border-slate-200/70 bg-white/85 p-1.5 shadow-lg backdrop-blur dark:border-slate-700/70 dark:bg-slate-900/85">
-            <UniformButton
-              variant="secondary"
-              size="sm"
-              onClick={() => go('/')}
-              className="no-ui-motion p-2 shadow-md border"
-              title="Portal"
-              aria-label="Portal"
-            >
-              <Icon name="home" className="w-6 h-6" />
-            </UniformButton>
-            <UniformButton
-              variant="secondary"
-              size="sm"
-              onClick={toggle}
-              className="no-ui-motion p-2 shadow-md border"
-              title="Menu"
-              aria-label="Menu"
-            >
-              <Icon name="menu" className="w-6 h-6" />
-            </UniformButton>
-          </div>
-        </div>
-      )}
-
-      {/* Mobile buttons - positioned below header on left side */}
-      {showButtonsMobile && (
-        <div className="sm:hidden" style={{ position: 'fixed', top: 'calc(5.5rem + env(safe-area-inset-top))', left: '1rem', zIndex: 1000 }}>
-          <div className="flex items-center gap-1 rounded-lg border border-slate-200/70 bg-white/85 p-1 shadow-md backdrop-blur dark:border-slate-700/70 dark:bg-slate-900/85">
-            <UniformButton
-              variant="secondary"
-              size="sm"
-              onClick={() => go('/')}
-              className="no-ui-motion p-1 shadow-sm border text-sm"
-              title="Portal"
-              aria-label="Portal"
-            >
-              <Icon name="home" className="w-4 h-4" />
-            </UniformButton>
-            <UniformButton
-              variant="secondary"
-              size="sm"
-              onClick={toggle}
-              className="no-ui-motion p-1 shadow-sm border text-sm"
-              title="Menu"
-              aria-label="Menu"
-            >
-              <Icon name="menu" className="w-4 h-4" />
-            </UniformButton>
-          </div>
-        </div>
-      )}
-
       {/* Drawer */}
       {isOpen && (
         <div className="fixed inset-0 z-[1100]">
