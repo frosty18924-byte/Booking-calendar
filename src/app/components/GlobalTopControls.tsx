@@ -56,8 +56,8 @@ export default function GlobalTopControls() {
 
   return (
     <>
-      {/* Mobile: single scrollable control strip (prevents cut-off/overlap) */}
-      <div className="sm:hidden" style={{ position: 'fixed', top: '4rem', left: '1rem', right: '1rem', zIndex: 1000 }}>
+      {/* Mobile: single scrollable control strip (prevents cut-off/overlap) - positioned with safe area inset */}
+      <div className="sm:hidden" style={{ position: 'fixed', top: 'calc(4rem + env(safe-area-inset-top))', left: '1rem', right: '1rem', zIndex: 1000 }}>
         <div className="overflow-x-auto">
           <div className="min-w-max flex items-center gap-2 rounded-xl border border-slate-200/70 bg-white/85 p-1.5 shadow-lg backdrop-blur dark:border-slate-700/70 dark:bg-slate-900/85">
             <UniformButton

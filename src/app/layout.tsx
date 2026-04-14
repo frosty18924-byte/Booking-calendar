@@ -13,6 +13,7 @@ export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1.0,
   maximumScale: 1.0,
+  viewportFit: "cover",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
@@ -33,7 +34,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <NavDrawerProvider>
           <SlideOutNav />
           <GlobalTopControls />
-          <div id="app-scroll" className="min-h-screen">
+          {/* Main content area with padding to prevent overlap with fixed buttons */}
+          <div id="app-scroll" className="min-h-screen pt-0 sm:pt-0">
             {children}
           </div>
         </NavDrawerProvider>
