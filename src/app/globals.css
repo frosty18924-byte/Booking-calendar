@@ -79,7 +79,7 @@ button:not(.no-ui-motion):not(.static):not(.fixed):not(.absolute):not(.relative)
 @media (max-width: 640px) {
   #app-scroll {
     /* Add top padding for mobile to prevent content overlap with buttons below header */
-    padding-top: 4rem;
+    padding-top: 7rem;
     padding-bottom: calc(1rem + env(safe-area-inset-bottom, 0.5rem));
   }
 }
