@@ -309,18 +309,20 @@ export default function TrainingCourseChecker({ isDark }: { isDark: boolean }) {
     const allocated = course.totals.allocated;
     const total = expiring + expired + allocated;
 
-    const byLocation = Object.entries(course.locations).map(([location, counts]) => {
-      const locExpiring = counts[expiringKey];
-      const locExpired = counts.expired;
-      const locAllocated = counts.allocated;
-      return {
-        location,
-        expiring: locExpiring,
-        expired: locExpired,
-        allocated: locAllocated,
-        total: locExpiring + locExpired + locAllocated,
-      };
-    });
+    const byLocation = Object.entries(course.locations)
+      .map(([location, counts]) => {
+        const locExpiring = counts[expiringKey];
+        const locExpired = counts.expired;
+        const locAllocated = counts.allocated;
+        return {
+          location,
+          expiring: locExpiring,
+          expired: locExpired,
+          allocated: locAllocated,
+          total: locExpiring + locExpired + locAllocated,
+        };
+      })
+      .sort((a, b) => b.total - a.total);
 
     return {
       courseKey: course.courseKey,
