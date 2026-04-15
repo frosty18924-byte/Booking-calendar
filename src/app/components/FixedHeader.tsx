@@ -1,6 +1,7 @@
 'use client';
 
 import { useNavDrawer } from '@/app/components/NavDrawerProvider';
+import { usePathname } from 'next/navigation';
 import Icon from './Icon';
 import UniformButton from './UniformButton';
 import ThemeToggle from './ThemeToggle';
@@ -9,6 +10,7 @@ import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
 
 export default function FixedHeader() {
+  const pathname = usePathname();
   const { toggle } = useNavDrawer();
   const router = useRouter();
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -45,6 +47,11 @@ export default function FixedHeader() {
     }
     router.push('/login');
   };
+
+  // Hide header on login page
+  if (pathname === '/login') {
+    return null;
+  }
 
   return (
     <header className="fixed top-0 left-0 right-0 z-50 bg-white dark:bg-slate-950 border-b border-slate-200 dark:border-slate-800 shadow-sm">
