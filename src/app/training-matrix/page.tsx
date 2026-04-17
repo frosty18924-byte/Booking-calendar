@@ -1940,7 +1940,11 @@ export default function TrainingMatrixPage() {
                               className={`px-4 py-3 text-center transition-all duration-200 relative group ${
                                 canEditMatrix ? 'cursor-pointer hover:opacity-75' : ''
                               } ${isSelected ? (isDark ? 'bg-blue-900/30' : 'bg-blue-100') : ''}`}
-                              onClick={() => {
+                              onClick={(e) => {
+                                // Don't open edit modal if checkbox was clicked
+                                if ((e.target as HTMLElement).tagName === 'INPUT') {
+                                  return;
+                                }
                                 if (canEditMatrix && !isEditing) {
                                   setEditingCell({ staffId: staffMember.id, courseId: course.id });
                                   setEditDate(cell?.completion_date || '');
