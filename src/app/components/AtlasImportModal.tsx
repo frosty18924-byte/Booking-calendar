@@ -69,21 +69,32 @@ export default function AtlasImportModal({ onClose }: { onClose?: () => void }) 
   };
 
   const handleImport = async () => {
-    if (!file) return;
+    console.log('🔘 Atlas import button clicked, file:', file?.name);
+    
+    if (!file) {
+      console.log('⚠️ No file selected');
+      return;
+    }
 
     setLoading(true);
+    console.log('🚀 Starting Atlas import...');
+    
     try {
       const formData = new FormData();
       formData.append('file', file);
+
+      console.log('📤 Sending request to /api/atlas/import with file:', file.name, 'size:', file.size);
 
       const response = await fetch('/api/atlas/import', {
         method: 'POST',
         body: formData,
       });
 
+      console.log('📡 Response received. Status:', response.status, response.statusText);
+
       if (!response.ok) {
         const errorText = await response.text();
-        console.error('API error response:', errorText);
+        console.error('❌ API error response:', errorText);
         setResult({
           success: false,
           summary: { processed: 0, updated: 0, created: 0, changes: 0, errors: 1 },
@@ -95,11 +106,12 @@ export default function AtlasImportModal({ onClose }: { onClose?: () => void }) 
       }
 
       const data = await response.json();
+      console.log('✅ Import result:', data);
       debugLog('Import result:', data);
       setResult(data);
       setShowResult(true);
     } catch (error) {
-      console.error('Upload error:', error);
+      console.error('❌ Upload error:', error);
       setResult({
         success: false,
         summary: { processed: 0, updated: 0, created: 0, changes: 0, errors: 1 },
@@ -140,7 +152,10 @@ export default function AtlasImportModal({ onClose }: { onClose?: () => void }) 
               variant="primary"
               className="px-5 py-2 rounded-lg font-bold"
               style={{ backgroundColor: file && !loading ? '#10b981' : '#9ca3af', color: '#ffffff', cursor: file && !loading ? 'pointer' : 'not-allowed' }}
-              onClick={handleImport}
+              onClick={() => {
+                console.log('🖱️ Import button clicked');
+                handleImport();
+              }}
               disabled={!file || loading}
             >
               {loading ? '🔄 Importing...' : '✅ Import Data'}
