@@ -20,8 +20,12 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const { updates } = body;
 
+    console.log('🚀 Bulk update started. Received updates:', updates?.length || 0);
+    console.log('   Updates data:', JSON.stringify(updates?.slice(0, 2), null, 2)); // Log first 2 for debugging
+
     // Validate input
     if (!Array.isArray(updates) || updates.length === 0) {
+      console.error('❌ Invalid updates: not an array or empty');
       return Response.json(
         {
           success: false,
@@ -33,10 +37,14 @@ export async function POST(request: NextRequest) {
 
     // Get the course details for expiry calculations
     const courseIds = [...new Set(updates.map((u: BulkUpdateRequest) => u.courseId))];
+    console.log('📚 Looking up', courseIds.length, 'courses:', courseIds);
+    
     const { data: courses } = await supabaseAdmin
       .from('courses')
       .select('id, expiry_months, never_expires')
       .in('id', courseIds);
+
+    console.log('✅ Found', courses?.length || 0, 'courses in database');
 
     const courseMap = new Map();
     courses?.forEach((c: any) => {
@@ -45,7 +53,10 @@ export async function POST(request: NextRequest) {
 
     // Get the location ID from the first update
     const locationId = updates[0]?.locationId;
+    console.log('📍 Location ID:', locationId);
+    
     if (!locationId) {
+      console.error('❌ Missing locationId in first update');
       return Response.json(
         {
           success: false,
@@ -106,6 +117,8 @@ export async function POST(request: NextRequest) {
           updated_at: new Date().toISOString(),
         };
 
+        console.log(`  📝 Upserting ${staffId} / ${courseId} / ${locationId}: status=${status}`);
+
         let { data, error } = await supabaseAdmin
           .from('staff_training_matrix')
           .upsert(upsertData, { onConflict: 'staff_id,course_id,completed_at_location_id' })
@@ -141,6 +154,8 @@ export async function POST(request: NextRequest) {
 
     // Check if all were successful
     const failedCount = results.filter((r: any) => !r.success).length;
+
+    console.log(`\n✨ Bulk update complete: ${successCount} succeeded, ${failedCount} failed out of ${updates.length} total`);
 
     return Response.json(
       {
