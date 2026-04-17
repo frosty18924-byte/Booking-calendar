@@ -562,6 +562,8 @@ export async function POST(request: NextRequest) {
       // Update each record in the batch and track successes
       const results = await Promise.all(
         batch.map(async (update) => {
+          console.log(`Updating record ${update.id}: ${update.change.staff} / ${update.change.course} from ${update.change.oldDate} to ${update.change.newDate}`);
+          
           const result = await supabase
             .from('staff_training_matrix')
             .update({
@@ -570,6 +572,12 @@ export async function POST(request: NextRequest) {
               status: 'completed'
             })
             .eq('id', update.id);
+          
+          if (result.error) {
+            console.error(`  ✗ Error updating record ${update.id}:`, result.error);
+          } else {
+            console.log(`  ✓ Successfully updated record ${update.id}`);
+          }
           
           return { update, success: !result.error };
         })
@@ -594,6 +602,9 @@ export async function POST(request: NextRequest) {
       const batch = toInsertNew.slice(i, i + INSERT_BATCH_SIZE);
       const payload = batch.map(item => item.payload);
       
+      console.log(`Inserting batch of ${payload.length} records...`);
+      console.log(`  Sample: ${payload[0] ? `${payload[0].staff_id} / ${payload[0].course_id} -> ${payload[0].completion_date}` : 'none'}`);
+      
       let { error, data } = await supabase
         .from('staff_training_matrix')
         .upsert(payload, { onConflict: 'staff_id,course_id,completed_at_location_id' });
@@ -609,11 +620,13 @@ export async function POST(request: NextRequest) {
 
       if (!error) {
         createdCount += payload.length;
+        console.log(`  ✓ Inserted ${payload.length} records successfully`);
         batch.forEach(item => {
           createdRecords.push(item.change);
         });
       } else {
-        console.error('Insert batch error:', error.message);
+        console.error(`  ✗ Insert batch error: ${error.message} (code: ${error.code})`);
+        console.error(`    Batch details:`, payload.slice(0, 2));
       }
       
       if ((i + INSERT_BATCH_SIZE) % 500 === 0) {
