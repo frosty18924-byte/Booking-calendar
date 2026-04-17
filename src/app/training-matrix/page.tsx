@@ -1429,15 +1429,19 @@ export default function TrainingMatrixPage() {
 
       const result = await response.json();
 
-      if (!response.ok) {
-        throw new Error(result.error || 'Failed to update records');
+      if (!result.success) {
+        throw new Error(result.error || `Failed to update ${result.failedCount} records`);
       }
 
+      console.log('Bulk update result:', result);
       alert(`✅ Updated ${selectedCells.size} training records`);
       setBulkEditMode(false);
       setBulkEditStatus(null);
       setBulkEditDate('');
       setSelectedCells(new Set());
+      
+      // Wait a moment for the database to commit before fetching
+      await new Promise(resolve => setTimeout(resolve, 500));
       await fetchMatrixData();
     } catch (error) {
       console.error('Error applying bulk update:', error);
