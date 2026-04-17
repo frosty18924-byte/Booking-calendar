@@ -1419,17 +1419,24 @@ export default function TrainingMatrixPage() {
         };
       });
 
+      console.log('🚀 Frontend: Starting bulk update with', updates.length, 'updates');
+      console.log('   Sample update:', updates[0]);
+      console.log('   Status:', bulkEditStatus, 'Date:', bulkEditDate);
+
       const response = await fetch('/api/bulk-update-training', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ updates }),
       });
 
+      console.log('📡 API Response status:', response.status);
+
       const result = await response.json();
+      console.log('📋 API Result:', result);
 
       if (!result.success) {
         // Log detailed errors for debugging
-        console.error('Bulk update failed:', result);
+        console.error('❌ Bulk update failed:', result);
         if (result.results) {
           const failedUpdates = result.results.filter((r: any) => !r.success);
           console.error('Failed records:', failedUpdates);
@@ -1438,7 +1445,7 @@ export default function TrainingMatrixPage() {
         throw new Error(result.error || `Failed to update ${result.failedCount} records`);
       }
 
-      console.log('Bulk update result:', result);
+      console.log('✅ Bulk update successful:', result);
       alert(`✅ Updated ${selectedCells.size} training records`);
       setBulkEditMode(false);
       setBulkEditStatus(null);
@@ -1449,7 +1456,7 @@ export default function TrainingMatrixPage() {
       await new Promise(resolve => setTimeout(resolve, 500));
       await fetchMatrixData();
     } catch (error) {
-      console.error('Error applying bulk update:', error);
+      console.error('❌ Error applying bulk update:', error);
       alert('❌ Error updating records: ' + (error instanceof Error ? error.message : 'Unknown error'));
     }
   };
