@@ -1430,6 +1430,13 @@ export default function TrainingMatrixPage() {
       const result = await response.json();
 
       if (!result.success) {
+        // Log detailed errors for debugging
+        console.error('Bulk update failed:', result);
+        if (result.results) {
+          const failedUpdates = result.results.filter((r: any) => !r.success);
+          console.error('Failed records:', failedUpdates);
+          throw new Error(`Failed to update ${failedUpdates.length} records: ${failedUpdates.map((r: any) => r.error).join('; ')}`);
+        }
         throw new Error(result.error || `Failed to update ${result.failedCount} records`);
       }
 

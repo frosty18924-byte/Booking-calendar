@@ -122,8 +122,8 @@ export async function POST(request: NextRequest) {
         }
 
         if (error) {
-          console.error(`Error upserting record for ${staffId}-${courseId}:`, error);
-          results.push({ staffId, courseId, success: false, error: error.message });
+          console.error(`Error upserting record for ${staffId}-${courseId}:`, JSON.stringify(error));
+          results.push({ staffId, courseId, success: false, error: error.message || JSON.stringify(error) });
         } else {
           successCount++;
           results.push({ staffId, courseId, success: true });
