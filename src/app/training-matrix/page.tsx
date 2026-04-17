@@ -1411,7 +1411,7 @@ export default function TrainingMatrixPage() {
 
     try {
       const updates = Array.from(selectedCells).map(cellKey => {
-        const [staffId, courseId] = cellKey.split('-');
+        const [staffId, courseId] = cellKey.split('|');
         return {
           staffId,
           courseId,
@@ -1940,7 +1940,7 @@ export default function TrainingMatrixPage() {
                             );
                           }
 
-                          const cellKey = `${staffMember.id}-${course.id}`;
+                          const cellKey = `${staffMember.id}|${course.id}`;
                           const isSelected = selectedCells.has(cellKey);
                           const cell = matrixData[staffMember.id]?.[course.id];
                           const isEditing = editingCell?.staffId === staffMember.id && editingCell?.courseId === course.id;
