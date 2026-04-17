@@ -1313,7 +1313,7 @@ export default function TrainingMatrixPage() {
     const staffMember = staff.find(s => s.id === staffId);
     if (!staffMember) return;
 
-    if (!confirm(`Delete "${staffMember.name}"? This will remove them from the training matrix.`)) return;
+    if (!confirm(`Remove "${staffMember.name}" from this location only? They will remain in other locations.`)) return;
 
     try {
       // Remove from UI first
@@ -1321,21 +1321,26 @@ export default function TrainingMatrixPage() {
       staffDividers.delete(staffId);
       setStaffDividers(new Set(staffDividers));
 
-      // If it's a real staff member (not a temporary divider), try to delete from database
+      // If it's a real staff member (not a temporary divider), remove from this location only
       if (!staffId.startsWith('divider-')) {
-        const response = await fetch('/api/delete-staff', {
+        const response = await fetch('/api/remove-staff-from-location', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ staffId, email: `deleted-${staffId}@system.local` })
+          body: JSON.stringify({ staffId, locationId: selectedLocation })
         });
 
+        const result = await response.json();
+
         if (!response.ok) {
-          console.warn('Could not delete from database, but removed from UI');
+          console.warn('Could not remove staff from location:', result.error);
+          alert('❌ Error: ' + (result.error || 'Could not remove staff from location'));
+          // Re-fetch to restore the staff member
+          fetchMatrixData();
         }
       }
     } catch (error) {
       console.error('Error deleting staff:', error);
-      alert('❌ Error deleting staff member');
+      alert('❌ Error removing staff member from location');
       // Re-fetch to restore the staff member
       fetchMatrixData();
     }

@@ -74,7 +74,7 @@ export default function LandingPage() {
               </p>
             </div>
 
-            <div className={`mt-8 grid gap-4 md:gap-6 ${canAdmin ? 'md:grid-cols-3' : 'md:grid-cols-2'}`}>
+            <div className={`mt-8 grid gap-4 md:gap-6 ${canAdmin ? 'md:grid-cols-4' : 'md:grid-cols-3'}`}>
               <TileButton
                 title="Training"
                 description="Open the training dashboard."
@@ -89,6 +89,14 @@ export default function LandingPage() {
                 emoji="📄"
                 showChevron
                 onClick={() => router.push('/templates')}
+              />
+
+              <TileButton
+                title="Support"
+                description="Access support resources and tools."
+                emoji="🆘"
+                showChevron
+                onClick={() => router.push('/apps/support')}
               />
 
               {canAdmin && (

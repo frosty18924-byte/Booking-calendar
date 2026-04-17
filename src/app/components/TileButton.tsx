@@ -18,7 +18,7 @@ const accentStyles: Record<Accent, string> = {
 
 const sizeStyles: Record<Size, string> = {
   sm: 'rounded-2xl p-4',
-  md: 'rounded-3xl p-6 md:p-8',
+  md: 'rounded-3xl p-8 md:p-10',
 };
 
 type Props = {
@@ -49,16 +49,16 @@ export default function TileButton({
       type="button"
       onClick={onClick}
       disabled={disabled}
-      className={`group text-left border shadow-lg transition-all focus-visible:outline-none focus-visible:ring-2 disabled:opacity-60 disabled:cursor-not-allowed ${
+      className={`group text-left border shadow-lg transition-all focus-visible:outline-none focus-visible:ring-2 disabled:opacity-60 disabled:cursor-not-allowed flex flex-col justify-between ${
         sizeStyles[size]
       } bg-white border-slate-200 hover:bg-slate-50 dark:bg-slate-950/40 dark:border-slate-800 dark:hover:bg-slate-950/60 ${
         accentStyles[accent]
       } ${className}`.trim()}
     >
       <div className="flex items-start justify-between gap-4">
-        <div className="min-w-0">
+        <div className="min-w-0 flex-1">
           {emoji ? <div className={`${size === 'sm' ? 'text-3xl mb-2' : 'text-5xl mb-4'} leading-none`}>{emoji}</div> : null}
-          <h2 className={`${size === 'sm' ? 'text-sm font-extrabold' : 'text-xl md:text-2xl font-extrabold'} truncate`}>
+          <h2 className={`${size === 'sm' ? 'text-sm font-extrabold' : 'text-2xl md:text-3xl font-extrabold'} text-slate-900 dark:text-white`}>
             {title}
           </h2>
           {description ? (

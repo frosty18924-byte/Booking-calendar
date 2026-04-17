@@ -18,6 +18,7 @@ export default function SlideOutNav() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [trainingOpen, setTrainingOpen] = useState(true);
   const [templatesOpen, setTemplatesOpen] = useState(false);
+  const [supportOpen, setSupportOpen] = useState(false);
   const [adminOpen, setAdminOpen] = useState(false);
 
   useEffect(() => {
@@ -71,10 +72,20 @@ export default function SlideOutNav() {
     if (!pathname) return;
     const isTemplatesPath = pathname === '/templates' || pathname.startsWith('/templates/');
     const isAdminPath = pathname === '/admin-tools' || pathname.startsWith('/admin-tools/') || pathname === '/admin' || pathname.startsWith('/admin/');
+    const isSupportPath = pathname === '/apps/support' || pathname.startsWith('/apps/support/') || pathname === '/apps/it-referral' || pathname.startsWith('/apps/it-referral');
 
     if (isTemplatesPath) {
       setTrainingOpen(false);
       setTemplatesOpen(true);
+      setSupportOpen(false);
+      setAdminOpen(false);
+      return;
+    }
+
+    if (isSupportPath) {
+      setTrainingOpen(false);
+      setTemplatesOpen(false);
+      setSupportOpen(true);
       setAdminOpen(false);
       return;
     }
@@ -82,12 +93,14 @@ export default function SlideOutNav() {
     if (isAdminPath) {
       setTrainingOpen(false);
       setTemplatesOpen(false);
+      setSupportOpen(false);
       setAdminOpen(true);
       return;
     }
 
     setTrainingOpen(true);
     setTemplatesOpen(false);
+    setSupportOpen(false);
     setAdminOpen(false);
   }, [pathname]);
 
@@ -199,6 +212,37 @@ export default function SlideOutNav() {
 	                        {canTemplatesAdmin && (
 	                          <TileButton title="Templates Admin" description="Upload and edit" size="sm" accent="blue" onClick={() => go('/templates/admin')} />
 	                        )}
+	                      </div>
+	                    </div>
+	                  )}
+	                </section>
+
+                {/* Support */}
+                <section className="rounded-3xl border border-slate-200 shadow-sm dark:border-slate-800">
+                  <button
+                    type="button"
+                    onClick={() => setSupportOpen(v => !v)}
+                    aria-expanded={supportOpen}
+                    aria-controls="nav-support-items"
+                    className="w-full text-left p-5 rounded-3xl transition-colors hover:bg-slate-50 dark:hover:bg-slate-900/40"
+                  >
+                    <div className="flex items-center justify-between gap-3">
+                      <div className="min-w-0">
+                        <p className="text-sm font-extrabold text-slate-900 dark:text-white">Support</p>
+                        <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">Help and resources</p>
+                      </div>
+                      <span className="text-xs font-black uppercase tracking-widest text-slate-500 dark:text-slate-400">
+                        {supportOpen ? 'Hide' : 'Show'}
+                      </span>
+                    </div>
+                  </button>
+
+	                  {supportOpen && (
+	                    <div id="nav-support-items" className="px-5 pb-5">
+	                      <div className="grid gap-3">
+	                        <TileButton title="IT Support" description="Submit IT issues" size="sm" accent="blue" onClick={() => go('/apps/it-referral')} />
+
+	                        <TileButton title="IT Referrals" description="Manage IT tickets" size="sm" accent="blue" onClick={() => go('/apps/it-referral-dashboard')} />
 	                      </div>
 	                    </div>
 	                  )}
