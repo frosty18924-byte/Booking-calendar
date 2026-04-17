@@ -365,16 +365,20 @@ export default function TrainingMatrixPage() {
         }
       });
 
+      // Only include staff from training data if they're also in staff_locations for this location
+      // This prevents previously-removed staff from reappearing on refresh
+      const staffLocationsIds = new Set(activeStaffLocationsData.map((sl: any) => sl.staff_id));
+      const filteredTrainingStaffIds = Array.from(uniqueStaffIds).filter(id => staffLocationsIds.has(id));
+
       // Fetch profiles for these staff members
       let trainingStaffData: any[] = [];
-      if (uniqueStaffIds.size > 0) {
-        const staffIdArray = Array.from(uniqueStaffIds);
-	        debugLog('Fetching profiles for staff IDs:', staffIdArray.length);
+      if (filteredTrainingStaffIds.length > 0) {
+	        debugLog('Fetching profiles for staff IDs:', filteredTrainingStaffIds.length);
         
         const { data: profiles, error: profileError } = await supabase
           .from('profiles')
           .select('id, full_name')
-          .in('id', staffIdArray)
+          .in('id', filteredTrainingStaffIds)
           .eq('is_deleted', false);
 
         if (profileError) {
