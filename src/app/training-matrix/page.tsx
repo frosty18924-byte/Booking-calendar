@@ -85,6 +85,10 @@ export default function TrainingMatrixPage() {
   const [showReorderCourses, setShowReorderCourses] = useState(false);
   const [courseOrderInput, setCourseOrderInput] = useState('');
   const [lastRemovedCourse, setLastRemovedCourse] = useState<RemovedCourseEntry | null>(null);
+  const [selectedCells, setSelectedCells] = useState<Set<string>>(new Set()); // staffId-courseId
+  const [bulkEditMode, setBulkEditMode] = useState(false);
+  const [bulkEditStatus, setBulkEditStatus] = useState<'completed' | 'allocated' | 'not_yet_due' | 'na' | null>(null);
+  const [bulkEditDate, setBulkEditDate] = useState<string>('');
 
   function getCategoryOverrides(locationId: string): Record<string, string> {
     if (typeof window === 'undefined') return {};
@@ -1346,6 +1350,97 @@ export default function TrainingMatrixPage() {
     }
   };
 
+  const toggleCellSelection = (staffId: string, courseId: string) => {
+    const cellKey = `${staffId}-${courseId}`;
+    const newSelected = new Set(selectedCells);
+    if (newSelected.has(cellKey)) {
+      newSelected.delete(cellKey);
+    } else {
+      newSelected.add(cellKey);
+    }
+    setSelectedCells(newSelected);
+  };
+
+  const selectAllInCourse = (courseId: string) => {
+    const newSelected = new Set(selectedCells);
+    staff.forEach(s => {
+      if (!s.id.startsWith('divider-')) {
+        const cellKey = `${s.id}-${courseId}`;
+        newSelected.add(cellKey);
+      }
+    });
+    setSelectedCells(newSelected);
+  };
+
+  const deselectAllInCourse = (courseId: string) => {
+    const newSelected = new Set(selectedCells);
+    staff.forEach(s => {
+      const cellKey = `${s.id}-${courseId}`;
+      newSelected.delete(cellKey);
+    });
+    setSelectedCells(newSelected);
+  };
+
+  const selectAllForStaff = (staffId: string) => {
+    const newSelected = new Set(selectedCells);
+    courses.forEach(c => {
+      const cellKey = `${staffId}-${c.id}`;
+      newSelected.add(cellKey);
+    });
+    setSelectedCells(newSelected);
+  };
+
+  const clearAllSelections = () => {
+    setSelectedCells(new Set());
+  };
+
+  const applyBulkUpdate = async () => {
+    if (selectedCells.size === 0) {
+      alert('No cells selected');
+      return;
+    }
+
+    if (!bulkEditStatus && !bulkEditDate) {
+      alert('Please set at least a status or completion date');
+      return;
+    }
+
+    try {
+      const updates = Array.from(selectedCells).map(cellKey => {
+        const [staffId, courseId] = cellKey.split('-');
+        return {
+          staffId,
+          courseId,
+          locationId: selectedLocation,
+          status: bulkEditStatus,
+          completion_date: bulkEditDate || null,
+        };
+      });
+
+      const response = await fetch('/api/bulk-update-training', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ updates }),
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.error || 'Failed to update records');
+      }
+
+      alert(`✅ Updated ${selectedCells.size} training records`);
+      setBulkEditMode(false);
+      setBulkEditStatus(null);
+      setBulkEditDate('');
+      setSelectedCells(new Set());
+      await fetchMatrixData();
+    } catch (error) {
+      console.error('Error applying bulk update:', error);
+      alert('❌ Error updating records: ' + (error instanceof Error ? error.message : 'Unknown error'));
+    }
+  };
+
   if (loading || !user) {
     return <div className={`p-8 ${isDark ? 'bg-gray-900 text-white' : 'bg-white text-gray-900'}`}>Loading...</div>;
   }
@@ -1389,6 +1484,22 @@ export default function TrainingMatrixPage() {
                 >
                   Export CSV
                 </button>
+                {selectedCells.size > 0 && (
+                  <>
+                    <button
+                      onClick={() => setBulkEditMode(true)}
+                      className="px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-colors duration-200 text-sm font-medium"
+                    >
+                      📝 Bulk Edit ({selectedCells.size})
+                    </button>
+                    <button
+                      onClick={clearAllSelections}
+                      className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors duration-200 text-sm font-medium"
+                    >
+                      Clear Selection
+                    </button>
+                  </>
+                )}
                 {canEditMatrix && (
                   <>
                     {!showAddCourse ? (
@@ -1627,9 +1738,31 @@ export default function TrainingMatrixPage() {
                             autoFocus
                           />
                         ) : (
-                          <div className="flex items-center justify-center gap-1">
+                          <div className="flex items-center justify-center gap-1 group/header">
                             <span className="text-gray-500">⋮⋮</span>
-                            <span className="block max-w-[110px] truncate text-xs leading-tight" title={course.name}>{course.name}</span>
+                            <span className="block max-w-[80px] truncate text-xs leading-tight" title={course.name}>{course.name}</span>
+                            <div className="flex gap-0.5 opacity-0 group-hover/header:opacity-100 transition-opacity">
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  selectAllInCourse(course.id);
+                                }}
+                                className={`text-green-600 hover:text-green-700 font-bold text-xs leading-none`}
+                                title="Select all in this course"
+                              >
+                                ☑
+                              </button>
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  deselectAllInCourse(course.id);
+                                }}
+                                className={`text-gray-600 hover:text-gray-700 font-bold text-xs leading-none`}
+                                title="Deselect all in this course"
+                              >
+                                ☐
+                              </button>
+                            </div>
                             <button
                               onClick={(e) => {
                                 e.stopPropagation();
@@ -1760,6 +1893,15 @@ export default function TrainingMatrixPage() {
                           }`}
                         >
                           <div className="flex items-center justify-between gap-2">
+                            {!isDivider && (
+                              <input
+                                type="checkbox"
+                                onChange={() => selectAllForStaff(staffMember.id)}
+                                checked={courses.every(c => selectedCells.has(`${staffMember.id}-${c.id}`))}
+                                className="w-4 h-4 cursor-pointer"
+                                title="Select all courses for this staff member"
+                              />
+                            )}
                             <span className="text-sm flex-1">{staffMember.name}</span>
                             <button
                               onClick={(e) => {
@@ -1783,6 +1925,8 @@ export default function TrainingMatrixPage() {
                             );
                           }
 
+                          const cellKey = `${staffMember.id}-${course.id}`;
+                          const isSelected = selectedCells.has(cellKey);
                           const cell = matrixData[staffMember.id]?.[course.id];
                           const isEditing = editingCell?.staffId === staffMember.id && editingCell?.courseId === course.id;
                           const isOneOff = course.never_expires || course.expiry_months === 9999 || course.expiry_months === null;
@@ -1793,9 +1937,9 @@ export default function TrainingMatrixPage() {
                           return (
                             <td
                               key={`${staffMember.id}-${course.id}`}
-                              className={`px-4 py-3 text-center transition-all duration-200 ${
+                              className={`px-4 py-3 text-center transition-all duration-200 relative group ${
                                 canEditMatrix ? 'cursor-pointer hover:opacity-75' : ''
-                              }`}
+                              } ${isSelected ? (isDark ? 'bg-blue-900/30' : 'bg-blue-100') : ''}`}
                               onClick={() => {
                                 if (canEditMatrix && !isEditing) {
                                   setEditingCell({ staffId: staffMember.id, courseId: course.id });
@@ -1806,6 +1950,16 @@ export default function TrainingMatrixPage() {
                                 }
                               }}
                             >
+                              <input
+                                type="checkbox"
+                                checked={isSelected}
+                                onChange={(e) => {
+                                  e.stopPropagation();
+                                  toggleCellSelection(staffMember.id, course.id);
+                                }}
+                                className="absolute top-2 left-2 w-4 h-4 cursor-pointer opacity-0 group-hover:opacity-100 transition-opacity"
+                                title="Select this cell for bulk operations"
+                              />
                               {isEditing ? (
                                 <span className={`p-2 rounded ${isDark ? 'bg-blue-900/30' : 'bg-blue-100'} text-blue-600 text-xs font-medium`}>
                                   Editing...
@@ -1970,6 +2124,97 @@ export default function TrainingMatrixPage() {
                   setEditingCell(null);
                   setEditDate('');
                   setEditStatus(null);
+                }}
+                className="flex-1 px-4 py-2 bg-gray-500 text-white rounded hover:bg-gray-600 transition-colors duration-150 font-medium text-sm"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Bulk Edit Modal */}
+      {bulkEditMode && (
+        <div className={`fixed inset-0 flex items-center justify-center z-50 ${isDark ? 'bg-black/50' : 'bg-black/30'}`} onClick={() => setBulkEditMode(false)}>
+          <div className={`rounded-lg p-6 shadow-2xl ${isDark ? 'bg-gray-800' : 'bg-white'} relative z-50 w-96`} onClick={(e) => e.stopPropagation()}>
+            <h3 className={`text-lg font-semibold mb-4 ${isDark ? 'text-white' : 'text-gray-900'}`}>
+              Bulk Update ({selectedCells.size} cells)
+            </h3>
+            
+            {/* Status Selection */}
+            <div className="mb-4">
+              <label className={`block text-sm font-medium mb-2 ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>Status</label>
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  onClick={() => setBulkEditStatus('completed')}
+                  className={`px-3 py-2 rounded text-sm font-medium transition-colors ${
+                    bulkEditStatus === 'completed'
+                      ? isDark ? 'bg-green-600 text-white' : 'bg-green-500 text-white'
+                      : isDark ? 'bg-gray-700 text-gray-300 hover:bg-gray-600' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                  }`}
+                >
+                  In Date
+                </button>
+                <button
+                  onClick={() => setBulkEditStatus('allocated')}
+                  className={`px-3 py-2 rounded text-sm font-medium transition-colors ${
+                    bulkEditStatus === 'allocated'
+                      ? isDark ? 'bg-blue-600 text-white' : 'bg-blue-500 text-white'
+                      : isDark ? 'bg-gray-700 text-gray-300 hover:bg-gray-600' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                  }`}
+                >
+                  Allocated
+                </button>
+                <button
+                  onClick={() => setBulkEditStatus('not_yet_due')}
+                  className={`px-3 py-2 rounded text-sm font-medium transition-colors ${
+                    bulkEditStatus === 'not_yet_due'
+                      ? isDark ? 'bg-purple-600 text-white' : 'bg-purple-500 text-white'
+                      : isDark ? 'bg-gray-700 text-gray-300 hover:bg-gray-600' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                  }`}
+                >
+                  Not Yet Due
+                </button>
+                <button
+                  onClick={() => setBulkEditStatus('na')}
+                  className={`px-3 py-2 rounded text-sm font-medium transition-colors ${
+                    bulkEditStatus === 'na'
+                      ? isDark ? 'bg-gray-600 text-white' : 'bg-gray-400 text-white'
+                      : isDark ? 'bg-gray-700 text-gray-300 hover:bg-gray-600' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                  }`}
+                >
+                  N/A
+                </button>
+              </div>
+            </div>
+
+            {/* Completion Date - Only show for "Completed" status */}
+            {bulkEditStatus === 'completed' && (
+              <div className="mb-4">
+                <label className={`block text-sm font-medium mb-2 ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>Completion Date</label>
+                <input
+                  type="date"
+                  value={bulkEditDate}
+                  onChange={(e) => setBulkEditDate(e.target.value)}
+                  className={`w-full px-3 py-2 rounded border ${isDark ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-300 text-gray-900'} text-sm`}
+                />
+                <p className={`text-xs mt-2 ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>Expiry date will be calculated automatically</p>
+              </div>
+            )}
+
+            <div className="flex gap-2">
+              <button
+                onClick={applyBulkUpdate}
+                className="flex-1 px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 transition-colors duration-150 font-medium text-sm"
+              >
+                Apply to {selectedCells.size} Cells
+              </button>
+              <button
+                onClick={() => {
+                  setBulkEditMode(false);
+                  setBulkEditStatus(null);
+                  setBulkEditDate('');
                 }}
                 className="flex-1 px-4 py-2 bg-gray-500 text-white rounded hover:bg-gray-600 transition-colors duration-150 font-medium text-sm"
               >
