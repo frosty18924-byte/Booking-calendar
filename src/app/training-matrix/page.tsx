@@ -1355,7 +1355,7 @@ export default function TrainingMatrixPage() {
   };
 
   const toggleCellSelection = (staffId: string, courseId: string) => {
-    const cellKey = `${staffId}-${courseId}`;
+    const cellKey = `${staffId}|${courseId}`;
     const newSelected = new Set(selectedCells);
     if (newSelected.has(cellKey)) {
       newSelected.delete(cellKey);
@@ -1369,7 +1369,7 @@ export default function TrainingMatrixPage() {
     const newSelected = new Set(selectedCells);
     staff.forEach(s => {
       if (!s.id.startsWith('divider-')) {
-        const cellKey = `${s.id}-${courseId}`;
+        const cellKey = `${s.id}|${courseId}`;
         newSelected.add(cellKey);
       }
     });
@@ -1379,7 +1379,7 @@ export default function TrainingMatrixPage() {
   const deselectAllInCourse = (courseId: string) => {
     const newSelected = new Set(selectedCells);
     staff.forEach(s => {
-      const cellKey = `${s.id}-${courseId}`;
+      const cellKey = `${s.id}|${courseId}`;
       newSelected.delete(cellKey);
     });
     setSelectedCells(newSelected);
@@ -1388,7 +1388,7 @@ export default function TrainingMatrixPage() {
   const selectAllForStaff = (staffId: string) => {
     const newSelected = new Set(selectedCells);
     courses.forEach(c => {
-      const cellKey = `${staffId}-${c.id}`;
+      const cellKey = `${staffId}|${c.id}`;
       newSelected.add(cellKey);
     });
     setSelectedCells(newSelected);
@@ -1912,7 +1912,7 @@ export default function TrainingMatrixPage() {
                               <input
                                 type="checkbox"
                                 onChange={() => selectAllForStaff(staffMember.id)}
-                                checked={courses.every(c => selectedCells.has(`${staffMember.id}-${c.id}`))}
+                                checked={courses.every(c => selectedCells.has(`${staffMember.id}|${c.id}`))}
                                 className="w-4 h-4 cursor-pointer"
                                 title="Select all courses for this staff member"
                               />
@@ -1934,7 +1934,7 @@ export default function TrainingMatrixPage() {
                           if (isDivider) {
                             return (
                               <td
-                                key={`${staffMember.id}-${course.id}`}
+                                key={`${staffMember.id}|${course.id}`}
                                 className={`px-4 py-3 ${isDark ? 'bg-gray-900' : 'bg-gray-300'}`}
                               />
                             );
@@ -1951,7 +1951,7 @@ export default function TrainingMatrixPage() {
 
                           return (
                             <td
-                              key={`${staffMember.id}-${course.id}`}
+                              key={`${staffMember.id}|${course.id}`}
                               className={`px-4 py-3 text-center transition-all duration-200 relative group ${
                                 canEditMatrix ? 'cursor-pointer hover:opacity-75' : ''
                               } ${isSelected ? (isDark ? 'bg-blue-900/30' : 'bg-blue-100') : ''}`}
