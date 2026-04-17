@@ -1357,8 +1357,10 @@ export default function TrainingMatrixPage() {
     const newSelected = new Set(selectedCells);
     if (newSelected.has(cellKey)) {
       newSelected.delete(cellKey);
+      console.log('☑️ Cell deselected:', cellKey, '| Total selected:', newSelected.size);
     } else {
       newSelected.add(cellKey);
+      console.log('✅ Cell selected:', cellKey, '| Total selected:', newSelected.size);
     }
     setSelectedCells(newSelected);
   };
@@ -1397,12 +1399,16 @@ export default function TrainingMatrixPage() {
   };
 
   const applyBulkUpdate = async () => {
+    console.log('🔘 applyBulkUpdate called. Selected cells:', selectedCells.size);
+    
     if (selectedCells.size === 0) {
+      console.log('⚠️ No cells selected');
       alert('No cells selected');
       return;
     }
 
     if (!bulkEditStatus && !bulkEditDate) {
+      console.log('⚠️ No status or date set');
       alert('Please set at least a status or completion date');
       return;
     }
@@ -2229,7 +2235,10 @@ export default function TrainingMatrixPage() {
 
             <div className="flex gap-2">
               <button
-                onClick={applyBulkUpdate}
+                onClick={() => {
+                  console.log('🖱️ Apply button clicked, calling applyBulkUpdate');
+                  applyBulkUpdate();
+                }}
                 className="flex-1 px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 transition-colors duration-150 font-medium text-sm"
               >
                 Apply to {selectedCells.size} Cells
