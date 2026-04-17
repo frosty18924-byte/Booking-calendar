@@ -79,6 +79,7 @@ export async function POST(request: NextRequest) {
               status,
               completion_date: status === 'completed' ? completion_date : null,
               expiry_date: expiryDate,
+              completed_at_location_id: locationId,
             })
             .eq('id', existingRecord.id);
 
@@ -97,6 +98,7 @@ export async function POST(request: NextRequest) {
               staff_id: staffId,
               course_id: courseId,
               location_id: locationId,
+              completed_at_location_id: locationId,
               status,
               completion_date: status === 'completed' ? completion_date : null,
               expiry_date: expiryDate,

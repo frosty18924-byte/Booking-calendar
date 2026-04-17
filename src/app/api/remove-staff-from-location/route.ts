@@ -42,11 +42,12 @@ export async function POST(request: NextRequest) {
     }
 
     // Also remove all training records for this staff/location combination
+    // Match on completed_at_location_id since that's what the matrix uses
     const { error: trainingError } = await supabaseAdmin
       .from('staff_training_matrix')
       .delete()
       .eq('staff_id', staffId)
-      .eq('location_id', locationId);
+      .eq('completed_at_location_id', locationId);
 
     if (trainingError) {
       console.warn('Could not delete training records:', trainingError.message);
