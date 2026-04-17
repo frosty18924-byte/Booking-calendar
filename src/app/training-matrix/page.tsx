@@ -786,16 +786,14 @@ export default function TrainingMatrixPage() {
               mappedCount++;
             }
             
-            // Only add if we don't already have data for this cell, or if existing data is empty
-            const existingCell = plainMatrix[t.staff_id][effectiveCourseId];
-            if (!existingCell || (!existingCell.completion_date && t.completion_date)) {
-              plainMatrix[t.staff_id][effectiveCourseId] = {
-                completion_date: t.completion_date,
-                expiry_date: t.expiry_date,
-                training_id: t.id,
-                status: t.status,
-              };
-            }
+            // Always update with the latest data from the database
+            // This ensures bulk updates with new dates replace old expired dates
+            plainMatrix[t.staff_id][effectiveCourseId] = {
+              completion_date: t.completion_date,
+              expiry_date: t.expiry_date,
+              training_id: t.id,
+              status: t.status,
+            };
           }
         }
       });
