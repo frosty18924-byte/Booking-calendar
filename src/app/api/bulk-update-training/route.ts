@@ -62,13 +62,13 @@ export async function POST(request: NextRequest) {
           }
         }
 
-        // Check if record exists
+        // Check if record exists - use completed_at_location_id to match what's in the database
         const { data: existingRecord } = await supabaseAdmin
           .from('staff_training_matrix')
           .select('id')
           .eq('staff_id', staffId)
           .eq('course_id', courseId)
-          .eq('location_id', locationId)
+          .eq('completed_at_location_id', locationId)
           .single();
 
         if (existingRecord) {
