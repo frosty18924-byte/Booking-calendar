@@ -43,9 +43,42 @@ export async function POST(request: NextRequest) {
       courseMap.set(c.id, c);
     });
 
+    // Get the location ID from the first update
+    const locationId = updates[0]?.locationId;
+    if (!locationId) {
+      return Response.json(
+        {
+          success: false,
+          error: 'Invalid updates: missing locationId',
+        },
+        { status: 400 }
+      );
+    }
+
     // Process each update
     const results = [];
     let successCount = 0;
+
+    // First, ensure all staff are in staff_locations for this location
+    const staffIds = [...new Set(updates.map((u: BulkUpdateRequest) => u.staffId))];
+    
+    for (const staffId of staffIds) {
+      // Upsert into staff_locations to ensure they're visible in the matrix
+      const { error: staffLocError } = await supabaseAdmin
+        .from('staff_locations')
+        .upsert(
+          {
+            staff_id: staffId,
+            location_id: locationId,
+            display_order: 9999, // Default to bottom
+          },
+          { onConflict: 'staff_id,location_id' }
+        );
+
+      if (staffLocError) {
+        console.warn(`Warning: Could not add ${staffId} to staff_locations:`, staffLocError.message);
+      }
+    }
 
     for (const update of updates) {
       try {
