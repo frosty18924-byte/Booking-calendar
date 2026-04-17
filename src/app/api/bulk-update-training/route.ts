@@ -95,55 +95,38 @@ export async function POST(request: NextRequest) {
           }
         }
 
-        // Check if record exists - use completed_at_location_id to match what's in the database
-        const { data: existingRecord } = await supabaseAdmin
+        // Use upsert like handleSaveTraining does - more reliable than manual check
+        const upsertData: any = {
+          staff_id: staffId,
+          course_id: courseId,
+          completion_date: status === 'completed' ? completion_date : null,
+          expiry_date: expiryDate,
+          completed_at_location_id: locationId,
+          status: status,
+          updated_at: new Date().toISOString(),
+        };
+
+        let { data, error } = await supabaseAdmin
           .from('staff_training_matrix')
-          .select('id')
-          .eq('staff_id', staffId)
-          .eq('course_id', courseId)
-          .eq('completed_at_location_id', locationId)
-          .single();
+          .upsert(upsertData, { onConflict: 'staff_id,course_id,completed_at_location_id' })
+          .select();
 
-        if (existingRecord) {
-          // Update existing record
-          const { error: updateError } = await supabaseAdmin
+        // Support deployments that still use the older two-column unique key
+        if (error?.code === '42P10') {
+          const fallback = await supabaseAdmin
             .from('staff_training_matrix')
-            .update({
-              status,
-              completion_date: status === 'completed' ? completion_date : null,
-              expiry_date: expiryDate,
-              completed_at_location_id: locationId,
-            })
-            .eq('id', existingRecord.id);
+            .upsert(upsertData, { onConflict: 'staff_id,course_id' })
+            .select();
+          data = fallback.data;
+          error = fallback.error;
+        }
 
-          if (updateError) {
-            console.error(`Error updating record for ${staffId}-${courseId}:`, updateError);
-            results.push({ staffId, courseId, success: false, error: updateError.message });
-          } else {
-            successCount++;
-            results.push({ staffId, courseId, success: true });
-          }
+        if (error) {
+          console.error(`Error upserting record for ${staffId}-${courseId}:`, error);
+          results.push({ staffId, courseId, success: false, error: error.message });
         } else {
-          // Create new record
-          const { error: insertError } = await supabaseAdmin
-            .from('staff_training_matrix')
-            .insert({
-              staff_id: staffId,
-              course_id: courseId,
-              location_id: locationId,
-              completed_at_location_id: locationId,
-              status,
-              completion_date: status === 'completed' ? completion_date : null,
-              expiry_date: expiryDate,
-            });
-
-          if (insertError) {
-            console.error(`Error inserting record for ${staffId}-${courseId}:`, insertError);
-            results.push({ staffId, courseId, success: false, error: insertError.message });
-          } else {
-            successCount++;
-            results.push({ staffId, courseId, success: true });
-          }
+          successCount++;
+          results.push({ staffId, courseId, success: true });
         }
       } catch (error) {
         console.error('Error processing individual update:', error);
