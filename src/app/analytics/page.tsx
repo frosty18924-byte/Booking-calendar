@@ -17,6 +17,8 @@ export default function AnalyticsDashboard() {
   const [user, setUser] = useState<any>(null);
   const [selectedReason, setSelectedReason] = useState<{ type: 'lateness' | 'absence'; reason: string } | null>(null);
   const [selectedAbsenceGroup, setSelectedAbsenceGroup] = useState<{ key: string } | null>(null);
+  const [collapsedCourses, setCollapsedCourses] = useState<Set<string>>(new Set());
+  const [collapsedDates, setCollapsedDates] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     checkAuth();
@@ -47,6 +49,35 @@ export default function AnalyticsDashboard() {
       const isDarkMode = theme === 'dark' || (!theme && window.matchMedia('(prefers-color-scheme: dark)').matches);
       setIsDark(isDarkMode);
     }
+  };
+
+  const toggleCourse = (course: string) => {
+    setCollapsedCourses(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(course)) {
+        newSet.delete(course);
+      } else {
+        newSet.add(course);
+      }
+      return newSet;
+    });
+  };
+
+  const toggleDate = (date: string) => {
+    setCollapsedDates(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(date)) {
+        newSet.delete(date);
+      } else {
+        newSet.add(date);
+      }
+      return newSet;
+    });
+  };
+
+  const resetCollapsedState = () => {
+    setCollapsedCourses(new Set());
+    setCollapsedDates(new Set());
   };
 
   async function checkAuth() {
@@ -427,6 +458,7 @@ export default function AnalyticsDashboard() {
                       key={idx}
                       onClick={() => {
                         setSelectedAbsenceGroup(null);
+                        resetCollapsedState();
                         setSelectedReason({ type: 'lateness', reason: item.reason });
                       }}
                       className="cursor-pointer hover:opacity-80 transition-opacity p-2 rounded-lg"
@@ -464,6 +496,7 @@ export default function AnalyticsDashboard() {
                       key={idx}
                       onClick={() => {
                         setSelectedAbsenceGroup(null);
+                        resetCollapsedState();
                         setSelectedReason({ type: 'absence', reason: item.reason });
                       }}
                       className="cursor-pointer hover:opacity-80 transition-opacity p-2 rounded-lg"
@@ -520,6 +553,7 @@ export default function AnalyticsDashboard() {
                           type="button"
                           onClick={() => {
                             setSelectedReason(null);
+                            resetCollapsedState();
                             setSelectedAbsenceGroup({ key: row.key });
                           }}
                           style={{ color: '#ef4444' }}
@@ -563,29 +597,90 @@ export default function AnalyticsDashboard() {
                   if (detailedData.length === 0) {
                     return <p style={{ color: isDark ? '#94a3b8' : '#64748b' }} className="text-center py-8">No records found</p>;
                   }
-                  return detailedData.map((record: any, idx: number) => (
-                    <div
-                      key={idx}
-                      style={{
-                        backgroundColor: isDark ? '#0f172a' : '#f1f5f9',
-                        borderColor: isDark ? '#334155' : '#e2e8f0'
-                      }}
-                      className="border rounded-lg p-4"
-                    >
-                      <div className="flex justify-between items-start mb-2">
-                        <div className="min-w-0 pr-3">
-                          <p style={{ color: isDark ? '#f1f5f9' : '#1e293b' }} className="font-bold text-sm truncate">{record.name}</p>
-                          <p style={{ color: isDark ? '#94a3b8' : '#64748b' }} className="text-[11px] font-bold uppercase truncate">{record.location}</p>
-                        </div>
-                        {selectedReason.type === 'lateness' && (
-                          <p style={{ color: '#f59e0b' }} className="text-sm font-black">{record.minutes_late} mins late</p>
-                        )}
+                  
+                  // Group data by course and date
+                  const groupedData = detailedData.reduce((acc: any, record: any) => {
+                    const courseKey = record.course || 'Unknown Course';
+                    const dateKey = record.event_date || 'Unknown Date';
+                    if (!acc[courseKey]) {
+                      acc[courseKey] = {};
+                    }
+                    if (!acc[courseKey][dateKey]) {
+                      acc[courseKey][dateKey] = [];
+                    }
+                    acc[courseKey][dateKey].push(record);
+                    return acc;
+                  }, {});
+
+                  return Object.entries(groupedData).map(([course, dates]: [string, any]) => {
+                    const isCourseCollapsed = collapsedCourses.has(course);
+                    return (
+                      <div key={course} className="mb-6">
+                        <button
+                          onClick={() => toggleCourse(course)}
+                          style={{ color: isDark ? '#f1f5f9' : '#1e293b' }}
+                          className="text-lg font-bold mb-3 flex items-center gap-2 hover:opacity-80 transition-opacity"
+                        >
+                          <span className="text-sm">{isCourseCollapsed ? '▶' : '▼'}</span>
+                          📚 {course}
+                        </button>
+                        {!isCourseCollapsed && Object.entries(dates).map(([date, records]: [string, any]) => {
+                          const isDateCollapsed = collapsedDates.has(`${course}-${date}`);
+                          return (
+                            <div key={date} className="mb-4">
+                              <button
+                                onClick={() => toggleDate(`${course}-${date}`)}
+                                style={{ color: isDark ? '#94a3b8' : '#64748b' }}
+                                className="text-sm font-bold mb-2 flex items-center gap-2 hover:opacity-80 transition-opacity"
+                              >
+                                <span className="text-xs">{isDateCollapsed ? '▶' : '▼'}</span>
+                                📅 {date}
+                              </button>
+                              {!isDateCollapsed && (
+                                <div className="space-y-2">
+                                  {records.map((record: any, idx: number) => (
+                                    <div
+                                      key={idx}
+                                      style={{
+                                        backgroundColor: isDark ? '#0f172a' : '#f1f5f9',
+                                        borderColor: isDark ? '#334155' : '#e2e8f0'
+                                      }}
+                                      className="border rounded-lg p-4 ml-4"
+                                    >
+                                      <div className="flex justify-between items-start mb-2">
+                                        <div className="min-w-0 pr-3">
+                                          <p style={{ color: isDark ? '#f1f5f9' : '#1e293b' }} className="font-bold text-sm truncate">{record.name}</p>
+                                          <p style={{ color: isDark ? '#94a3b8' : '#64748b' }} className="text-[11px] font-bold uppercase truncate">{record.location}</p>
+                                        </div>
+                                        {selectedReason.type === 'lateness' && (
+                                          <p style={{ color: '#f59e0b' }} className="text-sm font-black">{record.minutes_late} mins late</p>
+                                        )}
+                                      </div>
+                                    </div>
+                                  ))}
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })}
                       </div>
-                      <p style={{ color: isDark ? '#94a3b8' : '#64748b' }} className="text-xs mb-1">📚 {record.course}</p>
-                      <p style={{ color: isDark ? '#94a3b8' : '#64748b' }} className="text-xs">📅 {record.event_date}</p>
-                    </div>
-                  ));
+                    );
+                  });
                 })()}
+              </div>
+              
+              {/* Close button at bottom */}
+              <div className="mt-6 pt-4 border-t" style={{ borderColor: isDark ? '#334155' : '#e2e8f0' }}>
+                <button
+                  onClick={() => setSelectedReason(null)}
+                  style={{ 
+                    backgroundColor: isDark ? '#ef4444' : '#dc2626',
+                    color: '#ffffff'
+                  }}
+                  className="w-full py-3 px-4 rounded-lg font-bold hover:opacity-90 transition-opacity"
+                >
+                  Close
+                </button>
               </div>
             </div>
           </div>
@@ -614,27 +709,88 @@ export default function AnalyticsDashboard() {
                   if (detailedData.length === 0) {
                     return <p style={{ color: isDark ? '#94a3b8' : '#64748b' }} className="text-center py-8">No records found</p>;
                   }
-                  return detailedData.map((record: any, idx: number) => (
-                    <div
-                      key={idx}
-                      style={{
-                        backgroundColor: isDark ? '#0f172a' : '#f1f5f9',
-                        borderColor: isDark ? '#334155' : '#e2e8f0'
-                      }}
-                      className="border rounded-lg p-4"
-                    >
-                      <div className="flex justify-between items-start mb-2">
-                        <div className="min-w-0 pr-3">
-                          <p style={{ color: isDark ? '#f1f5f9' : '#1e293b' }} className="font-bold text-sm truncate">{record.name}</p>
-                          <p style={{ color: isDark ? '#94a3b8' : '#64748b' }} className="text-[11px] font-bold uppercase truncate">{record.location}</p>
-                        </div>
-                        <p style={{ color: '#ef4444' }} className="text-sm font-black whitespace-nowrap">{record.absence_reason}</p>
+                  
+                  // Group data by course and date
+                  const groupedData = detailedData.reduce((acc: any, record: any) => {
+                    const courseKey = record.course || 'Unknown Course';
+                    const dateKey = record.event_date || 'Unknown Date';
+                    if (!acc[courseKey]) {
+                      acc[courseKey] = {};
+                    }
+                    if (!acc[courseKey][dateKey]) {
+                      acc[courseKey][dateKey] = [];
+                    }
+                    acc[courseKey][dateKey].push(record);
+                    return acc;
+                  }, {});
+
+                  return Object.entries(groupedData).map(([course, dates]: [string, any]) => {
+                    const isCourseCollapsed = collapsedCourses.has(course);
+                    return (
+                      <div key={course} className="mb-6">
+                        <button
+                          onClick={() => toggleCourse(course)}
+                          style={{ color: isDark ? '#f1f5f9' : '#1e293b' }}
+                          className="text-lg font-bold mb-3 flex items-center gap-2 hover:opacity-80 transition-opacity"
+                        >
+                          <span className="text-sm">{isCourseCollapsed ? '▶' : '▼'}</span>
+                          📚 {course}
+                        </button>
+                        {!isCourseCollapsed && Object.entries(dates).map(([date, records]: [string, any]) => {
+                          const isDateCollapsed = collapsedDates.has(`${course}-${date}`);
+                          return (
+                            <div key={date} className="mb-4">
+                              <button
+                                onClick={() => toggleDate(`${course}-${date}`)}
+                                style={{ color: isDark ? '#94a3b8' : '#64748b' }}
+                                className="text-sm font-bold mb-2 flex items-center gap-2 hover:opacity-80 transition-opacity"
+                              >
+                                <span className="text-xs">{isDateCollapsed ? '▶' : '▼'}</span>
+                                📅 {date}
+                              </button>
+                              {!isDateCollapsed && (
+                                <div className="space-y-2">
+                                  {records.map((record: any, idx: number) => (
+                                    <div
+                                      key={idx}
+                                      style={{
+                                        backgroundColor: isDark ? '#0f172a' : '#f1f5f9',
+                                        borderColor: isDark ? '#334155' : '#e2e8f0'
+                                      }}
+                                      className="border rounded-lg p-4 ml-4"
+                                    >
+                                      <div className="flex justify-between items-start mb-2">
+                                        <div className="min-w-0 pr-3">
+                                          <p style={{ color: isDark ? '#f1f5f9' : '#1e293b' }} className="font-bold text-sm truncate">{record.name}</p>
+                                          <p style={{ color: isDark ? '#94a3b8' : '#64748b' }} className="text-[11px] font-bold uppercase truncate">{record.location}</p>
+                                        </div>
+                                        <p style={{ color: '#ef4444' }} className="text-sm font-black whitespace-nowrap">{record.absence_reason}</p>
+                                      </div>
+                                    </div>
+                                  ))}
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })}
                       </div>
-                      <p style={{ color: isDark ? '#94a3b8' : '#64748b' }} className="text-xs mb-1">📚 {record.course}</p>
-                      <p style={{ color: isDark ? '#94a3b8' : '#64748b' }} className="text-xs">📅 {record.event_date}</p>
-                    </div>
-                  ));
+                    );
+                  });
                 })()}
+              </div>
+              
+              {/* Close button at bottom */}
+              <div className="mt-6 pt-4 border-t" style={{ borderColor: isDark ? '#334155' : '#e2e8f0' }}>
+                <button
+                  onClick={() => setSelectedAbsenceGroup(null)}
+                  style={{ 
+                    backgroundColor: isDark ? '#ef4444' : '#dc2626',
+                    color: '#ffffff'
+                  }}
+                  className="w-full py-3 px-4 rounded-lg font-bold hover:opacity-90 transition-opacity"
+                >
+                  Close
+                </button>
               </div>
             </div>
           </div>

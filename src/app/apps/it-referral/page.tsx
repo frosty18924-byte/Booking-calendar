@@ -30,14 +30,16 @@ export default function ITReferralPage() {
     >
       <div className="max-w-5xl mx-auto">
         <BackButton />
-        <ITReferralForm
-          checkedItems={[]}
-          onSuccess={() => {
-            setTimeout(() => {
-              router.push('/');
-            }, 2000);
-          }}
-        />
+        <div className="mt-8">
+          <ITReferralForm
+            checkedItems={[]}
+            onSuccess={() => {
+              setTimeout(() => {
+                router.push('/');
+              }, 2000);
+            }}
+          />
+        </div>
       </div>
     </main>
   );
