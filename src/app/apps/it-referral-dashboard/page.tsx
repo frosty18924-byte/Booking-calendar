@@ -220,6 +220,12 @@ export default function ITReferralDashboard() {
         [referralId]: [...(prev[referralId] || []), data[0]],
       }));
 
+      // Auto-update ticket status if it's still 'submitted' and someone adds an update
+      const referral = referrals.find(r => r.id === referralId);
+      if (referral && referral.status === 'submitted') {
+        await handleUpdateReferral(referralId, { status: 'in-progress' });
+      }
+
       // Clear the input
       setNewUpdate((prev) => ({
         ...prev,
@@ -428,7 +434,7 @@ export default function ITReferralDashboard() {
                 backgroundColor: isDark ? '#1e293b' : '#ffffff',
                 borderColor: isDark ? '#334155' : '#e2e8f0',
               }}
-              className={`rounded-lg border p-4 ${card.onClick ? 'cursor-pointer' : ''}`}
+              className="rounded-lg border p-4 cursor-pointer"
               onClick={card.onClick}
             >
               <p style={{ color: isDark ? '#cbd5e1' : '#64748b' }} className="text-sm font-medium">
@@ -1033,47 +1039,111 @@ export default function ITReferralDashboard() {
                             }}
                             className="border rounded p-4 space-y-3 mb-4"
                           >
-                            {updates[referral.id].map((update) => (
-                              <div
-                                key={update.id}
-                                style={{
-                                  backgroundColor: isDark ? '#1e293b' : '#ffffff',
-                                  borderColor: isDark ? '#334155' : '#e2e8f0',
-                                }}
-                                className="border rounded p-3"
-                              >
-                                <div className="flex justify-between items-start mb-2">
-                                  <p
-                                    style={{ color: isDark ? '#cbd5e1' : '#64748b' }}
-                                    className="text-xs font-medium"
-                                  >
-                                    {update.updated_by}
-                                  </p>
-                                  <p
-                                    style={{ color: isDark ? '#94a3b8' : '#94a3b8' }}
-                                    className="text-xs"
-                                  >
-                                    {new Date(update.created_at).toLocaleString()}
-                                  </p>
-                                </div>
-                                <p
-                                  style={{ color: isDark ? '#f1f5f9' : '#1e293b' }}
-                                  className="text-sm whitespace-pre-wrap"
+                            {updates[referral.id].map((update) => {
+                              const updateDate = new Date(update.created_at);
+                              const isRecent = (Date.now() - updateDate.getTime()) < (24 * 60 * 60 * 1000); // Less than 24 hours
+                              
+                              return (
+                                <div
+                                  key={update.id}
+                                  style={{
+                                    backgroundColor: isDark ? '#1e293b' : '#ffffff',
+                                    borderColor: isDark ? '#334155' : '#e2e8f0',
+                                  }}
+                                  className={`border rounded p-3 ${isRecent ? 'border-l-4 border-l-blue-500' : ''}`}
                                 >
-                                  {update.update_text}
-                                </p>
-                              </div>
-                            ))}
+                                  <div className="flex justify-between items-start mb-2">
+                                    <div className="flex items-center gap-2">
+                                      <div className="w-2 h-2 rounded-full bg-green-500"></div>
+                                      <p
+                                        style={{ color: isDark ? '#cbd5e1' : '#64748b' }}
+                                        className="text-xs font-medium"
+                                      >
+                                        {update.updated_by}
+                                      </p>
+                                      {isRecent && (
+                                        <span className="px-2 py-1 bg-blue-100 text-blue-700 text-xs rounded-full">
+                                          New
+                                        </span>
+                                      )}
+                                    </div>
+                                    <p
+                                      style={{ color: isDark ? '#94a3b8' : '#94a3b8' }}
+                                      className="text-xs"
+                                    >
+                                      {updateDate.toLocaleDateString()} {updateDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                    </p>
+                                  </div>
+                                  <p
+                                    style={{ color: isDark ? '#f1f5f9' : '#1e293b' }}
+                                    className="text-sm whitespace-pre-wrap mb-2"
+                                  >
+                                    {update.update_text}
+                                  </p>
+                                  <div className="flex gap-2">
+                                    <button
+                                      onClick={() => {
+                                        navigator.clipboard.writeText(update.update_text);
+                                        alert('Update copied to clipboard');
+                                      }}
+                                      className="text-xs px-2 py-1 rounded border hover:bg-gray-100 dark:hover:bg-gray-700"
+                                      style={{ 
+                                        borderColor: isDark ? '#334155' : '#e2e8f0',
+                                        color: isDark ? '#94a3b8' : '#64748b'
+                                      }}
+                                    >
+                                      Copy
+                                    </button>
+                                  </div>
+                                </div>
+                              );
+                            })}
                           </div>
                         ) : (
-                          <p style={{ color: isDark ? '#94a3b8' : '#94a3b8' }} className="text-sm italic">
-                            No updates yet
-                          </p>
+                          <div className="text-center py-8">
+                            <div className="text-4xl mb-2">💬</div>
+                            <p style={{ color: isDark ? '#94a3b8' : '#94a3b8' }} className="text-sm italic">
+                              No updates yet. Be the first to respond!
+                            </p>
+                          </div>
                         )}
                         <div
                           className="mt-4 pt-4 border-t"
                           style={{ borderTopColor: isDark ? '#334155' : '#e2e8f0' }}
                         >
+                          <div className="mb-3">
+                            <p style={{ color: isDark ? '#cbd5e1' : '#64748b' }} className="text-sm font-medium mb-2">
+                              Quick Responses:
+                            </p>
+                            <div className="flex flex-wrap gap-2">
+                              {[
+                                'I am looking into this issue.',
+                                'Could you provide more details?',
+                                'This has been resolved.',
+                                'I need to schedule a visit.',
+                                'Please try restarting your device.',
+                                'I have assigned this to the appropriate team.'
+                              ].map((template) => (
+                                <button
+                                  key={template}
+                                  onClick={() => {
+                                    setNewUpdate((prev) => ({
+                                      ...prev,
+                                      [referral.id]: template,
+                                    }));
+                                  }}
+                                  className="text-xs px-2 py-1 rounded border hover:bg-blue-50 dark:hover:bg-blue-900/20"
+                                  style={{ 
+                                    borderColor: isDark ? '#334155' : '#e2e8f0',
+                                    color: isDark ? '#94a3b8' : '#64748b'
+                                  }}
+                                >
+                                  {template}
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+                          
                           <textarea
                             value={newUpdate[referral.id] || ''}
                             onChange={(e) =>
@@ -1082,30 +1152,35 @@ export default function ITReferralDashboard() {
                                 [referral.id]: e.target.value,
                               }))
                             }
-                            placeholder="Add an update..."
+                            placeholder="Type your update here or use a quick response above..."
                             style={{
-                              backgroundColor: isDark ? '#0f172a' : '#f8fafc',
+                              backgroundColor: isDark ? '#0f172a' : '#ffffff',
                               color: isDark ? '#f1f5f9' : '#1e293b',
                               borderColor: isDark ? '#334155' : '#e2e8f0',
                             }}
                             className="w-full px-3 py-2 rounded border text-sm resize-none"
                             rows={3}
                           />
-                          <button
-                            onClick={() => handleAddUpdate(referral.id)}
-                            disabled={!newUpdate[referral.id]?.trim()}
-                            style={{
-                              backgroundColor: newUpdate[referral.id]?.trim()
-                                ? '#3b82f6'
-                                : isDark ? '#334155' : '#e2e8f0',
-                              color: newUpdate[referral.id]?.trim()
-                                ? '#ffffff'
-                                : isDark ? '#94a3b8' : '#94a3b8',
-                            }}
-                            className="mt-3 px-4 py-2 rounded text-sm font-medium transition-colors disabled:cursor-not-allowed"
-                          >
-                            Add Update
-                          </button>
+                          <div className="flex justify-between items-center mt-3">
+                            <span style={{ color: isDark ? '#94a3b8' : '#64748b' }} className="text-xs">
+                              {newUpdate[referral.id]?.length || 0} characters
+                            </span>
+                            <button
+                              onClick={() => handleAddUpdate(referral.id)}
+                              disabled={!newUpdate[referral.id]?.trim()}
+                              style={{
+                                backgroundColor: newUpdate[referral.id]?.trim()
+                                  ? '#3b82f6'
+                                  : isDark ? '#334155' : '#e2e8f0',
+                                color: newUpdate[referral.id]?.trim()
+                                  ? '#ffffff'
+                                  : isDark ? '#94a3b8' : '#94a3b8',
+                              }}
+                              className="px-4 py-2 rounded text-sm font-medium transition-colors disabled:cursor-not-allowed"
+                            >
+                              Post Update
+                            </button>
+                          </div>
                         </div>
                       </div>
                     </div>

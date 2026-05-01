@@ -43,7 +43,7 @@ export default function SupportPage() {
           </p>
         </div>
 
-        <div className="grid gap-6 md:grid-cols-2">
+        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
           <div className="flex">
             <TileButton
               title="IT Support"
@@ -62,6 +62,17 @@ export default function SupportPage() {
               emoji="📋"
               showChevron
               onClick={() => router.push('/apps/it-referral-dashboard')}
+              className="w-full"
+            />
+          </div>
+
+          <div className="flex">
+            <TileButton
+              title="IT Analytics"
+              description="View performance metrics and ticket analytics."
+              emoji="📊"
+              showChevron
+              onClick={() => router.push('/apps/it-referral-analytics')}
               className="w-full"
             />
           </div>
