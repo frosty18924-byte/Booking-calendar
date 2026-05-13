@@ -104,9 +104,6 @@ export default function DashboardPage() {
               <h1 className={`text-3xl font-bold transition-colors duration-300 ${isDark ? 'text-white' : 'text-gray-900'}`}>
                 Training Portal
               </h1>
-              <p className={`mt-1 transition-colors duration-300 ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
-                Welcome, {user?.full_name || 'User'}
-              </p>
             </div>
             <div className="flex items-center gap-2 rounded-xl border border-slate-200/70 bg-white/85 p-1.5 shadow-lg backdrop-blur dark:border-slate-700/70 dark:bg-slate-900/85">
               <button

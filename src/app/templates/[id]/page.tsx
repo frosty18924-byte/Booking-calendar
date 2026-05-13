@@ -168,7 +168,7 @@ export default function TemplateDetailPage() {
             <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
               <div className="min-w-0">
                 <div className="flex items-center gap-3">
-                  <BackButton to="/templates" label="Back" labelClassName="hidden sm:inline" title="Back to gallery" />
+                  <BackButton to="/templates" label="Back" labelClassName="sr-only" title="Back to gallery" />
                   <h1 className="text-xl md:text-3xl font-black tracking-tight truncate">
                     {loading ? 'Loading…' : template?.name || 'Template'}
                   </h1>

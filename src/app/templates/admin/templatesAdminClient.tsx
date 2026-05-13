@@ -195,7 +195,7 @@ export default function TemplatesAdminClient({ selectedFromQuery }: { selectedFr
           <div className="p-6 md:p-10 border-b" style={{ borderColor: isDark ? '#1f2937' : '#e2e8f0' }}>
             <div className="flex items-center justify-between gap-4">
               <div className="flex items-center gap-3">
-                <BackButton to="/templates" label="Back" labelClassName="hidden sm:inline" title="Back to gallery" />
+                <BackButton to="/templates" label="Back" labelClassName="sr-only" title="Back to gallery" />
                 <h1 className="text-2xl md:text-4xl font-black tracking-tight">Manage Templates</h1>
               </div>
               <UniformButton variant="secondary" className="no-ui-motion border shadow-sm" onClick={loadTemplates} disabled={loading}>
