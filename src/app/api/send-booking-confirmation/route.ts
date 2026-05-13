@@ -2,6 +2,13 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getEmailSendOptionsFromHeaders, sendBookingEmail } from '@/lib/email';
 import { createServiceClient, requireRole } from '@/lib/apiAuth';
 
+type TrainingEventWithCourse = {
+  event_date: string;
+  start_time: string | null;
+  end_time: string | null;
+  courses: { name?: string | null } | null;
+};
+
 export async function POST(request: NextRequest) {
   try {
     const authz = await requireRole(['admin', 'scheduler']);
@@ -30,16 +37,21 @@ export async function POST(request: NextRequest) {
     // Get event details
     const { data: event } = await supabase
       .from('training_events')
-      .select('event_date, courses(name)')
+      .select('event_date, start_time, end_time, courses(name)')
       .eq('id', eventId)
-      .single();
+      .single<TrainingEventWithCourse>();
 
     if (!event) {
       console.error('Event not found for eventId:', eventId);
       return NextResponse.json({ error: 'Event not found' }, { status: 404 });
     }
 
-    console.log('Event found:', { date: event.event_date, course: (event.courses as any)?.name });
+    console.log('Event found:', {
+      date: event.event_date,
+      startTime: event.start_time,
+      endTime: event.end_time,
+      course: event.courses?.name,
+    });
     const emailOptions = getEmailSendOptionsFromHeaders(
       request.headers.get('x-email-test-mode'),
       request.headers.get('x-test-email-address')
@@ -50,8 +62,10 @@ export async function POST(request: NextRequest) {
     const success = await sendBookingEmail(
       staff.email,
       staff.full_name || 'Staff Member',
-      (event.courses as any)?.name || 'Unknown Course',
+      event.courses?.name || 'Unknown Course',
       event.event_date,
+      event.start_time,
+      event.end_time,
       emailOptions
     );
 

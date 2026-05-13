@@ -5,10 +5,12 @@ import { supabase } from '@/lib/supabase';
 import BackButton from '@/app/components/BackButton';
 import { ChevronDown, Loader2 } from 'lucide-react';
 import { getITReferralCategoryLabel, IT_REFERRAL_CATEGORIES } from '@/lib/itReferralCategories';
+import { notifyReferralUpdate } from '@/lib/itReferralNotifications';
 
 interface ITReferral {
   id: string;
   ticket_number?: number | null;
+  requester_user_id?: string | null;
   name: string;
   email: string;
   location: string;
@@ -30,6 +32,8 @@ interface TicketUpdate {
   referral_id: string;
   update_text: string;
   updated_by: string;
+  author_user_id?: string | null;
+  is_internal?: boolean;
   created_at: string;
 }
 
@@ -39,6 +43,8 @@ interface StaffMember {
   email: string | null;
   role_tier?: string | null;
 }
+
+type RoleTier = 'staff' | 'manager' | 'scheduler' | 'admin';
 
 const PRIORITIES = ['Low', 'Medium', 'High', 'Urgent'];
 const STATUSES = ['submitted', 'assigned', 'in-progress', 'resolved', 'completed'];
@@ -63,9 +69,13 @@ export default function ITReferralDashboard() {
   const [locations, setLocations] = useState<string[]>([]);
   const [updates, setUpdates] = useState<Record<string, TicketUpdate[]>>({});
   const [newUpdate, setNewUpdate] = useState<Record<string, string>>({});
+  const [newUpdateInternal, setNewUpdateInternal] = useState<Record<string, boolean>>({});
   const [currentUser, setCurrentUser] = useState<string | null>(null);
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+  const [currentRole, setCurrentRole] = useState<RoleTier | null>(null);
   const [showCompleted, setShowCompleted] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const isAdmin = currentRole === 'admin';
 
   useEffect(() => {
     const checkTheme = () => {
@@ -96,15 +106,13 @@ export default function ITReferralDashboard() {
           .single();
 
         if (profileError) throw profileError;
-        const roleTier = profile?.role_tier as string | null | undefined;
-        if (roleTier !== 'admin') {
-          setAccessDenied('Access denied. This dashboard is for IT admins only.');
-          return;
-        }
+        const roleTier = (profile?.role_tier as RoleTier | null | undefined) || 'staff';
 
+        setCurrentUserId(user.id);
+        setCurrentRole(roleTier);
         setCurrentUser(profile?.full_name || user.email || 'Unknown');
 
-        // Fetch referrals
+        // Fetch referrals within RLS scope.
         const { data: referralsData, error: referralsError } = await supabase
           .from('it_referrals')
           .select('*')
@@ -119,32 +127,36 @@ export default function ITReferralDashboard() {
         ) as string[];
         setLocations(uniqueLocations);
 
-        // Fetch staff members for assignment dropdown
-        const { data: staffData, error: staffError } = await supabase
-          .from('profiles')
-          .select('id, full_name, email, role_tier, is_deleted')
-          .eq('role_tier', 'admin')
-          .eq('is_deleted', false)
-          .order('full_name');
-
-        if (staffError) {
-          // Backwards-compatible: if the soft-delete column isn't present yet, fall back to all admins.
-          const message = String((staffError as any)?.message || '').toLowerCase();
-          const details = String((staffError as any)?.details || '').toLowerCase();
-          const mentionsSoftDelete = message.includes('is_deleted') || details.includes('is_deleted');
-
-          if (!mentionsSoftDelete) throw staffError;
-
-          const { data: fallbackData, error: fallbackError } = await supabase
+        if (roleTier === 'admin') {
+          // Fetch staff members for assignment dropdown.
+          const { data: staffData, error: staffError } = await supabase
             .from('profiles')
-            .select('id, full_name, email, role_tier')
+            .select('id, full_name, email, role_tier, is_deleted')
             .eq('role_tier', 'admin')
+            .eq('is_deleted', false)
             .order('full_name');
 
-          if (fallbackError) throw fallbackError;
-          setStaffMembers(fallbackData || []);
+          if (staffError) {
+            // Backwards-compatible: if the soft-delete column isn't present yet, fall back to all admins.
+            const message = String((staffError as { message?: string })?.message || '').toLowerCase();
+            const details = String((staffError as { details?: string })?.details || '').toLowerCase();
+            const mentionsSoftDelete = message.includes('is_deleted') || details.includes('is_deleted');
+
+            if (!mentionsSoftDelete) throw staffError;
+
+            const { data: fallbackData, error: fallbackError } = await supabase
+              .from('profiles')
+              .select('id, full_name, email, role_tier')
+              .eq('role_tier', 'admin')
+              .order('full_name');
+
+            if (fallbackError) throw fallbackError;
+            setStaffMembers(fallbackData || []);
+          } else {
+            setStaffMembers(staffData || []);
+          }
         } else {
-          setStaffMembers(staffData || []);
+          setStaffMembers([]);
         }
 
         // Fetch updates for all referrals
@@ -178,6 +190,8 @@ export default function ITReferralDashboard() {
     referralId: string,
     updates: Partial<ITReferral>
   ) => {
+    if (!isAdmin) return;
+
     try {
       const { error } = await supabase
         .from('it_referrals')
@@ -197,7 +211,9 @@ export default function ITReferralDashboard() {
 
   const handleAddUpdate = async (referralId: string) => {
     const updateText = newUpdate[referralId]?.trim();
-    if (!updateText || !currentUser) return;
+    if (!updateText || !currentUser || !currentUserId) return;
+
+    const isInternal = isAdmin ? Boolean(newUpdateInternal[referralId]) : false;
 
     try {
       const { data, error } = await supabase
@@ -207,6 +223,8 @@ export default function ITReferralDashboard() {
             referral_id: referralId,
             update_text: updateText,
             updated_by: currentUser,
+            author_user_id: currentUserId,
+            is_internal: isInternal,
             created_at: new Date().toISOString(),
           },
         ])
@@ -214,15 +232,21 @@ export default function ITReferralDashboard() {
 
       if (error) throw error;
 
+      const createdUpdate = data?.[0];
+
       // Add the new update to local state
       setUpdates((prev) => ({
         ...prev,
-        [referralId]: [...(prev[referralId] || []), data[0]],
+        [referralId]: [...(prev[referralId] || []), createdUpdate],
       }));
+
+      if (createdUpdate?.id) {
+        await notifyReferralUpdate(referralId, createdUpdate.id);
+      }
 
       // Auto-update ticket status if it's still 'submitted' and someone adds an update
       const referral = referrals.find(r => r.id === referralId);
-      if (referral && referral.status === 'submitted') {
+      if (isAdmin && referral && referral.status === 'submitted') {
         await handleUpdateReferral(referralId, { status: 'in-progress' });
       }
 
@@ -231,12 +255,18 @@ export default function ITReferralDashboard() {
         ...prev,
         [referralId]: '',
       }));
+      setNewUpdateInternal((prev) => ({
+        ...prev,
+        [referralId]: false,
+      }));
     } catch (error) {
       console.error('Error adding update:', error);
     }
   };
 
   const handleDeleteReferral = async (referralId: string) => {
+    if (!isAdmin) return;
+
     const referral = referrals.find((r) => r.id === referralId);
     const label = referral?.ticket_number ? `#${referral.ticket_number}` : referralId;
 
@@ -414,10 +444,12 @@ export default function ITReferralDashboard() {
             style={{ color: isDark ? '#f1f5f9' : '#1e293b' }}
             className="text-3xl font-bold mb-2"
           >
-            IT Referrals Dashboard
+            {isAdmin ? 'IT Referrals Dashboard' : 'Your IT Support Tickets'}
           </h1>
           <p style={{ color: isDark ? '#cbd5e1' : '#64748b' }}>
-            Manage and track IT support tickets
+            {isAdmin
+              ? 'Manage and track IT support tickets'
+              : 'View your submitted referrals and reply to the IT team in one place'}
           </p>
         </div>
 
@@ -452,13 +484,14 @@ export default function ITReferralDashboard() {
           ))}
         </div>
 
-        <div
-          style={{
-            backgroundColor: isDark ? '#1e293b' : '#ffffff',
-            borderColor: isDark ? '#334155' : '#e2e8f0',
-          }}
-          className="mb-8 rounded-lg border p-4"
-        >
+        {isAdmin && (
+          <div
+            style={{
+              backgroundColor: isDark ? '#1e293b' : '#ffffff',
+              borderColor: isDark ? '#334155' : '#e2e8f0',
+            }}
+            className="mb-8 rounded-lg border p-4"
+          >
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             <div>
               <h2 style={{ color: isDark ? '#cbd5e1' : '#64748b' }} className="text-sm font-semibold mb-3">
@@ -529,7 +562,8 @@ export default function ITReferralDashboard() {
               </div>
             </div>
           </div>
-        </div>
+          </div>
+        )}
 
         {/* Filters */}
         <div className="mb-6 flex flex-col md:flex-row gap-4 md:items-end">
@@ -538,7 +572,7 @@ export default function ITReferralDashboard() {
               style={{ color: isDark ? '#cbd5e1' : '#64748b' }}
               className="block text-sm font-medium mb-2"
             >
-              Filter by Location
+              {isAdmin ? 'Filter by Location' : 'Your Tickets'}
             </label>
             <select
               value={filterLocation}
@@ -550,7 +584,7 @@ export default function ITReferralDashboard() {
               }}
               className="px-4 py-2 rounded-lg border"
             >
-              <option value="all">All Locations</option>
+              <option value="all">{isAdmin ? 'All Locations' : 'All Your Locations'}</option>
               {locations.map((loc) => (
                 <option key={loc} value={loc}>
                   {loc}
@@ -662,19 +696,21 @@ export default function ITReferralDashboard() {
                   >
                     Status
                   </th>
-                  <th
-                    style={{ color: isDark ? '#cbd5e1' : '#64748b' }}
-                    className="px-6 py-4 text-left text-sm font-semibold"
-                  >
-                    Actions
-                  </th>
+                  {isAdmin && (
+                    <th
+                      style={{ color: isDark ? '#cbd5e1' : '#64748b' }}
+                      className="px-6 py-4 text-left text-sm font-semibold"
+                    >
+                      Actions
+                    </th>
+                  )}
                 </tr>
               </thead>
               <tbody>
                 {visibleReferrals.length === 0 ? (
                   <tr>
                     <td
-                      colSpan={8}
+                      colSpan={isAdmin ? 8 : 7}
                       style={{ color: isDark ? '#94a3b8' : '#94a3b8' }}
                       className="px-6 py-8 text-center"
                     >
@@ -718,7 +754,7 @@ export default function ITReferralDashboard() {
                         {referral.location}
                       </td>
                       <td className="px-6 py-4 text-sm">
-                        {editingId === referral.id ? (
+                        {isAdmin && editingId === referral.id ? (
                           <select
                             value={referral.assigned_to || ''}
                             onChange={(e) =>
@@ -740,7 +776,7 @@ export default function ITReferralDashboard() {
                               </option>
                             ))}
                           </select>
-                        ) : (
+                        ) : isAdmin ? (
                           <button
                             onClick={() => setEditingId(referral.id)}
                             style={{ color: referral.assigned_to ? '#3b82f6' : isDark ? '#94a3b8' : '#94a3b8' }}
@@ -748,33 +784,43 @@ export default function ITReferralDashboard() {
                           >
                             {referral.assigned_to || 'Unassigned'}
                           </button>
+                        ) : (
+                          <span style={{ color: referral.assigned_to ? '#3b82f6' : isDark ? '#94a3b8' : '#94a3b8' }}>
+                            {referral.assigned_to || 'Pending assignment'}
+                          </span>
                         )}
                       </td>
                       <td className="px-6 py-4 text-sm">
-                        <select
-                          value={referral.category || ''}
-                          onChange={(e) =>
-                            handleUpdateReferral(referral.id, {
-                              category: e.target.value || null,
-                            })
-                          }
-                          style={{
-                            backgroundColor: isDark ? '#0f172a' : '#f8fafc',
-                            color: isDark ? '#f1f5f9' : '#1e293b',
-                            borderColor: isDark ? '#334155' : '#e2e8f0',
-                          }}
-                          className="px-3 py-1 rounded border"
-                        >
-                          <option value="">Select...</option>
-                          {referral.category && !KNOWN_CATEGORY_IDS.has(referral.category) && (
-                            <option value={referral.category}>{getITReferralCategoryLabel(referral.category)}</option>
-                          )}
-                          {IT_REFERRAL_CATEGORIES.map((cat) => (
-                            <option key={cat.id} value={cat.id}>
-                              {cat.label}
-                            </option>
-                          ))}
-                        </select>
+                        {isAdmin ? (
+                          <select
+                            value={referral.category || ''}
+                            onChange={(e) =>
+                              handleUpdateReferral(referral.id, {
+                                category: e.target.value || null,
+                              })
+                            }
+                            style={{
+                              backgroundColor: isDark ? '#0f172a' : '#f8fafc',
+                              color: isDark ? '#f1f5f9' : '#1e293b',
+                              borderColor: isDark ? '#334155' : '#e2e8f0',
+                            }}
+                            className="px-3 py-1 rounded border"
+                          >
+                            <option value="">Select...</option>
+                            {referral.category && !KNOWN_CATEGORY_IDS.has(referral.category) && (
+                              <option value={referral.category}>{getITReferralCategoryLabel(referral.category)}</option>
+                            )}
+                            {IT_REFERRAL_CATEGORIES.map((cat) => (
+                              <option key={cat.id} value={cat.id}>
+                                {cat.label}
+                              </option>
+                            ))}
+                          </select>
+                        ) : (
+                          <span style={{ color: isDark ? '#f1f5f9' : '#1e293b' }}>
+                            {referral.category ? getITReferralCategoryLabel(referral.category) : '-'}
+                          </span>
+                        )}
                       </td>
                       <td
                         style={{ color: isDark ? '#cbd5e1' : '#64748b' }}
@@ -783,63 +829,77 @@ export default function ITReferralDashboard() {
                         {referral.sub_category || '-'}
                       </td>
                       <td className="px-6 py-4 text-sm">
-                        <select
-                          value={referral.priority || ''}
-                          onChange={(e) =>
-                            handleUpdateReferral(referral.id, {
-                              priority: e.target.value || null,
-                            })
-                          }
-                          style={{
-                            backgroundColor: isDark ? '#0f172a' : '#f8fafc',
-                            color: isDark ? '#f1f5f9' : '#1e293b',
-                            borderColor: isDark ? '#334155' : '#e2e8f0',
-                          }}
-                          className="px-3 py-1 rounded border"
-                        >
-                          <option value="">Select...</option>
-                          {PRIORITIES.map((p) => (
-                            <option key={p} value={p}>
-                              {p}
-                            </option>
-                          ))}
-                        </select>
+                        {isAdmin ? (
+                          <select
+                            value={referral.priority || ''}
+                            onChange={(e) =>
+                              handleUpdateReferral(referral.id, {
+                                priority: e.target.value || null,
+                              })
+                            }
+                            style={{
+                              backgroundColor: isDark ? '#0f172a' : '#f8fafc',
+                              color: isDark ? '#f1f5f9' : '#1e293b',
+                              borderColor: isDark ? '#334155' : '#e2e8f0',
+                            }}
+                            className="px-3 py-1 rounded border"
+                          >
+                            <option value="">Select...</option>
+                            {PRIORITIES.map((p) => (
+                              <option key={p} value={p}>
+                                {p}
+                              </option>
+                            ))}
+                          </select>
+                        ) : (
+                          <span className={`px-3 py-1 rounded-full text-xs font-medium ${getPriorityColor(referral.priority)}`}>
+                            {referral.priority || 'Not set'}
+                          </span>
+                        )}
                       </td>
                       <td className="px-6 py-4 text-sm">
-                        <select
-                          value={referral.status || 'submitted'}
-                          onChange={(e) =>
-                            handleUpdateReferral(referral.id, {
-                              status: e.target.value,
-                            })
-                          }
-                          style={{
-                            backgroundColor: isDark ? '#0f172a' : '#f8fafc',
-                            color: isDark ? '#f1f5f9' : '#1e293b',
-                            borderColor: isDark ? '#334155' : '#e2e8f0',
-                          }}
-                          className={`px-3 py-1 rounded border text-xs font-medium ${getStatusColor(referral.status)}`}
-                        >
-                          {STATUSES.map((s) => (
-                            <option key={s} value={s}>
-                              {s}
-                            </option>
-                          ))}
-                        </select>
+                        {isAdmin ? (
+                          <select
+                            value={referral.status || 'submitted'}
+                            onChange={(e) =>
+                              handleUpdateReferral(referral.id, {
+                                status: e.target.value,
+                              })
+                            }
+                            style={{
+                              backgroundColor: isDark ? '#0f172a' : '#f8fafc',
+                              color: isDark ? '#f1f5f9' : '#1e293b',
+                              borderColor: isDark ? '#334155' : '#e2e8f0',
+                            }}
+                            className={`px-3 py-1 rounded border text-xs font-medium ${getStatusColor(referral.status)}`}
+                          >
+                            {STATUSES.map((s) => (
+                              <option key={s} value={s}>
+                                {s}
+                              </option>
+                            ))}
+                          </select>
+                        ) : (
+                          <span className={`px-3 py-1 rounded-full text-xs font-medium ${getStatusColor(referral.status)}`}>
+                            {referral.status}
+                          </span>
+                        )}
                       </td>
-                      <td className="px-6 py-4 text-sm">
-                        <button
-                          onClick={() => handleDeleteReferral(referral.id)}
-                          disabled={deletingId === referral.id}
-                          className={`px-3 py-1 rounded text-xs font-medium transition-colors ${
-                            deletingId === referral.id
-                              ? 'bg-slate-400 text-white cursor-not-allowed'
-                              : 'bg-red-600 hover:bg-red-700 text-white'
-                          }`}
-                        >
-                          {deletingId === referral.id ? 'Removing...' : 'Remove'}
-                        </button>
-                      </td>
+                      {isAdmin && (
+                        <td className="px-6 py-4 text-sm">
+                          <button
+                            onClick={() => handleDeleteReferral(referral.id)}
+                            disabled={deletingId === referral.id}
+                            className={`px-3 py-1 rounded text-xs font-medium transition-colors ${
+                              deletingId === referral.id
+                                ? 'bg-slate-400 text-white cursor-not-allowed'
+                                : 'bg-red-600 hover:bg-red-700 text-white'
+                            }`}
+                          >
+                            {deletingId === referral.id ? 'Removing...' : 'Remove'}
+                          </button>
+                        </td>
+                      )}
                     </tr>
                   ))
                 )}
@@ -905,7 +965,7 @@ export default function ITReferralDashboard() {
                         <span className={`px-3 py-1 rounded-full text-xs font-medium ${getStatusColor(referral.status)}`}>
                           {referral.status}
                         </span>
-                        {referral.status !== 'completed' && (
+                        {isAdmin && referral.status !== 'completed' && (
                           <button
                             onClick={() => handleUpdateReferral(referral.id, { status: 'completed' })}
                             className="px-3 py-1 rounded text-xs font-medium bg-emerald-600 hover:bg-emerald-700 text-white transition-colors"
@@ -913,17 +973,19 @@ export default function ITReferralDashboard() {
                             Mark completed
                           </button>
                         )}
-                        <button
-                          onClick={() => handleDeleteReferral(referral.id)}
-                          disabled={deletingId === referral.id}
-                          className={`px-3 py-1 rounded text-xs font-medium transition-colors ${
-                            deletingId === referral.id
-                              ? 'bg-slate-400 text-white cursor-not-allowed'
-                              : 'bg-red-600 hover:bg-red-700 text-white'
-                          }`}
-                        >
-                          {deletingId === referral.id ? 'Removing...' : 'Remove'}
-                        </button>
+                        {isAdmin && (
+                          <button
+                            onClick={() => handleDeleteReferral(referral.id)}
+                            disabled={deletingId === referral.id}
+                            className={`px-3 py-1 rounded text-xs font-medium transition-colors ${
+                              deletingId === referral.id
+                                ? 'bg-slate-400 text-white cursor-not-allowed'
+                                : 'bg-red-600 hover:bg-red-700 text-white'
+                            }`}
+                          >
+                            {deletingId === referral.id ? 'Removing...' : 'Remove'}
+                          </button>
+                        )}
                       </div>
                     </div>
                     <div>
@@ -1028,7 +1090,7 @@ export default function ITReferralDashboard() {
                         style={{ color: isDark ? '#cbd5e1' : '#64748b' }}
                         className="text-sm font-semibold mb-4"
                       >
-                        Updates
+                        Conversation
                       </h3>
                       <div className="space-y-4">
                         {updates[referral.id] && updates[referral.id].length > 0 ? (
@@ -1061,6 +1123,11 @@ export default function ITReferralDashboard() {
                                       >
                                         {update.updated_by}
                                       </p>
+                                      {update.is_internal && (
+                                        <span className="px-2 py-1 rounded-full text-[10px] font-semibold uppercase tracking-wide bg-amber-100 text-amber-700">
+                                          Internal
+                                        </span>
+                                      )}
                                       {isRecent && (
                                         <span className="px-2 py-1 bg-blue-100 text-blue-700 text-xs rounded-full">
                                           New
@@ -1103,7 +1170,7 @@ export default function ITReferralDashboard() {
                           <div className="text-center py-8">
                             <div className="text-4xl mb-2">💬</div>
                             <p style={{ color: isDark ? '#94a3b8' : '#94a3b8' }} className="text-sm italic">
-                              No updates yet. Be the first to respond!
+                              No messages yet. Start the conversation below.
                             </p>
                           </div>
                         )}
@@ -1111,38 +1178,40 @@ export default function ITReferralDashboard() {
                           className="mt-4 pt-4 border-t"
                           style={{ borderTopColor: isDark ? '#334155' : '#e2e8f0' }}
                         >
-                          <div className="mb-3">
-                            <p style={{ color: isDark ? '#cbd5e1' : '#64748b' }} className="text-sm font-medium mb-2">
-                              Quick Responses:
-                            </p>
-                            <div className="flex flex-wrap gap-2">
-                              {[
-                                'I am looking into this issue.',
-                                'Could you provide more details?',
-                                'This has been resolved.',
-                                'I need to schedule a visit.',
-                                'Please try restarting your device.',
-                                'I have assigned this to the appropriate team.'
-                              ].map((template) => (
-                                <button
-                                  key={template}
-                                  onClick={() => {
-                                    setNewUpdate((prev) => ({
-                                      ...prev,
-                                      [referral.id]: template,
-                                    }));
-                                  }}
-                                  className="text-xs px-2 py-1 rounded border hover:bg-blue-50 dark:hover:bg-blue-900/20"
-                                  style={{ 
-                                    borderColor: isDark ? '#334155' : '#e2e8f0',
-                                    color: isDark ? '#94a3b8' : '#64748b'
-                                  }}
-                                >
-                                  {template}
-                                </button>
-                              ))}
+                          {isAdmin && (
+                            <div className="mb-3">
+                              <p style={{ color: isDark ? '#cbd5e1' : '#64748b' }} className="text-sm font-medium mb-2">
+                                Quick Responses:
+                              </p>
+                              <div className="flex flex-wrap gap-2">
+                                {[
+                                  'I am looking into this issue.',
+                                  'Could you provide more details?',
+                                  'This has been resolved.',
+                                  'I need to schedule a visit.',
+                                  'Please try restarting your device.',
+                                  'I have assigned this to the appropriate team.'
+                                ].map((template) => (
+                                  <button
+                                    key={template}
+                                    onClick={() => {
+                                      setNewUpdate((prev) => ({
+                                        ...prev,
+                                        [referral.id]: template,
+                                      }));
+                                    }}
+                                    className="text-xs px-2 py-1 rounded border hover:bg-blue-50 dark:hover:bg-blue-900/20"
+                                    style={{ 
+                                      borderColor: isDark ? '#334155' : '#e2e8f0',
+                                      color: isDark ? '#94a3b8' : '#64748b'
+                                    }}
+                                  >
+                                    {template}
+                                  </button>
+                                ))}
+                              </div>
                             </div>
-                          </div>
+                          )}
                           
                           <textarea
                             value={newUpdate[referral.id] || ''}
@@ -1152,7 +1221,7 @@ export default function ITReferralDashboard() {
                                 [referral.id]: e.target.value,
                               }))
                             }
-                            placeholder="Type your update here or use a quick response above..."
+                            placeholder={isAdmin ? 'Type your reply here or use a quick response above...' : 'Reply to the IT team...'}
                             style={{
                               backgroundColor: isDark ? '#0f172a' : '#ffffff',
                               color: isDark ? '#f1f5f9' : '#1e293b',
@@ -1162,9 +1231,29 @@ export default function ITReferralDashboard() {
                             rows={3}
                           />
                           <div className="flex justify-between items-center mt-3">
-                            <span style={{ color: isDark ? '#94a3b8' : '#64748b' }} className="text-xs">
-                              {newUpdate[referral.id]?.length || 0} characters
-                            </span>
+                            <div className="flex items-center gap-3">
+                              <span style={{ color: isDark ? '#94a3b8' : '#64748b' }} className="text-xs">
+                                {newUpdate[referral.id]?.length || 0} characters
+                              </span>
+                              {isAdmin && (
+                                <label
+                                  className="flex items-center gap-2 text-xs"
+                                  style={{ color: isDark ? '#cbd5e1' : '#64748b' }}
+                                >
+                                  <input
+                                    type="checkbox"
+                                    checked={Boolean(newUpdateInternal[referral.id])}
+                                    onChange={(e) =>
+                                      setNewUpdateInternal((prev) => ({
+                                        ...prev,
+                                        [referral.id]: e.target.checked,
+                                      }))
+                                    }
+                                  />
+                                  Internal note
+                                </label>
+                              )}
+                            </div>
                             <button
                               onClick={() => handleAddUpdate(referral.id)}
                               disabled={!newUpdate[referral.id]?.trim()}
@@ -1178,7 +1267,7 @@ export default function ITReferralDashboard() {
                               }}
                               className="px-4 py-2 rounded text-sm font-medium transition-colors disabled:cursor-not-allowed"
                             >
-                              Post Update
+                              {isAdmin ? 'Send Reply' : 'Send Message'}
                             </button>
                           </div>
                         </div>

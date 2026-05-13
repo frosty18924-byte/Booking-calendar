@@ -340,13 +340,6 @@ export default function AnalyticsDashboard() {
   return (
     <main className="min-h-screen transition-colors duration-300 p-4 md:p-8" style={{ backgroundColor: isDark ? '#0f172a' : '#f1f5f9' }}>
       <div className="max-w-7xl mx-auto">
-        {/* User info */}
-        <div className="flex justify-between items-center mb-8 px-4">
-          <div className="text-sm font-semibold" style={{ color: isDark ? '#cbd5e1' : '#475569' }}>
-            {user ? `Logged in as: ${user.email}` : 'Not logged in'}
-          </div>
-        </div>
-
         {/* Header row with back button and title */}
         <div className="flex justify-between items-center mb-8 px-4">
           <BackButton

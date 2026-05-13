@@ -57,7 +57,7 @@ export async function POST(request: NextRequest) {
     // First verify the profile exists and get its auth status
     const { data: profileExists } = await supabaseAdmin
       .from('profiles')
-      .select('id, role_tier, full_name, email, location, home_house, managed_houses, password_needs_change, is_deleted, deleted_at')
+      .select('id, role_tier, full_name, email, phone_number, avatar_path, location, home_house, managed_houses, password_needs_change, is_deleted, deleted_at')
       .eq('id', staffId);
     
     console.log('Profile exists:', profileExists && profileExists.length > 0);
@@ -72,9 +72,11 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Delete the auth user account if it exists (for manager/scheduler/admin users)
+    // Soft-disable login access rather than hard-deleting the auth record.
     const profile = profileExists[0];
     const todayIsoDate = new Date().toISOString().split('T')[0];
+    const deletedAt = new Date().toISOString();
+    const deletedEmail = `deleted-${staffId}@system.local`;
     let removedFutureBookings = 0;
 
     // Log archive snapshot so admins can restore this profile from Archive page.
@@ -96,35 +98,43 @@ export async function POST(request: NextRequest) {
       console.warn('Could not create archive record for deleted profile:', archiveErr);
     }
 
-    if (profile.role_tier !== 'staff') {
-      console.log('Attempting to delete auth user for:', email);
-      try {
-        const { data: authUsersData, error: authError } = await supabaseAdmin.auth.admin.listUsers({
-          page: 1,
-          perPage: 1000,
-        });
+    console.log('Attempting to soft-disable auth user for:', email);
+    try {
+      const { data: authUsersData, error: authError } = await supabaseAdmin.auth.admin.listUsers({
+        page: 1,
+        perPage: 1000,
+      });
 
-        if (authError) {
-          console.log('Unable to list auth users:', authError.message);
+      if (authError) {
+        console.log('Unable to list auth users:', authError.message);
+      } else {
+        const authUser = authUsersData.users.find(
+          user => user.id === staffId || user.email?.toLowerCase() === email.toLowerCase()
+        );
+
+        if (!authUser) {
+          console.log('Auth user not found (might be roster-only staff with no login)');
         } else {
-          const authUser = authUsersData.users.find(
-            user => user.email?.toLowerCase() === email.toLowerCase()
-          );
+          const { error: disableAuthError } = await supabaseAdmin.auth.admin.updateUserById(authUser.id, {
+            email: deletedEmail,
+            password: crypto.randomUUID(),
+            user_metadata: {
+              ...(authUser.user_metadata || {}),
+              soft_deleted: true,
+              deleted_at: deletedAt,
+            },
+            ban_duration: '876000h',
+          });
 
-          if (!authUser) {
-            console.log('Auth user not found (might be staff member with no login)');
+          if (disableAuthError) {
+            console.error('Error soft-disabling auth user:', disableAuthError);
           } else {
-            const { error: deleteAuthError } = await supabaseAdmin.auth.admin.deleteUser(authUser.id);
-            if (deleteAuthError) {
-              console.error('Error deleting auth user:', deleteAuthError);
-            } else {
-              console.log('Auth user deleted successfully');
-            }
+            console.log('Auth user soft-disabled successfully');
           }
         }
-      } catch (authErr) {
-        console.error('Error during auth deletion:', authErr);
       }
+    } catch (authErr) {
+      console.error('Error during auth soft delete:', authErr);
     }
 
     // Remove only FUTURE bookings so past rosters remain historically accurate.
@@ -210,8 +220,9 @@ export async function POST(request: NextRequest) {
       .from('profiles')
       .update({
         is_deleted: true,
-        deleted_at: new Date().toISOString(),
-        email: `deleted-${staffId}@system.local`, // Anonymize email
+        deleted_at: deletedAt,
+        email: deletedEmail, // Anonymize active login email while keeping a restorable archive snapshot
+        password_needs_change: true,
       })
       .eq('id', staffId);
 

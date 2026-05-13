@@ -120,6 +120,20 @@ function formatDate(date: string) {
   }
 }
 
+function formatTime(time?: string | null) {
+  if (!time) return '';
+
+  const [hours = '', minutes = ''] = time.split(':');
+  if (!hours || !minutes) return time;
+
+  const parsedHours = Number(hours);
+  if (Number.isNaN(parsedHours)) return time;
+
+  const suffix = parsedHours >= 12 ? 'PM' : 'AM';
+  const twelveHour = parsedHours % 12 || 12;
+  return `${twelveHour}:${minutes} ${suffix}`;
+}
+
 function escapeHtml(value: string) {
   return value
     .replace(/&/g, '&amp;')
@@ -231,10 +245,25 @@ export async function sendPasswordResetEmail(staffEmail: string, staffName: stri
   return await sendEmail(staffEmail, subject, html, options);
 }
 
-export async function sendBookingEmail(staffEmail: string, staffName: string, courseName: string, date: string, options?: EmailSendOptions) {
+export async function sendBookingEmail(
+  staffEmail: string,
+  staffName: string,
+  courseName: string,
+  date: string,
+  startTime?: string | null,
+  endTime?: string | null,
+  options?: EmailSendOptions
+) {
   const safeStaffName = escapeHtml(staffName || 'Staff Member');
   const safeCourseName = escapeHtml(courseName || 'Unknown Course');
   const safeDate = escapeHtml(formatDate(date));
+  const formattedStartTime = formatTime(startTime);
+  const formattedEndTime = formatTime(endTime);
+  const safeTimeRange = escapeHtml(
+    formattedStartTime && formattedEndTime
+      ? `${formattedStartTime} - ${formattedEndTime}`
+      : formattedStartTime || formattedEndTime
+  );
   const subject = `Course Booking Confirmed: ${courseName || 'Unknown Course'}`;
   const html = `
     <div style="font-family: sans-serif; padding: 20px; border: 1px solid #dbeafe; border-radius: 10px; background-color: #f8fafc;">
@@ -243,7 +272,8 @@ export async function sendBookingEmail(staffEmail: string, staffName: string, co
       <p>You have been booked onto:</p>
       <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 8px; padding: 12px; margin: 12px 0;">
         <p style="margin: 0 0 6px 0;"><strong>Course:</strong> ${safeCourseName}</p>
-        <p style="margin: 0;"><strong>Date:</strong> ${safeDate}</p>
+        <p style="margin: 0 0 6px 0;"><strong>Date:</strong> ${safeDate}</p>
+        ${safeTimeRange ? `<p style="margin: 0;"><strong>Time:</strong> ${safeTimeRange}</p>` : ''}
       </div>
       <p style="font-size: 12px; color: #64748b;">Training Portal</p>
     </div>

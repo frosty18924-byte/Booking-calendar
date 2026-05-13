@@ -1,11 +1,12 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { Upload, X, Loader2 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { getITReferralCategoryDescription, IT_REFERRAL_CATEGORIES } from '@/lib/itReferralCategories';
-import { IT_REFERRAL_QUICK_WINS_BY_CATEGORY } from '@/lib/itReferralQuickWins';
+import { getQuickWinsForCategory, ITReferralQuickWin } from '@/lib/itReferralQuickWins';
+import { notifyNewReferral } from '@/lib/itReferralNotifications';
 
 interface FormData {
   name: string;
@@ -111,7 +112,19 @@ export function ITReferralForm({
 
   const selectedCategory = watch('category');
   const selectedSubCategory = watch('subCategory');
+  const selectedSubCategoryCustom = watch('subCategoryCustom');
   const [quickWinsTried, setQuickWinsTried] = useState<Record<string, boolean>>({});
+  const previousCategoryRef = useRef('');
+
+  const resolvedSelectedSubCategory =
+    selectedSubCategory === '__custom__'
+      ? selectedSubCategoryCustom.trim()
+      : selectedSubCategory;
+
+  const currentQuickWins: ITReferralQuickWin[] = useMemo(
+    () => getQuickWinsForCategory(selectedCategory, resolvedSelectedSubCategory),
+    [resolvedSelectedSubCategory, selectedCategory]
+  );
 
   useEffect(() => {
     if (selectedSubCategory !== '__custom__' && getValues('subCategoryCustom')) {
@@ -120,9 +133,27 @@ export function ITReferralForm({
   }, [getValues, selectedSubCategory, setValue]);
 
   useEffect(() => {
-    // Reset quick wins when category changes so the list stays relevant.
+    const previousCategory = previousCategoryRef.current;
+    const categoryChanged = previousCategory !== selectedCategory;
+
+    if (categoryChanged) {
+      setQuickWinsTried({});
+
+      if (selectedSubCategory) {
+        setValue('subCategory', '');
+      }
+
+      if (selectedSubCategoryCustom) {
+        setValue('subCategoryCustom', '');
+      }
+    }
+
+    previousCategoryRef.current = selectedCategory;
+  }, [selectedCategory, selectedSubCategory, selectedSubCategoryCustom, setValue]);
+
+  useEffect(() => {
     setQuickWinsTried({});
-  }, [selectedCategory]);
+  }, [resolvedSelectedSubCategory, selectedCategory]);
 
   useEffect(() => {
     const fetchSubCategories = async () => {
@@ -268,11 +299,16 @@ export function ITReferralForm({
             ? data.subCategoryCustom.trim()
             : data.subCategory.trim();
 
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+
       // Create referral record
       const { data: referralData, error: referralError } = await supabase
         .from('it_referrals')
         .insert([
           {
+            requester_user_id: user?.id || null,
             name: data.name,
             email: data.email,
             location: data.location,
@@ -293,6 +329,10 @@ export function ITReferralForm({
 
       const referralId = referralData?.[0]?.id;
       const ticketNumber = referralData?.[0]?.ticket_number;
+
+      if (referralId) {
+        await notifyNewReferral(referralId);
+      }
 
       // Upload attachments if any
       if (attachedFiles.length > 0 && referralId) {
@@ -570,70 +610,58 @@ export function ITReferralForm({
                   Quick Wins (recommended)
                 </h3>
                 <p className={`text-sm mb-4 ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
-                  Based on your category{selectedSubCategory && selectedSubCategory !== '__custom__' ? ` (${selectedSubCategory})` : ''}. Tick any you tried.
+                  Based on your category{selectedSubCategory && selectedSubCategory !== '__custom__' ? ` and subcategory (${selectedSubCategory})` : ''}. Tick any you tried.
                 </p>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {(IT_REFERRAL_QUICK_WINS_BY_CATEGORY[selectedCategory] || []).map((win) => (
-                    <div
-                      key={win.title}
-                      className="rounded-lg border p-4"
-                      style={{
-                        borderColor: isDark ? '#374151' : '#e5e7eb',
-                        backgroundColor: isDark ? '#111827' : '#ffffff',
-                      }}
-                    >
-                      <div className="flex items-start justify-between gap-3">
-                        <div>
-                          <p className={`font-medium ${isDark ? 'text-gray-100' : 'text-gray-900'}`}>
-                            {win.title}
-                          </p>
-                          {win.description && (
-                            <p className={`text-sm mt-1 ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
-                              {win.description}
+                  {(() => {
+                    console.log('Debug - Category:', selectedCategory, 'SubCategory:', selectedSubCategory, 'Quick wins count:', currentQuickWins.length);
+                    return currentQuickWins.map((win) => (
+                      <div
+                        key={win.title}
+                        className="rounded-lg border p-4"
+                        style={{
+                          borderColor: isDark ? '#374151' : '#e5e7eb',
+                          backgroundColor: isDark ? '#111827' : '#ffffff',
+                        }}
+                      >
+                        <div className="flex items-start justify-between gap-3">
+                          <div>
+                            <p className={`font-medium ${isDark ? 'text-gray-100' : 'text-gray-900'}`}>
+                              {win.title}
                             </p>
-                          )}
+                            {win.description && (
+                              <p className={`text-sm mt-1 ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
+                                {win.description}
+                              </p>
+                            )}
+                          </div>
+                          <label className={`flex items-center gap-2 text-sm ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>
+                            <input
+                              type="checkbox"
+                              checked={quickWinsTried[win.title] || false}
+                              onChange={(e) =>
+                                setQuickWinsTried((prev) => ({
+                                  ...prev,
+                                  [win.title]: e.target.checked,
+                                }))
+                              }
+                              className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                            />
+                            Tried
+                          </label>
                         </div>
-                        <label className={`flex items-center gap-2 text-sm ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>
-                          <input
-                            type="checkbox"
-                            checked={Boolean(quickWinsTried[win.title])}
-                            onChange={(e) =>
-                              setQuickWinsTried((prev) => ({
-                                ...prev,
-                                [win.title]: e.target.checked,
-                              }))
-                            }
-                            className="h-4 w-4"
-                          />
-                          Tried
-                        </label>
+
+                        <div className={`mt-3 text-sm ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
+                          <ol className="list-decimal list-inside space-y-1">
+                            {win.steps.map((step: string, idx: number) => (
+                              <li key={idx}>{step}</li>
+                            ))}
+                          </ol>
+                        </div>
                       </div>
-
-                      <ul className={`mt-3 text-sm space-y-1 ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>
-                        {win.steps.map((step) => (
-                          <li key={step} className="flex gap-2">
-                            <span className={`${isDark ? 'text-gray-500' : 'text-gray-400'}`}>•</span>
-                            <span>{step}</span>
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
-                  ))}
-
-                  {(IT_REFERRAL_QUICK_WINS_BY_CATEGORY[selectedCategory] || []).length === 0 && (
-                    <div
-                      className="rounded-lg border p-4"
-                      style={{
-                        borderColor: isDark ? '#374151' : '#e5e7eb',
-                        backgroundColor: isDark ? '#111827' : '#ffffff',
-                      }}
-                    >
-                      <p className={`text-sm ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
-                        No quick wins configured for this category yet.
-                      </p>
-                    </div>
-                  )}
+                    ));
+                  })()}
                 </div>
               </div>
             )}

@@ -24,21 +24,27 @@ export default function SlideOutNav() {
   useEffect(() => {
     let mounted = true;
     const init = async () => {
-      const { data } = await supabase.auth.getSession();
-      if (!mounted) return;
-      const authed = !!data.session?.user;
-      setIsAuthenticated(authed);
-      if (!authed) {
+      try {
+        const { data } = await supabase.auth.getSession();
+        if (!mounted) return;
+        const authed = !!data.session?.user;
+        setIsAuthenticated(authed);
+        if (!authed) {
+          setUserRole(null);
+          return;
+        }
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('id', data.session?.user?.id)
+          .single();
+        if (!mounted) return;
+        setUserRole(profile?.role_tier ?? null);
+      } catch (error) {
+        console.error('Error loading slide-out nav role:', error);
+        if (!mounted) return;
         setUserRole(null);
-        return;
       }
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('role_tier')
-        .eq('id', data.session?.user?.id)
-        .single();
-      if (!mounted) return;
-      setUserRole(profile?.role_tier ?? null);
     };
 
     init();
@@ -50,7 +56,7 @@ export default function SlideOutNav() {
       }
       supabase
         .from('profiles')
-        .select('role_tier')
+        .select('*')
         .eq('id', session.user.id)
         .single()
         .then(({ data }) => setUserRole(data?.role_tier ?? null))
@@ -177,8 +183,6 @@ export default function SlideOutNav() {
 	                        <TileButton title="Booking Calendar" description="Schedule and bookings" size="sm" accent="emerald" onClick={() => go('/apps/booking-calendar')} />
 
 	                        <TileButton title="Course Expiry" description="Expiring and expired" size="sm" accent="blue" onClick={() => go('/apps/expiry-checker')} />
-
-	                        <TileButton title="Course Checker" description="Search course data" size="sm" accent="blue" onClick={() => go('/apps/training-course-checker')} />
 	                      </div>
 	                    </div>
 	                  )}

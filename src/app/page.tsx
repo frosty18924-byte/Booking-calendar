@@ -10,8 +10,6 @@ export default function LandingPage() {
   const router = useRouter();
   const [isDark, setIsDark] = useState(true);
   const [userRole, setUserRole] = useState<string | null>(null);
-  const [userName, setUserName] = useState<string | null>(null);
-  const [userEmail, setUserEmail] = useState<string | null>(null);
 
   useEffect(() => {
     const checkTheme = () => {
@@ -29,15 +27,18 @@ export default function LandingPage() {
 
   useEffect(() => {
     const loadRole = async () => {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-      if (!user) return;
-      setUserEmail(user.email ?? null);
-      const { data: profile } = await supabase.from('profiles').select('role_tier, full_name').eq('id', user.id).single();
-      const role = (profile?.role_tier ?? null) as string | null;
-      setUserRole(role);
-      setUserName(profile?.full_name ?? null);
+      try {
+        const {
+          data: { user },
+        } = await supabase.auth.getUser();
+        if (!user) return;
+        const { data: profile } = await supabase.from('profiles').select('*').eq('id', user.id).single();
+        const role = (profile?.role_tier ?? null) as string | null;
+        setUserRole(role);
+      } catch (error) {
+        console.error('Error loading landing page role:', error);
+        setUserRole(null);
+      }
     };
     loadRole();
   }, [router]);
@@ -59,15 +60,6 @@ export default function LandingPage() {
         >
           <div className="p-6 md:p-10">
             <div className="text-center sm:text-left">
-              {(userName || userEmail || userRole) && (
-                <p className={`mb-3 text-xs ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
-                  Signed in as:{' '}
-                  <span className="font-semibold">
-                    {userName?.trim() || userEmail || 'User'}
-                  </span>
-                  {userRole ? <span className="font-semibold"> {'·'} {userRole}</span> : null}
-                </p>
-              )}
               <h1 className="text-2xl md:text-4xl font-black tracking-tight">Cascade Portal</h1>
               <p className={`mt-2 text-sm md:text-base ${isDark ? 'text-slate-300' : 'text-slate-600'}`}>
                 Choose where you want to go.

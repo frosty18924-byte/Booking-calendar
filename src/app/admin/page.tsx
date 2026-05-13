@@ -107,13 +107,6 @@ export default function AdminPage() {
   return (
     <main style={{ backgroundColor: isDark ? '#0f172a' : '#f1f5f9', minHeight: '100vh' }} className="transition-colors duration-300 p-3 sm:p-4 md:p-8">
       <div className="max-w-6xl mx-auto">
-        {/* User info */}
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8 px-2 sm:px-4">
-          <div className="text-xs sm:text-sm font-semibold" style={{ color: isDark ? '#cbd5e1' : '#475569' }}>
-            {user ? `Logged in as: ${user.email}` : 'Not logged in'}
-          </div>
-        </div>
-
         {/* Header row with back button and title */}
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8 sm:mb-12 px-2 sm:px-4">
           <BackButton onClick={handleBack} />

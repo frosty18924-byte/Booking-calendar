@@ -3,7 +3,7 @@
 import { FC } from 'react';
 
 // Import Heroicons (MIT) for a modern, consistent look
-import { ArrowLeftIcon, ChevronRightIcon, MenuIcon, XIcon, SunIcon, MoonIcon, LogoutIcon, HomeIcon } from './icons';
+import { ArrowLeftIcon, ChevronRightIcon, MenuIcon, XIcon, SunIcon, MoonIcon, LogoutIcon, HomeIcon, UserIcon, MonitorIcon, ChevronDownIcon, BellIcon } from './icons';
 
 export type IconName =
   | 'back'
@@ -13,7 +13,11 @@ export type IconName =
   | 'sun'
   | 'moon'
   | 'logout'
-  | 'home';
+  | 'home'
+  | 'user'
+  | 'monitor'
+  | 'chevron-down'
+  | 'bell';
 
 const iconMap: Record<IconName, FC<{ className?: string }>> = {
   back: ArrowLeftIcon,
@@ -24,6 +28,10 @@ const iconMap: Record<IconName, FC<{ className?: string }>> = {
   moon: MoonIcon,
   logout: LogoutIcon,
   home: HomeIcon,
+  user: UserIcon,
+  monitor: MonitorIcon,
+  'chevron-down': ChevronDownIcon,
+  bell: BellIcon,
 };
 
 export interface IconProps {
