@@ -207,6 +207,22 @@ async function sendRawEmail(recipients: string[], subject: string, html: string,
     };
   } catch (error) {
     console.error('Email send error:', error);
+    
+    // For local development, log the link/content to console so testing can continue
+    if (process.env.NODE_ENV === 'development') {
+      console.log('\n--- LOCAL DEV EMAIL CONTENT ---');
+      console.log('Subject:', subject);
+      console.log('To:', recipients.join(', '));
+      console.log('HTML Preview:', html.substring(0, 500) + '...');
+      
+      // Extract links if possible to help the developer
+      const linkMatch = html.match(/href="([^"]+)"/);
+      if (linkMatch) {
+        console.log('Detected Link:', linkMatch[1]);
+      }
+      console.log('-------------------------------\n');
+    }
+
     return {
       success: false,
       errorText: error instanceof Error ? error.message : String(error),
@@ -216,7 +232,9 @@ async function sendRawEmail(recipients: string[], subject: string, html: string,
 
 export async function sendPasswordResetEmail(staffEmail: string, staffName: string, resetLink: string, options?: EmailSendOptions) {
   const safeStaffName = escapeHtml(staffName || 'Staff Member');
-  const safeResetLink = escapeHtml(resetLink);
+  // IMPORTANT: use the raw URL in href attributes — escaping & → &amp; breaks the link.
+  // Only escape for the visible plain-text copy shown below the button.
+  const safeResetLinkDisplay = escapeHtml(resetLink);
   const subject = 'Reset Your Password - Training Portal';
   const html = `
     <div style="font-family: sans-serif; padding: 20px; border: 1px solid #dbeafe; border-radius: 10px; background-color: #f0f9ff;">
@@ -225,14 +243,14 @@ export async function sendPasswordResetEmail(staffEmail: string, staffName: stri
       <p>You can use this link to change your password whenever you'd like:</p>
       
       <div style="margin: 25px 0; text-align: center;">
-        <a href="${safeResetLink}" style="background-color: #0284c7; color: white; padding: 12px 30px; border-radius: 8px; text-decoration: none; font-weight: bold; display: inline-block;">
+        <a href="${resetLink}" style="background-color: #0284c7; color: white; padding: 12px 30px; border-radius: 8px; text-decoration: none; font-weight: bold; display: inline-block;">
           Reset Your Password
         </a>
       </div>
 
       <p style="font-size: 13px; color: #666;">Or copy and paste this link in your browser:</p>
       <p style="font-size: 12px; word-break: break-all; background-color: #f3f4f6; padding: 10px; border-radius: 5px; color: #374151;">
-        ${safeResetLink}
+        ${safeResetLinkDisplay}
       </p>
 
       <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 20px 0;">

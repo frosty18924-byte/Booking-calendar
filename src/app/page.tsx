@@ -83,6 +83,14 @@ export default function LandingPage() {
                 onClick={() => router.push('/templates')}
               />
 
+              <TileButton
+                title="Support"
+                description="IT support and technical referrals."
+                emoji="🔧"
+                showChevron
+                onClick={() => router.push('/apps/it-referral-dashboard')}
+              />
+
               {canAdmin && (
                 <TileButton
                   title="Admin"

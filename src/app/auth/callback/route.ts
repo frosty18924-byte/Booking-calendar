@@ -5,8 +5,14 @@ import { cookies } from 'next/headers';
 export async function GET(request: Request) {
     const { searchParams, origin } = new URL(request.url);
     const code = searchParams.get('code');
-    // if "next" is in param, use it as the redirect URL
     const next = searchParams.get('next') ?? '/';
+    
+    console.log('Auth Callback Debug:', { 
+        hasCode: !!code, 
+        next, 
+        origin,
+        fullUrl: request.url 
+    });
 
     if (code) {
         const cookieStore = await cookies();
@@ -31,6 +37,7 @@ export async function GET(request: Request) {
         if (!error) {
             return NextResponse.redirect(`${origin}${next}`);
         }
+        console.error('Auth Exchange Error:', error);
     }
 
     // return the user to an error page with instructions

@@ -91,6 +91,7 @@ export default function FixedHeader() {
   const dropdownRef = useRef<HTMLDivElement | null>(null);
 
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+  // Start as true — we don't know the auth state until Supabase tells us
   const [loading, setLoading] = useState(true);
   const [isProfileDropdownOpen, setIsProfileDropdownOpen] = useState(false);
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
@@ -115,19 +116,35 @@ export default function FixedHeader() {
     setAvatarPath(profile?.avatar_path || null);
   };
 
+  // Shared helper: fetch profile from DB and apply all user state
+  const fetchAndApplyProfile = async (sessionUser: { id: string; email?: string | null; user_metadata?: { full_name?: string | null } }) => {
+    setIsAuthenticated(true);
+    setCurrentUserId(sessionUser.id);
+    try {
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', sessionUser.id)
+        .single<HeaderProfileRow>();
+      applyUserState(sessionUser, profile || null);
+    } catch {
+      // Profile fetch failed — fall back to session metadata
+      applyUserState(sessionUser, null);
+    }
+  };
+
   useEffect(() => {
     let mounted = true;
 
-    const loadSession = async () => {
+    // onAuthStateChange fires INITIAL_SESSION reliably on every page load,
+    // even when getSession() races. We use it as the single source of truth.
+    const { data: authListener } = supabase.auth.onAuthStateChange(async (event, session) => {
+      if (!mounted) return;
+
       try {
-        const { data } = await supabase.auth.getSession();
-        if (!mounted) return;
-
-        const sessionUser = data.session?.user;
-        setIsAuthenticated(!!sessionUser);
-        setCurrentUserId(sessionUser?.id || null);
-
-        if (!sessionUser) {
+        if (event === 'SIGNED_OUT') {
+          setIsAuthenticated(false);
+          setCurrentUserId(null);
           setFullName('');
           setEmail('');
           setRoleTier(null);
@@ -136,54 +153,32 @@ export default function FixedHeader() {
           return;
         }
 
-        const { data: profile } = await supabase
-          .from('profiles')
-          .select('*')
-          .eq('id', sessionUser.id)
-          .single<HeaderProfileRow>();
+        // INITIAL_SESSION fires on mount; SIGNED_IN fires after login;
+        // TOKEN_REFRESHED fires on token renewal — all need profile sync.
+        if (
+          (event === 'INITIAL_SESSION' ||
+            event === 'SIGNED_IN' ||
+            event === 'TOKEN_REFRESHED') &&
+          session?.user
+        ) {
+          await fetchAndApplyProfile(session.user);
+          return;
+        }
 
-        if (!mounted) return;
-        applyUserState(sessionUser, profile);
-      } catch (error) {
-        console.error('Error loading header session/profile:', error);
-        if (!mounted) return;
-        setFullName('');
-        setEmail('');
-        setRoleTier(null);
-        setAvatarPath(null);
-      } finally {
-        if (!mounted) return;
-        setLoading(false);
-      }
-    };
-
-    loadSession();
-
-    const { data: authListener } = supabase.auth.onAuthStateChange(async (_event, session) => {
-      try {
-        setIsAuthenticated(!!session?.user);
-        setCurrentUserId(session?.user?.id || null);
-
+        // No session — user is logged out
         if (!session?.user) {
+          setIsAuthenticated(false);
+          setCurrentUserId(null);
           setFullName('');
           setEmail('');
           setRoleTier(null);
           setAvatarPath(null);
           setNotifications([]);
-          return;
         }
-
-        const { data: profile } = await supabase
-          .from('profiles')
-          .select('*')
-          .eq('id', session.user.id)
-          .single<HeaderProfileRow>();
-
-        applyUserState(session.user, profile);
       } catch (error) {
         console.error('Error updating header auth state:', error);
       } finally {
-        setLoading(false);
+        if (mounted) setLoading(false);
       }
     });
 
@@ -191,6 +186,7 @@ export default function FixedHeader() {
       mounted = false;
       authListener.subscription.unsubscribe();
     };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
@@ -498,10 +494,10 @@ export default function FixedHeader() {
           >
             <div className="hidden min-w-0 text-right sm:block">
               <p className="truncate text-sm font-medium leading-none text-slate-900 dark:text-white">
-                {loading ? 'Loading...' : fullName || email || 'Profile'}
+                {loading ? '\u00a0' : fullName || email || 'Profile'}
               </p>
               <p className="mt-1 truncate text-xs capitalize leading-none text-slate-500 dark:text-slate-400">
-                {roleTier || 'User'}
+                {loading ? '\u00a0' : roleTier || (isAuthenticated ? 'Staff' : '')}
               </p>
             </div>
             <div className="flex h-10 w-10 items-center justify-center overflow-hidden rounded-full bg-slate-200 text-sm font-black text-slate-700 shadow-inner dark:bg-[#1b2740] dark:text-slate-100">
