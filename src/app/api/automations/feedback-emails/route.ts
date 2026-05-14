@@ -42,7 +42,9 @@ async function handleRequest(req: Request) {
       .single();
 
     if (!settings && !eventId) {
-      return NextResponse.json({ error: 'Automation settings not found' }, { status: 404 });
+      // Return 200 instead of 404 so the GitHub Action cron (curl -f) doesn't fail with exit code 22
+      // when the user simply hasn't configured automation settings yet.
+      return NextResponse.json({ message: 'Automation skipped: settings not found or not configured' }, { status: 200 });
     }
 
     // 2. Identify Events to notify

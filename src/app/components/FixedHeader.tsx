@@ -136,8 +136,23 @@ export default function FixedHeader() {
   useEffect(() => {
     let mounted = true;
 
-    // onAuthStateChange fires INITIAL_SESSION reliably on every page load,
-    // even when getSession() races. We use it as the single source of truth.
+    // 1. Explicitly check session on mount
+    // If the component mounts AFTER the INITIAL_SESSION event already fired,
+    // the listener below will miss it. This guarantees we check current state.
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (!mounted) return;
+      if (session?.user) {
+        fetchAndApplyProfile(session.user).finally(() => {
+          if (mounted) setLoading(false);
+        });
+      } else {
+        setIsAuthenticated(false);
+        setCurrentUserId(null);
+        if (mounted) setLoading(false);
+      }
+    });
+
+    // 2. Listen for future auth changes (login, logout, token refresh)
     const { data: authListener } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (!mounted) return;
 
@@ -153,8 +168,6 @@ export default function FixedHeader() {
           return;
         }
 
-        // INITIAL_SESSION fires on mount; SIGNED_IN fires after login;
-        // TOKEN_REFRESHED fires on token renewal — all need profile sync.
         if (
           (event === 'INITIAL_SESSION' ||
             event === 'SIGNED_IN' ||
@@ -165,7 +178,6 @@ export default function FixedHeader() {
           return;
         }
 
-        // No session — user is logged out
         if (!session?.user) {
           setIsAuthenticated(false);
           setCurrentUserId(null);
@@ -177,8 +189,6 @@ export default function FixedHeader() {
         }
       } catch (error) {
         console.error('Error updating header auth state:', error);
-      } finally {
-        if (mounted) setLoading(false);
       }
     });
 
