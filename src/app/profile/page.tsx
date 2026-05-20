@@ -5,14 +5,7 @@ import { useRouter } from 'next/navigation';
 import UniformButton from '@/app/components/UniformButton';
 import { supabase } from '@/lib/supabase';
 import { PROFILE_PHOTOS_BUCKET, getProfileAvatarUrl, getProfileInitials } from '@/lib/profile';
-
-type ProfileRecord = {
-  full_name: string | null;
-  email: string | null;
-  phone_number: string | null;
-  avatar_path: string | null;
-  role_tier: string | null;
-};
+import { useCurrentUserProfile } from '@/lib/useCurrentUserProfile';
 
 function getErrorMessage(error: unknown, fallback: string) {
   if (error instanceof Error && error.message.trim()) {
@@ -31,7 +24,6 @@ function getErrorMessage(error: unknown, fallback: string) {
 
 export default function ProfilePage() {
   const router = useRouter();
-  const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
@@ -42,6 +34,7 @@ export default function ProfilePage() {
   const [email, setEmail] = useState('');
   const [phoneNumber, setPhoneNumber] = useState('');
   const [avatarPath, setAvatarPath] = useState<string | null>(null);
+  const { profile, isAuthenticated, loading, refreshProfile } = useCurrentUserProfile();
 
   const avatarUrl = useMemo(
     () => getProfileAvatarUrl(avatarPath, process.env.NEXT_PUBLIC_SUPABASE_URL),
@@ -49,44 +42,21 @@ export default function ProfilePage() {
   );
 
   useEffect(() => {
-    const loadProfile = async () => {
-      try {
-        setLoading(true);
-        setError(null);
+    if (!loading && !isAuthenticated) {
+      router.replace('/login');
+      return;
+    }
 
-        const {
-          data: { user },
-        } = await supabase.auth.getUser();
+    if (!profile) return;
 
-        if (!user) {
-          router.replace('/login');
-          return;
-        }
-
-        setUserId(user.id);
-
-        const { data: profile, error: profileError } = await supabase
-          .from('profiles')
-          .select('full_name, email, phone_number, avatar_path, role_tier')
-          .eq('id', user.id)
-          .single<ProfileRecord>();
-
-        if (profileError) throw profileError;
-
-        setFullName(profile?.full_name || '');
-        setEmail(profile?.email || user.email || '');
-        setPhoneNumber(profile?.phone_number || '');
-        setAvatarPath(profile?.avatar_path || null);
-        setRoleTier(profile?.role_tier || null);
-      } catch (loadError: unknown) {
-        setError(getErrorMessage(loadError, 'Unable to load your profile.'));
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    loadProfile();
-  }, [router]);
+    setError(null);
+    setUserId(profile.id);
+    setFullName(profile.full_name || '');
+    setEmail(profile.email || '');
+    setPhoneNumber(profile.phone_number || '');
+    setAvatarPath(profile.avatar_path || null);
+    setRoleTier(profile.role_tier || null);
+  }, [isAuthenticated, loading, profile, router]);
 
   const handleAvatarUpload = async (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -154,6 +124,7 @@ export default function ProfilePage() {
       setAvatarPath(result.profile?.avatar_path || avatarPath);
       setRoleTier(result.profile?.role_tier || roleTier);
       setMessage('Your profile has been updated.');
+      await refreshProfile();
       router.refresh();
     } catch (saveError: unknown) {
       setError(getErrorMessage(saveError, 'Unable to save your profile.'));

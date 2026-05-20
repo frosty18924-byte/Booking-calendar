@@ -7,6 +7,8 @@ import UniformButton from './UniformButton';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { supabase } from '@/lib/supabase';
 import { getProfileAvatarUrl, getProfileInitials } from '@/lib/profile';
+import { PORTAL_FEATURES } from '@/lib/portalFeatures';
+import { useCurrentUserProfile } from '@/lib/useCurrentUserProfile';
 
 type ThemeMode = 'light' | 'dark' | 'system';
 type RoleTier = 'staff' | 'manager' | 'scheduler' | 'admin';
@@ -33,13 +35,6 @@ type NotificationItem = {
   createdAt: string;
   title: string;
   description: string;
-};
-
-type HeaderProfileRow = {
-  full_name?: string | null;
-  email?: string | null;
-  role_tier?: RoleTier | null;
-  avatar_path?: string | null;
 };
 
 function getStoredThemeMode(): ThemeMode {
@@ -91,113 +86,29 @@ export default function FixedHeader() {
   const dropdownRef = useRef<HTMLDivElement | null>(null);
 
   const [isAuthenticated, setIsAuthenticated] = useState(false);
-  // Start as true — we don't know the auth state until Supabase tells us
-  const [loading, setLoading] = useState(true);
   const [isProfileDropdownOpen, setIsProfileDropdownOpen] = useState(false);
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
   const [themeMode, setThemeMode] = useState<ThemeMode>('system');
-  const [fullName, setFullName] = useState('');
-  const [email, setEmail] = useState('');
-  const [roleTier, setRoleTier] = useState<RoleTier | null>(null);
-  const [avatarPath, setAvatarPath] = useState<string | null>(null);
-  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [notifications, setNotifications] = useState<NotificationItem[]>([]);
   const [notificationsLoading, setNotificationsLoading] = useState(false);
   const [lastSeenAt, setLastSeenAt] = useState<string>('1970-01-01T00:00:00.000Z');
+  const { profile, isAuthenticated: profileIsAuthenticated, loading } = useCurrentUserProfile();
+  const fullName = profile?.full_name || '';
+  const email = profile?.email || '';
+  const roleTier = (profile?.role_tier as RoleTier | null) || null;
+  const avatarPath = profile?.avatar_path || null;
+  const currentUserId = profile?.id || null;
   const avatarUrl = useMemo(
     () => getProfileAvatarUrl(avatarPath, process.env.NEXT_PUBLIC_SUPABASE_URL),
     [avatarPath]
   );
 
-  const applyUserState = (sessionUser: { email?: string | null; user_metadata?: { full_name?: string | null } } | null, profile?: HeaderProfileRow | null) => {
-    setFullName(profile?.full_name || sessionUser?.user_metadata?.full_name || '');
-    setEmail(profile?.email || sessionUser?.email || '');
-    setRoleTier((profile?.role_tier as RoleTier | null) || null);
-    setAvatarPath(profile?.avatar_path || null);
-  };
-
-  // Shared helper: fetch profile from DB and apply all user state
-  const fetchAndApplyProfile = async (sessionUser: { id: string; email?: string | null; user_metadata?: { full_name?: string | null } }) => {
-    setIsAuthenticated(true);
-    setCurrentUserId(sessionUser.id);
-    try {
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', sessionUser.id)
-        .single<HeaderProfileRow>();
-      applyUserState(sessionUser, profile || null);
-    } catch {
-      // Profile fetch failed — fall back to session metadata
-      applyUserState(sessionUser, null);
-    }
-  };
-
   useEffect(() => {
-    let mounted = true;
-
-    // 1. Explicitly check session on mount
-    // If the component mounts AFTER the INITIAL_SESSION event already fired,
-    // the listener below will miss it. This guarantees we check current state.
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (!mounted) return;
-      if (session?.user) {
-        fetchAndApplyProfile(session.user).finally(() => {
-          if (mounted) setLoading(false);
-        });
-      } else {
-        setIsAuthenticated(false);
-        setCurrentUserId(null);
-        if (mounted) setLoading(false);
-      }
-    });
-
-    // 2. Listen for future auth changes (login, logout, token refresh)
-    const { data: authListener } = supabase.auth.onAuthStateChange(async (event, session) => {
-      if (!mounted) return;
-
-      try {
-        if (event === 'SIGNED_OUT') {
-          setIsAuthenticated(false);
-          setCurrentUserId(null);
-          setFullName('');
-          setEmail('');
-          setRoleTier(null);
-          setAvatarPath(null);
-          setNotifications([]);
-          return;
-        }
-
-        if (
-          (event === 'INITIAL_SESSION' ||
-            event === 'SIGNED_IN' ||
-            event === 'TOKEN_REFRESHED') &&
-          session?.user
-        ) {
-          await fetchAndApplyProfile(session.user);
-          return;
-        }
-
-        if (!session?.user) {
-          setIsAuthenticated(false);
-          setCurrentUserId(null);
-          setFullName('');
-          setEmail('');
-          setRoleTier(null);
-          setAvatarPath(null);
-          setNotifications([]);
-        }
-      } catch (error) {
-        console.error('Error updating header auth state:', error);
-      }
-    });
-
-    return () => {
-      mounted = false;
-      authListener.subscription.unsubscribe();
-    };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+    setIsAuthenticated(profileIsAuthenticated);
+    if (!profileIsAuthenticated) {
+      setNotifications([]);
+    }
+  }, [profileIsAuthenticated]);
 
   useEffect(() => {
     setThemeMode(getStoredThemeMode());
@@ -268,7 +179,7 @@ export default function FixedHeader() {
   }, [currentUserId, roleTier]);
 
   useEffect(() => {
-    if (!isAuthenticated || !currentUserId || !roleTier) return;
+    if (!PORTAL_FEATURES.support || !isAuthenticated || !currentUserId || !roleTier) return;
 
     let active = true;
 
@@ -409,25 +320,27 @@ export default function FixedHeader() {
         <div className="flex-1" />
 
         <div className="relative flex items-center gap-2" ref={dropdownRef}>
-          <button
-            type="button"
-            onClick={() => {
-              setIsNotificationsOpen((open) => !open);
-              setIsProfileDropdownOpen(false);
-            }}
-            className="flex h-8 w-8 items-center justify-center rounded-full text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-800 dark:text-slate-300 dark:hover:bg-slate-900 dark:hover:text-white"
-            aria-label="Notifications"
-            title="Notifications"
-          >
-            <Icon name="bell" className="h-5 w-5" />
-            {unreadCount > 0 && (
-              <span className="absolute right-0 top-0 flex h-4 min-w-4 items-center justify-center rounded-full bg-red-600 px-1 text-[10px] font-bold leading-none text-white">
-                {unreadCount > 9 ? '9+' : unreadCount}
-              </span>
-            )}
-          </button>
+          {PORTAL_FEATURES.support && (
+            <button
+              type="button"
+              onClick={() => {
+                setIsNotificationsOpen((open) => !open);
+                setIsProfileDropdownOpen(false);
+              }}
+              className="flex h-8 w-8 items-center justify-center rounded-full text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-800 dark:text-slate-300 dark:hover:bg-slate-900 dark:hover:text-white"
+              aria-label="Notifications"
+              title="Notifications"
+            >
+              <Icon name="bell" className="h-5 w-5" />
+              {unreadCount > 0 && (
+                <span className="absolute right-0 top-0 flex h-4 min-w-4 items-center justify-center rounded-full bg-red-600 px-1 text-[10px] font-bold leading-none text-white">
+                  {unreadCount > 9 ? '9+' : unreadCount}
+                </span>
+              )}
+            </button>
+          )}
 
-          {isNotificationsOpen && (
+          {PORTAL_FEATURES.support && isNotificationsOpen && (
             <div className="absolute right-0 top-full z-50 mt-2 w-80 overflow-hidden rounded-md border border-slate-200 bg-white text-slate-900 shadow-md dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100">
               <div className="flex items-center justify-between border-b border-slate-200 px-4 py-3 dark:border-slate-800">
                 <h4 className="font-semibold">Notifications</h4>

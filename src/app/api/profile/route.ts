@@ -17,6 +17,56 @@ function sanitizeString(value: unknown, maxLength: number) {
   return trimmed.slice(0, maxLength);
 }
 
+export async function GET() {
+  const cookieStore = await cookies();
+  const authClient = createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL || '',
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '',
+    {
+      cookies: {
+        getAll() {
+          return cookieStore.getAll();
+        },
+        setAll() {
+          // No-op in route handlers.
+        },
+      },
+    }
+  );
+
+  const {
+    data: { user },
+    error: authError,
+  } = await authClient.auth.getUser();
+
+  if (authError || !user) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
+  const service = createServiceClient();
+  const { data: profile, error: profileError } = await service
+    .from('profiles')
+    .select('id, full_name, email, phone_number, avatar_path, role_tier, password_needs_change')
+    .eq('id', user.id)
+    .maybeSingle();
+
+  if (profileError) {
+    return NextResponse.json({ error: profileError.message }, { status: 400 });
+  }
+
+  return NextResponse.json({
+    profile: {
+      id: user.id,
+      full_name: profile?.full_name || user.user_metadata?.full_name || null,
+      email: profile?.email || user.email || null,
+      phone_number: profile?.phone_number || null,
+      avatar_path: profile?.avatar_path || null,
+      role_tier: profile?.role_tier || null,
+      password_needs_change: profile?.password_needs_change || false,
+    },
+  });
+}
+
 export async function PATCH(request: Request) {
   const cookieStore = await cookies();
   const authClient = createServerClient(
