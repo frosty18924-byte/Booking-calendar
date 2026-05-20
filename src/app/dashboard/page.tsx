@@ -2,11 +2,11 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { supabase } from '@/lib/supabase';
 import ThemeToggle from '@/app/components/ThemeToggle';
 import MatrixSyncModal from '@/app/components/MatrixSyncModal';
 import { hasPermission } from '@/lib/permissions';
 import { useCurrentUserProfile } from '@/lib/useCurrentUserProfile';
+import { signOutClientSide } from '@/lib/clientSignOut';
 
 export default function DashboardPage() {
   const router = useRouter();
@@ -55,12 +55,15 @@ export default function DashboardPage() {
   };
 
   const handleSignOut = async () => {
-    const { error } = await supabase.auth.signOut();
-    if (error) {
+    try {
+      await signOutClientSide();
+    } catch (error) {
       console.error('Error signing out:', error);
       return;
     }
-    router.push('/login');
+    router.replace('/login');
+    router.refresh();
+    window.location.assign('/login');
   };
 
   if (loading) {

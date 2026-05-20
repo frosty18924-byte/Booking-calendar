@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import Icon from './Icon';
 import type { IconName } from './Icon';
 import { usePathname, useRouter } from 'next/navigation';
-import { supabase } from '@/lib/supabase';
+import { signOutClientSide } from '@/lib/clientSignOut';
 
 export default function AppSidebar({ isDark }: { isDark: boolean }) {
   const pathname = usePathname() ?? '';
@@ -51,8 +51,15 @@ export default function AppSidebar({ isDark }: { isDark: boolean }) {
   );
 
   async function handleSignOut() {
-    await supabase.auth.signOut();
-    router.push('/login');
+    try {
+      await signOutClientSide();
+    } catch (error) {
+      console.error('Error signing out:', error);
+      return;
+    }
+    router.replace('/login');
+    router.refresh();
+    window.location.assign('/login');
   }
 
   useEffect(() => {
