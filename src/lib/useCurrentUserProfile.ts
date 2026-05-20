@@ -38,7 +38,8 @@ export function useCurrentUserProfile(): UseCurrentUserProfileState {
 
     try {
       const { data } = await supabase.auth.getSession();
-      sessionUser = data.session?.user || null;
+      const session = data.session || null;
+      sessionUser = session?.user || null;
 
       if (!sessionUser) {
         setProfile(null);
@@ -52,6 +53,11 @@ export function useCurrentUserProfile(): UseCurrentUserProfileState {
         method: 'GET',
         cache: 'no-store',
         credentials: 'include',
+        headers: session?.access_token
+          ? {
+              Authorization: `Bearer ${session.access_token}`,
+            }
+          : undefined,
       });
 
       if (!response.ok) {
