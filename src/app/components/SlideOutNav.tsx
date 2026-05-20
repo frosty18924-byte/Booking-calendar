@@ -5,72 +5,23 @@ import { usePathname, useRouter } from 'next/navigation';
 import Icon from '@/app/components/Icon';
 import UniformButton from '@/app/components/UniformButton';
 import TileButton from '@/app/components/TileButton';
-import { supabase } from '@/lib/supabase';
 import { hasPermission } from '@/lib/permissions';
 import { useNavDrawer } from '@/app/components/NavDrawerProvider';
+import { PORTAL_FEATURES } from '@/lib/portalFeatures';
+import { useCurrentUserProfile } from '@/lib/useCurrentUserProfile';
 
 export default function SlideOutNav() {
   const router = useRouter();
   const pathname = usePathname() || '';
-  const { isOpen, close, toggle } = useNavDrawer();
+  const { isOpen, close } = useNavDrawer();
 
-  const [userRole, setUserRole] = useState<string | null>(null);
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [trainingOpen, setTrainingOpen] = useState(true);
   const [templatesOpen, setTemplatesOpen] = useState(false);
   const [supportOpen, setSupportOpen] = useState(false);
   const [adminOpen, setAdminOpen] = useState(false);
+  const { profile, isAuthenticated } = useCurrentUserProfile();
+  const userRole = profile?.role_tier ?? null;
 
-  useEffect(() => {
-    let mounted = true;
-    const init = async () => {
-      try {
-        const { data } = await supabase.auth.getSession();
-        if (!mounted) return;
-        const authed = !!data.session?.user;
-        setIsAuthenticated(authed);
-        if (!authed) {
-          setUserRole(null);
-          return;
-        }
-        const { data: profile } = await supabase
-          .from('profiles')
-          .select('*')
-          .eq('id', data.session?.user?.id)
-          .single();
-        if (!mounted) return;
-        setUserRole(profile?.role_tier ?? null);
-      } catch (error) {
-        console.error('Error loading slide-out nav role:', error);
-        if (!mounted) return;
-        setUserRole(null);
-      }
-    };
-
-    init();
-    const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
-      setIsAuthenticated(!!session?.user);
-      if (!session?.user) {
-        setUserRole(null);
-        return;
-      }
-      supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', session.user.id)
-        .single()
-        .then(({ data }) => setUserRole(data?.role_tier ?? null))
-        .catch(() => setUserRole(null));
-    });
-
-    return () => {
-      mounted = false;
-      listener.subscription.unsubscribe();
-    };
-  }, []);
-
-  const isAuthPage = pathname === '/login' || pathname.startsWith('/auth/');
-  const canTemplatesAdmin = useMemo(() => hasPermission(userRole, 'TEMPLATES', 'canEdit'), [userRole]);
   const canAdminTools = useMemo(() => hasPermission(userRole, 'STAFF_MANAGEMENT', 'canView'), [userRole]);
 
   useEffect(() => {
@@ -80,7 +31,7 @@ export default function SlideOutNav() {
     const isAdminPath = pathname === '/admin-tools' || pathname.startsWith('/admin-tools/') || pathname === '/admin' || pathname.startsWith('/admin/');
     const isSupportPath = pathname === '/apps/support' || pathname.startsWith('/apps/support/') || pathname === '/apps/it-referral' || pathname.startsWith('/apps/it-referral');
 
-    if (isTemplatesPath) {
+    if (PORTAL_FEATURES.templates && isTemplatesPath) {
       setTrainingOpen(false);
       setTemplatesOpen(true);
       setSupportOpen(false);
@@ -188,38 +139,35 @@ export default function SlideOutNav() {
 	                  )}
 	                </section>
 
-                {/* Templates */}
-                <section className="rounded-3xl border border-slate-200 shadow-sm dark:border-slate-800">
-                  <button
-                    type="button"
-                    onClick={() => setTemplatesOpen(v => !v)}
-                    aria-expanded={templatesOpen}
-                    aria-controls="nav-templates-items"
-                    className="w-full text-left p-5 rounded-3xl transition-colors hover:bg-slate-50 dark:hover:bg-slate-900/40"
-                  >
-                    <div className="flex items-center justify-between gap-3">
-                      <div className="min-w-0">
-                        <p className="text-sm font-extrabold text-slate-900 dark:text-white">Templates</p>
-                        <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">Gallery and admin</p>
+                {PORTAL_FEATURES.templates && (
+                  <section className="rounded-3xl border border-slate-200 shadow-sm dark:border-slate-800">
+                    <button
+                      type="button"
+                      onClick={() => setTemplatesOpen(v => !v)}
+                      aria-expanded={templatesOpen}
+                      aria-controls="nav-templates-items"
+                      className="w-full text-left p-5 rounded-3xl transition-colors hover:bg-slate-50 dark:hover:bg-slate-900/40"
+                    >
+                      <div className="flex items-center justify-between gap-3">
+                        <div className="min-w-0">
+                          <p className="text-sm font-extrabold text-slate-900 dark:text-white">Templates</p>
+                          <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">Gallery and admin</p>
+                        </div>
+                        <span className="text-xs font-black uppercase tracking-widest text-slate-500 dark:text-slate-400">
+                          {templatesOpen ? 'Hide' : 'Show'}
+                        </span>
                       </div>
-                      <span className="text-xs font-black uppercase tracking-widest text-slate-500 dark:text-slate-400">
-                        {templatesOpen ? 'Hide' : 'Show'}
-                      </span>
-                    </div>
-                  </button>
+                    </button>
 
-	                  {templatesOpen && (
-	                    <div id="nav-templates-items" className="px-5 pb-5">
-	                      <div className="grid gap-3">
-	                        <TileButton title="Template Gallery" description="View, print, or download" size="sm" accent="blue" onClick={() => go('/templates')} />
-
-	                        {canTemplatesAdmin && (
-	                          <TileButton title="Templates Admin" description="Upload and edit" size="sm" accent="blue" onClick={() => go('/templates/admin')} />
-	                        )}
-	                      </div>
-	                    </div>
-	                  )}
-	                </section>
+                    {templatesOpen && (
+                      <div id="nav-templates-items" className="px-5 pb-5">
+                        <div className="grid gap-3">
+                          <TileButton title="Template Gallery" description="View, print, or download" size="sm" accent="blue" onClick={() => go('/templates')} />
+                        </div>
+                      </div>
+                    )}
+                  </section>
+                )}
 
                 {/* Support */}
                 <section className="rounded-3xl border border-slate-200 shadow-sm dark:border-slate-800">

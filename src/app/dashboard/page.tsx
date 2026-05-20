@@ -5,48 +5,28 @@ import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import MatrixSyncModal from '@/app/components/MatrixSyncModal';
 import { hasPermission } from '@/lib/permissions';
-
-interface DashboardProfile {
-  full_name: string | null;
-  role_tier: string | null;
-  password_needs_change?: boolean | null;
-}
+import { useCurrentUserProfile } from '@/lib/useCurrentUserProfile';
 
 export default function DashboardPage() {
   const router = useRouter();
   const [isDark, setIsDark] = useState(true);
-  const [user, setUser] = useState<DashboardProfile | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [userRole, setUserRole] = useState<string | null>(null);
   const [showMatrixSyncModal, setShowMatrixSyncModal] = useState(false);
+  const { profile, loading, isAuthenticated } = useCurrentUserProfile();
+  const userRole = profile?.role_tier ?? null;
 
   useEffect(() => {
     checkTheme();
     const runAuthCheck = async () => {
       try {
-        const {
-          data: { user: authUser },
-        } = await supabase.auth.getUser();
-
-        if (!authUser) {
+        if (!isAuthenticated && !loading) {
           router.push('/login');
           return;
         }
-
-        const { data: profile } = await supabase
-          .from('profiles')
-          .select('*')
-          .eq('id', authUser.id)
-          .single();
 
         if (profile?.password_needs_change) {
           router.push('/auth/change-password-required');
           return;
         }
-
-        setUser(profile as DashboardProfile);
-        setUserRole(profile?.role_tier || null);
-        setLoading(false);
       } catch (error) {
         console.error('Auth check error:', error);
         router.push('/login');
@@ -54,7 +34,7 @@ export default function DashboardPage() {
     };
 
     runAuthCheck();
-  }, [router]);
+  }, [isAuthenticated, loading, profile, router]);
 
   useEffect(() => {
     const handleThemeChange = (event: Event) => {
@@ -106,7 +86,7 @@ export default function DashboardPage() {
             Select an App
           </h2>
           <p className={`mt-2 transition-colors duration-300 ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
-            Choose which application you&apos;d like to access
+            Choose which training tool you&apos;d like to access
           </p>
         </div>
 

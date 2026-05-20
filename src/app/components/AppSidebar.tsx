@@ -24,7 +24,7 @@ export default function AppSidebar({ isDark }: { isDark: boolean }) {
       label: 'Dashboard',
       icon: 'home',
       path: '/dashboard',
-      description: 'Back to app selection',
+      description: 'Back to training home',
     },
     {
       id: 'expiry-checker',
