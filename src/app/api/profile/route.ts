@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createServerClient } from '@supabase/ssr';
+import { createClient } from '@supabase/supabase-js';
 import { cookies } from 'next/headers';
 import { createServiceClient } from '@/lib/apiAuth';
 
@@ -17,7 +18,26 @@ function sanitizeString(value: unknown, maxLength: number) {
   return trimmed.slice(0, maxLength);
 }
 
-export async function GET() {
+async function getAuthenticatedUser(request?: Request) {
+  const authHeader = request?.headers.get('authorization') || request?.headers.get('Authorization');
+  const bearerToken = authHeader?.replace(/^Bearer\s+/i, '').trim();
+
+  if (bearerToken) {
+    const tokenClient = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL || '',
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '',
+      {
+        global: {
+          headers: {
+            Authorization: `Bearer ${bearerToken}`,
+          },
+        },
+      }
+    );
+
+    return tokenClient.auth.getUser();
+  }
+
   const cookieStore = await cookies();
   const authClient = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL || '',
@@ -34,10 +54,14 @@ export async function GET() {
     }
   );
 
+  return authClient.auth.getUser();
+}
+
+export async function GET(request: Request) {
   const {
     data: { user },
     error: authError,
-  } = await authClient.auth.getUser();
+  } = await getAuthenticatedUser(request);
 
   if (authError || !user) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -68,26 +92,10 @@ export async function GET() {
 }
 
 export async function PATCH(request: Request) {
-  const cookieStore = await cookies();
-  const authClient = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL || '',
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '',
-    {
-      cookies: {
-        getAll() {
-          return cookieStore.getAll();
-        },
-        setAll() {
-          // No-op in route handlers.
-        },
-      },
-    }
-  );
-
   const {
     data: { user },
     error: authError,
-  } = await authClient.auth.getUser();
+  } = await getAuthenticatedUser(request);
 
   if (authError || !user) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
