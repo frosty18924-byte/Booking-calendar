@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { usePathname } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 
 export type CurrentUserProfile = {
@@ -21,11 +22,24 @@ type UseCurrentUserProfileState = {
 };
 
 export function useCurrentUserProfile(): UseCurrentUserProfileState {
+  const pathname = usePathname();
   const [profile, setProfile] = useState<CurrentUserProfile | null>(null);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [loading, setLoading] = useState(true);
 
   const loadProfile = async () => {
+    let session:
+      | {
+          access_token?: string | null;
+          user?: {
+            id: string;
+            email?: string | null;
+            user_metadata?: {
+              full_name?: string | null;
+            };
+          } | null;
+        }
+      | null = null;
     let sessionUser:
       | {
           id: string;
@@ -38,16 +52,8 @@ export function useCurrentUserProfile(): UseCurrentUserProfileState {
 
     try {
       const { data } = await supabase.auth.getSession();
-      const session = data.session || null;
+      session = data.session || null;
       sessionUser = session?.user || null;
-
-      if (!sessionUser) {
-        setProfile(null);
-        setIsAuthenticated(false);
-        return;
-      }
-
-      setIsAuthenticated(true);
 
       const response = await fetch('/api/profile', {
         method: 'GET',
@@ -60,12 +66,33 @@ export function useCurrentUserProfile(): UseCurrentUserProfileState {
           : undefined,
       });
 
-      if (!response.ok) {
+      if (response.ok) {
+        const result = await response.json();
+        setProfile((result?.profile || null) as CurrentUserProfile | null);
+        setIsAuthenticated(true);
+        return;
+      }
+
+      if (response.status !== 401) {
         throw new Error('Unable to load profile');
       }
 
-      const result = await response.json();
-      setProfile((result?.profile || null) as CurrentUserProfile | null);
+      if (sessionUser) {
+        setIsAuthenticated(true);
+        setProfile({
+          id: sessionUser.id,
+          full_name: sessionUser.user_metadata?.full_name || null,
+          email: sessionUser.email || null,
+          phone_number: null,
+          avatar_path: null,
+          role_tier: null,
+          password_needs_change: null,
+        });
+        return;
+      }
+
+      setProfile(null);
+      setIsAuthenticated(false);
     } catch (error) {
       console.error('Error loading current user profile:', error);
       if (sessionUser) {
@@ -121,7 +148,7 @@ export function useCurrentUserProfile(): UseCurrentUserProfileState {
       mounted = false;
       authListener.subscription.unsubscribe();
     };
-  }, []);
+  }, [pathname]);
 
   return {
     profile,

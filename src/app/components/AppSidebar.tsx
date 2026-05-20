@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import Icon from './Icon';
 import type { IconName } from './Icon';
 import { usePathname, useRouter } from 'next/navigation';
-import { supabase } from '@/lib/supabase';
+import { signOutClientSide } from '@/lib/clientSignOut';
 
 export default function AppSidebar({ isDark }: { isDark: boolean }) {
   const pathname = usePathname() ?? '';
@@ -50,6 +50,17 @@ export default function AppSidebar({ isDark }: { isDark: boolean }) {
     (pathname.startsWith(app.path) && app.id !== 'dashboard')
   );
 
+  async function handleSignOut() {
+    try {
+      await signOutClientSide();
+    } catch (error) {
+      console.error('Error signing out:', error);
+      return;
+    }
+    router.replace('/login');
+    router.refresh();
+    window.location.assign('/login');
+  }
   useEffect(() => {
     // Close mobile sidebar when route changes
     setShowMobileSidebar(false);

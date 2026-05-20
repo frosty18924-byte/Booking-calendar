@@ -9,6 +9,7 @@ import { supabase } from '@/lib/supabase';
 import { getProfileAvatarUrl, getProfileInitials } from '@/lib/profile';
 import { PORTAL_FEATURES } from '@/lib/portalFeatures';
 import { useCurrentUserProfile } from '@/lib/useCurrentUserProfile';
+import { signOutClientSide } from '@/lib/clientSignOut';
 
 type ThemeMode = 'light' | 'dark' | 'system';
 type RoleTier = 'staff' | 'manager' | 'scheduler' | 'admin';
@@ -285,14 +286,17 @@ export default function FixedHeader() {
   );
 
   const handleSignOut = async () => {
-    const { error } = await supabase.auth.signOut();
-    if (error) {
+    try {
+      await signOutClientSide();
+    } catch (error) {
       console.error('Error signing out:', error);
       return;
     }
     setIsProfileDropdownOpen(false);
     setIsNotificationsOpen(false);
-    router.push('/login');
+    router.replace('/login');
+    router.refresh();
+    window.location.assign('/login');
   };
 
   const handleSelectTheme = (mode: ThemeMode) => {
