@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import { parseFirstThreeRowsFromCsvString, CsvHeaderRows } from './csvHeaderUtils';
 import { debugLog } from '@/lib/debug';
+import ExportRosterButton from '@/app/components/ExportRosterButton';
 
 // Helper to get CSV URL for a location name (public folder)
 function getCsvUrlForLocation(locationName: string): string {
@@ -259,6 +260,7 @@ export default function TrainingMatrixPage() {
       const token = sessionData.session?.access_token;
       if (!token) {
         console.warn('No session token available for location fetch');
+        setLoading(false);
         return;
       }
 
@@ -270,6 +272,7 @@ export default function TrainingMatrixPage() {
 
       if (!response.ok) {
         console.warn('Failed to fetch scoped locations:', response.status);
+        setLoading(false);
         return;
       }
 
@@ -289,9 +292,11 @@ export default function TrainingMatrixPage() {
       } else {
         setLocations([]);
         setSelectedLocation('');
+        setLoading(false);
       }
     } catch (error) {
       console.error('Error in fetchLocations:', error);
+      setLoading(false);
     }
   }
 
@@ -2050,6 +2055,14 @@ export default function TrainingMatrixPage() {
                   })}
                 </tbody>
               </table>
+            </div>
+            {/* Export Button at Bottom */}
+            <div className={`flex justify-center p-4 border-t ${isDark ? 'border-gray-700 bg-gray-800' : 'border-gray-200 bg-white'}`}>
+              <ExportRosterButton
+                locationId={selectedLocation}
+                locationName={locations.find((l: any) => l.id === selectedLocation)?.name || 'Roster'}
+                isDark={isDark}
+              />
             </div>
           </div>
         )}

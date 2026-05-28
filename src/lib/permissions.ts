@@ -1,10 +1,11 @@
 export const PERMISSIONS = {
   ROSTER: {
-    canView: ['scheduler', 'admin'],
+    canView: ['staff', 'manager', 'scheduler', 'admin'],
     canEdit: ['scheduler', 'admin'],
+    canExport: ['staff', 'manager', 'scheduler', 'admin'],
   },
   BOOKINGS: {
-    canView: ['scheduler', 'admin', 'staff'],
+    canView: ['scheduler', 'admin', 'staff', 'manager'],
     canCreate: ['scheduler', 'admin'],
     canDelete: ['scheduler', 'admin'],
   },
@@ -17,7 +18,7 @@ export const PERMISSIONS = {
     canDelete: ['admin'],
   },
   COURSE_SCHEDULING: {
-    canView: ['admin', 'scheduler'],
+    canView: ['admin', 'scheduler', 'manager'],
     canCreate: ['admin', 'scheduler'],
     canEdit: ['admin'],
     canDelete: ['admin'],
@@ -33,6 +34,11 @@ export const PERMISSIONS = {
     canCreate: ['admin'],
     canEdit: ['admin'],
     canDelete: ['admin'],
+  },
+  PROFILE: {
+    canView: ['staff', 'manager', 'scheduler', 'admin'],
+    canEditOwn: ['staff', 'manager', 'scheduler', 'admin'],
+    canChangePassword: ['staff', 'manager', 'scheduler', 'admin'],
   },
 } as const;
 

@@ -6,6 +6,7 @@ import { supabase } from '@/lib/supabase';
 import { hasPermission } from '@/lib/permissions';
 import { getEmailTestHeaders } from '@/lib/emailTestMode';
 import { debugLog, debugWarn } from '@/lib/debug';
+import AdminResetPasswordModal from './AdminResetPasswordModal';
 
 export default function AddStaffModal({ onClose, onRefresh }: { onClose: () => void; onRefresh: () => void }) {
   const [locations, setLocations] = useState<any[]>([]);
@@ -19,6 +20,7 @@ export default function AddStaffModal({ onClose, onRefresh }: { onClose: () => v
   const [bulkLoading, setBulkLoading] = useState(false);
   const [bulkMessage, setBulkMessage] = useState('');
   const [expandedLocations, setExpandedLocations] = useState<Set<string>>(new Set());
+  const [showResetPasswordModal, setShowResetPasswordModal] = useState<{ userId: string; userName: string } | null>(null);
   
   const [formData, setFormData] = useState({ 
     full_name: '', 
@@ -1051,6 +1053,15 @@ Charlie Scheduler,charlie@example.com,Banks House,manager`;
                                 </UniformButton>
                               )}
                               <UniformButton
+                                variant="secondary"
+                                className="flex-1 p-2 text-[9px] font-bold transition-all hover:scale-105 active:scale-95 shadow-md hover:shadow-lg duration-200"
+                                style={{ backgroundColor: '#d946ef', color: '#fff' }}
+                                onClick={() => setShowResetPasswordModal({ userId: staff.id, userName: staff.full_name })}
+                                title="Admin: set password directly"
+                              >
+                                🔐 Set Password
+                              </UniformButton>
+                              <UniformButton
                                 variant="danger"
                                 className="flex-1 p-2 text-[9px] font-bold transition-all hover:scale-105 active:scale-95 shadow-md hover:shadow-lg duration-200"
                                 onClick={() => handleDeleteStaff(staff.id)}
@@ -1069,6 +1080,20 @@ Charlie Scheduler,charlie@example.com,Banks House,manager`;
           </div>
         </div>
       </div>
+
+      {/* Admin Reset Password Modal */}
+      {showResetPasswordModal && (
+        <AdminResetPasswordModal
+          userId={showResetPasswordModal.userId}
+          userName={showResetPasswordModal.userName}
+          isDark={isDark}
+          onClose={() => setShowResetPasswordModal(null)}
+          onSuccess={() => {
+            // Optionally refresh the staff list
+            fetchInitialData();
+          }}
+        />
+      )}
     </div>
   );
 }
