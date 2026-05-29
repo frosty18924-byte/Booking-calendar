@@ -341,8 +341,8 @@ export async function POST(request: NextRequest) {
 
     const unknownCourseColumns: string[] = [];
 
-    // Precompute which header columns map to courses.
-    const colToCourse: Array<{ col: number; courseId: string; expiryMonths: number | null; neverExpires: boolean | null } | null> = courseNames.map(
+    // Precompute which header columns map to courses, with display_order from CSV column position.
+    const colToCourse: Array<{ col: number; courseId: string; displayOrder: number; expiryMonths: number | null; neverExpires: boolean | null } | null> = courseNames.map(
       (name, idx) => {
         const normalizedHeader = normalizeKey(name);
         if (!normalizedHeader) return null;
@@ -350,7 +350,7 @@ export async function POST(request: NextRequest) {
 
         const hit = courseMap.get(normalizedHeader);
         if (!hit) return null;
-        return { col: idx + 1, courseId: hit.id, expiryMonths: hit.expiryMonths, neverExpires: hit.neverExpires };
+        return { col: idx + 1, courseId: hit.id, displayOrder: idx + 1, expiryMonths: hit.expiryMonths, neverExpires: hit.neverExpires };
       }
     );
 
@@ -363,7 +363,25 @@ export async function POST(request: NextRequest) {
 
     summary.skippedUnknownCourses = unknownCourseColumns.length;
 
+    // Update course display_order from CSV column positions
+    const courseDisplayOrderUpdates: Array<{ locationId: string; courseId: string; displayOrder: number }> = [];
+    for (const mapping of colToCourse) {
+      if (!mapping) continue;
+      courseDisplayOrderUpdates.push({ locationId, courseId: mapping.courseId, displayOrder: mapping.displayOrder });
+    }
+
+    // Batch update location_training_courses with display_order from CSV
+    for (const update of courseDisplayOrderUpdates) {
+      await authz.service
+        .from('location_training_courses')
+        .update({ display_order: update.displayOrder })
+        .eq('location_id', update.locationId)
+        .eq('training_course_id', update.courseId);
+    }
+
     const upserts: any[] = [];
+    const staffDisplayOrderUpdates: Map<string, number> = new Map();
+    let staffRowPosition = 1;
 
     for (const row of dataRows) {
       const staffName = cleanCell(row[0] || '');
@@ -379,6 +397,12 @@ export async function POST(request: NextRequest) {
         summary.skippedUnknownStaff++;
         if (unknownStaffSamples.size < 25) unknownStaffSamples.add(staffName);
         continue;
+      }
+
+      // Track staff display order from CSV row position
+      if (!staffDisplayOrderUpdates.has(staffId)) {
+        staffDisplayOrderUpdates.set(staffId, staffRowPosition);
+        staffRowPosition++;
       }
 
       for (const mapping of colToCourse) {
@@ -435,6 +459,19 @@ export async function POST(request: NextRequest) {
         console.error('Full matrix CSV import: upsert chunk failed:', error.message);
       } else {
         summary.upserts += chunk.length;
+      }
+    }
+
+    // Update staff display order from CSV row positions
+    for (const [staffId, displayOrder] of staffDisplayOrderUpdates.entries()) {
+      const updateRes = await authz.service
+        .from('staff_locations')
+        .update({ display_order: displayOrder })
+        .eq('location_id', locationId)
+        .eq('staff_id', staffId);
+
+      if (updateRes.error) {
+        console.warn('Could not update staff_locations display_order for staff:', staffId, updateRes.error);
       }
     }
 

@@ -62,46 +62,60 @@ export function useCurrentUserProfile(): UseCurrentUserProfileState {
       session = data.session || null;
       sessionUser = session?.user || null;
 
-      const response = await fetch("/api/profile", {
-        method: "GET",
-        cache: "no-store",
-        credentials: "include",
-        headers: session?.access_token
-          ? {
-              Authorization: `Bearer ${session.access_token}`,
-            }
-          : undefined,
-      });
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 8000);
 
-      const result = await parseJsonResponse(response);
-      if (response.ok) {
-        setProfile((result?.profile || null) as CurrentUserProfile | null);
-        setIsAuthenticated(true);
-        return;
-      }
-
-      if (response.status !== 401) {
-        throw new Error(
-          result?.error || `Unable to load profile (${response.status})`,
-        );
-      }
-
-      if (sessionUser) {
-        setIsAuthenticated(true);
-        setProfile({
-          id: sessionUser.id,
-          full_name: sessionUser.user_metadata?.full_name || null,
-          email: sessionUser.email || null,
-          phone_number: null,
-          avatar_path: null,
-          role_tier: null,
-          password_needs_change: null,
+      try {
+        const response = await fetch("/api/profile", {
+          method: "GET",
+          cache: "no-store",
+          credentials: "include",
+          signal: controller.signal,
+          headers: session?.access_token
+            ? {
+                Authorization: `Bearer ${session.access_token}`,
+              }
+            : undefined,
         });
-        return;
-      }
 
-      setProfile(null);
-      setIsAuthenticated(false);
+        clearTimeout(timeoutId);
+
+        const result = await parseJsonResponse(response);
+        if (response.ok) {
+          setProfile((result?.profile || null) as CurrentUserProfile | null);
+          setIsAuthenticated(true);
+          return;
+        }
+
+        if (response.status !== 401) {
+          throw new Error(
+            result?.error || `Unable to load profile (${response.status})`,
+          );
+        }
+
+        if (sessionUser) {
+          setIsAuthenticated(true);
+          setProfile({
+            id: sessionUser.id,
+            full_name: sessionUser.user_metadata?.full_name || null,
+            email: sessionUser.email || null,
+            phone_number: null,
+            avatar_path: null,
+            role_tier: null,
+            password_needs_change: null,
+          });
+          return;
+        }
+
+        setProfile(null);
+        setIsAuthenticated(false);
+      } catch (fetchError) {
+        clearTimeout(timeoutId);
+        if (fetchError instanceof Error && fetchError.name === 'AbortError') {
+          throw new Error('Profile request timed out');
+        }
+        throw fetchError;
+      }
     } catch (error) {
       console.error("Error loading current user profile:", error);
       if (sessionUser) {
@@ -133,6 +147,7 @@ export function useCurrentUserProfile(): UseCurrentUserProfileState {
     }
 
     let mounted = true;
+    let isInitialLoad = true;
 
     const syncProfile = async () => {
       if (mounted) {
@@ -151,6 +166,12 @@ export function useCurrentUserProfile(): UseCurrentUserProfileState {
     const { data: authListener } = supabase.auth.onAuthStateChange(
       async (event, session) => {
         if (!mounted) return;
+
+        // Only sync on auth state changes after the initial load
+        if (isInitialLoad) {
+          isInitialLoad = false;
+          return;
+        }
 
         if (event === "SIGNED_OUT" || !session?.user) {
           setProfile(null);
