@@ -108,10 +108,15 @@ export default function ProfilePage() {
       setError(null);
       setMessage(null);
 
+      const { data: sessionData } = await supabase.auth.getSession();
+      const accessToken = sessionData.session?.access_token;
+
       const response = await fetch("/api/profile", {
         method: "PATCH",
+        credentials: "include",
         headers: {
           "Content-Type": "application/json",
+          ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
         },
         body: JSON.stringify({
           full_name: fullName,

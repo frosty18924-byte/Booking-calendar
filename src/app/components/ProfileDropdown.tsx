@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import ChangePasswordModal from './ChangePasswordModal';
 import type { User } from '@supabase/supabase-js';
@@ -11,6 +12,7 @@ interface ProfileDropdownProps {
 }
 
 export default function ProfileDropdown({ user, isDark = true }: ProfileDropdownProps) {
+  const router = useRouter();
   const [isOpen, setIsOpen] = useState(false);
   const [showChangePassword, setShowChangePassword] = useState(false);
   const [userEmail, setUserEmail] = useState('');
@@ -23,7 +25,7 @@ export default function ProfileDropdown({ user, isDark = true }: ProfileDropdown
 
   const handleSignOut = async () => {
     await supabase.auth.signOut();
-    window.location.href = '/login';
+    router.replace('/login');
   };
 
   return (

@@ -124,6 +124,14 @@ export function useCurrentUserProfile(): UseCurrentUserProfileState {
   };
 
   useEffect(() => {
+    // Skip profile loading on login and auth pages
+    if (pathname === '/login' || pathname === '/auth/callback' || pathname.startsWith('/auth/')) {
+      setProfile(null);
+      setIsAuthenticated(false);
+      setLoading(false);
+      return;
+    }
+
     let mounted = true;
 
     const syncProfile = async () => {

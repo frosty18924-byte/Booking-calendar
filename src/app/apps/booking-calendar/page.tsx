@@ -1,10 +1,12 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import CalendarPage from './CalendarPage';
 import { supabase } from '@/lib/supabase';
 
 export default function BookingCalendarPage() {
+  const router = useRouter();
   const [isDark, setIsDark] = useState(true);
 
   useEffect(() => {
@@ -35,11 +37,12 @@ export default function BookingCalendarPage() {
       } = await supabase.auth.getSession();
 
       if (!session?.user) {
-        window.location.href = '/login';
+        router.push('/login');
+        return;
       }
     } catch (error) {
       console.error('Auth error:', error);
-      window.location.href = '/login';
+      router.push('/login');
     }
   }
 

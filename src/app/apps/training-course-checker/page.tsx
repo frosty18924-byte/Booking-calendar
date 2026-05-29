@@ -1,10 +1,12 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import TrainingCourseChecker from '@/app/components/TrainingCourseChecker';
 import { supabase } from '@/lib/supabase';
 
 export default function TrainingCourseCheckerPage() {
+  const router = useRouter();
   const [isDark, setIsDark] = useState(true);
 
   useEffect(() => {
@@ -35,11 +37,11 @@ export default function TrainingCourseCheckerPage() {
       } = await supabase.auth.getSession();
 
       if (!session?.user) {
-        window.location.href = '/login';
+        router.push('/login');
       }
     } catch (error) {
       console.error('Auth error:', error);
-      window.location.href = '/login';
+      router.push('/login');
     }
   };
 

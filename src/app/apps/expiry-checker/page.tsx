@@ -1,10 +1,12 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import CourseExpiryChecker from '@/app/components/CourseExpiryChecker';
 import { supabase } from '@/lib/supabase';
 
 export default function ExpiryCheckerPage() {
+  const router = useRouter();
   const [isDark, setIsDark] = useState(true);
 
   useEffect(() => {
@@ -35,11 +37,12 @@ export default function ExpiryCheckerPage() {
       } = await supabase.auth.getSession();
 
       if (!session?.user) {
-        window.location.href = '/login';
+        router.push('/login');
+        return;
       }
     } catch (error) {
       console.error('Auth error:', error);
-      window.location.href = '/login';
+      router.push('/login');
     }
   }
 

@@ -80,6 +80,7 @@ export async function GET(request: Request) {
       .maybeSingle();
 
     if (profileError) {
+      console.error("Profile fetch error:", profileError);
       return NextResponse.json(
         { error: profileError.message },
         { status: 400 },
@@ -99,8 +100,9 @@ export async function GET(request: Request) {
     });
   } catch (error) {
     console.error("Error in /api/profile GET:", error);
+    const errorMessage = error instanceof Error ? error.message : String(error);
     return NextResponse.json(
-      { error: "Unexpected server error." },
+      { error: `Server error: ${errorMessage}` },
       { status: 500 },
     );
   }
@@ -117,7 +119,16 @@ export async function PATCH(request: Request) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const body = (await request.json()) as ProfileUpdatePayload;
+    let body: ProfileUpdatePayload;
+    try {
+      body = (await request.json()) as ProfileUpdatePayload;
+    } catch (parseError) {
+      return NextResponse.json(
+        { error: 'Invalid JSON payload.' },
+        { status: 400 },
+      );
+    }
+
     const fullName = sanitizeString(body.full_name, 120);
     const email = sanitizeString(body.email, 255);
     const phoneNumber = sanitizeString(body.phone_number, 50);
@@ -172,17 +183,27 @@ export async function PATCH(request: Request) {
       .single();
 
     if (profileError) {
+      console.error("Profile update error:", profileError);
       return NextResponse.json(
         { error: profileError.message },
         { status: 400 },
       );
     }
 
+    if (!profile) {
+      console.error("Profile update returned no data for user:", user.id);
+      return NextResponse.json(
+        { error: "Profile update failed to return data." },
+        { status: 500 },
+      );
+    }
+
     return NextResponse.json({ profile });
   } catch (error) {
     console.error("Error in /api/profile PATCH:", error);
+    const errorMessage = error instanceof Error ? error.message : String(error);
     return NextResponse.json(
-      { error: "Unexpected server error." },
+      { error: `Server error: ${errorMessage}` },
       { status: 500 },
     );
   }

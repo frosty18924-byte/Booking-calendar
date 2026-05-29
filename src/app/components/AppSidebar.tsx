@@ -58,8 +58,6 @@ export default function AppSidebar({ isDark }: { isDark: boolean }) {
       return;
     }
     router.replace('/login');
-    router.refresh();
-    window.location.assign('/login');
   }
   useEffect(() => {
     // Close mobile sidebar when route changes

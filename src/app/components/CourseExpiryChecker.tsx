@@ -127,7 +127,7 @@ export default function CourseExpiryChecker({ isDark }: { isDark: boolean }) {
       } = await supabase.auth.getUser();
 
       if (!authUser) {
-        window.location.href = '/login';
+        router.push('/login');
         return;
       }
 
