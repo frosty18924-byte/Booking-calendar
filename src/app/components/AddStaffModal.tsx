@@ -4,7 +4,6 @@ import { useState, useEffect } from 'react';
 import UniformButton from './UniformButton';
 import { supabase } from '@/lib/supabase';
 import { hasPermission } from '@/lib/permissions';
-import { getEmailTestHeaders } from '@/lib/emailTestMode';
 import { debugLog, debugWarn } from '@/lib/debug';
 import AdminResetPasswordModal from './AdminResetPasswordModal';
 
@@ -613,32 +612,6 @@ Charlie Scheduler,charlie@example.com,Banks House,manager`;
     }
   };
 
-  const handleSendPasswordReset = async (email: string, staffName: string) => {
-    if (!hasPermission(userRole, 'STAFF_MANAGEMENT', 'canCreate')) {
-      alert('You do not have permission to send password reset links');
-      return;
-    }
-
-    try {
-      const response = await fetch('/api/send-password-reset', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', ...getEmailTestHeaders() },
-        body: JSON.stringify({ email, staffName })
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        alert(`Error: ${data.error || 'Failed to send password reset link'}`);
-        return;
-      }
-
-      alert(`✓ Password reset link sent to ${email}`);
-    } catch (error: any) {
-      alert(`Error sending password reset link: ${error.message}`);
-    }
-  };
-
   const handleEdit = (staff: any) => {
     setEditingId(staff.id);
     // Resolve to location ID from either location name or legacy UUID
@@ -1042,16 +1015,6 @@ Charlie Scheduler,charlie@example.com,Banks House,manager`;
                               >
                                 ✏️ Edit
                               </UniformButton>
-                              {(staff.role_tier === 'manager' || staff.role_tier === 'scheduler' || staff.role_tier === 'admin') && (
-                                <UniformButton
-                                  variant="secondary"
-                                  className="flex-1 p-2 text-[9px] font-bold transition-all hover:scale-105 active:scale-95 shadow-md hover:shadow-lg duration-200"
-                                  style={{ backgroundColor: '#10b981', color: '#fff' }}
-                                  onClick={() => handleSendPasswordReset(staff.email, staff.full_name)}
-                                >
-                                  🔗 Send Link
-                                </UniformButton>
-                              )}
                               <UniformButton
                                 variant="secondary"
                                 className="flex-1 p-2 text-[9px] font-bold transition-all hover:scale-105 active:scale-95 shadow-md hover:shadow-lg duration-200"

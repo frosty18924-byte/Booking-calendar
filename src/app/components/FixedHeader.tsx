@@ -1,18 +1,18 @@
-'use client';
+"use client";
 
-import { useNavDrawer } from '@/app/components/NavDrawerProvider';
-import { usePathname, useRouter } from 'next/navigation';
-import Icon from './Icon';
-import UniformButton from './UniformButton';
-import { useEffect, useMemo, useRef, useState } from 'react';
-import { supabase } from '@/lib/supabase';
-import { getProfileAvatarUrl, getProfileInitials } from '@/lib/profile';
-import { PORTAL_FEATURES } from '@/lib/portalFeatures';
-import { useCurrentUserProfile } from '@/lib/useCurrentUserProfile';
-import { signOutClientSide } from '@/lib/clientSignOut';
+import { useNavDrawer } from "@/app/components/NavDrawerProvider";
+import { usePathname, useRouter } from "next/navigation";
+import Icon from "./Icon";
+import UniformButton from "./UniformButton";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { supabase } from "@/lib/supabase";
+import { getProfileAvatarUrl, getProfileInitials } from "@/lib/profile";
+import { PORTAL_FEATURES } from "@/lib/portalFeatures";
+import { useCurrentUserProfile } from "@/lib/useCurrentUserProfile";
+import { signOutClientSide } from "@/lib/clientSignOut";
 
-type ThemeMode = 'light' | 'dark' | 'system';
-type RoleTier = 'staff' | 'manager' | 'scheduler' | 'admin';
+type ThemeMode = "light" | "dark" | "system";
+type RoleTier = "staff" | "manager" | "scheduler" | "admin";
 
 type ITReferralNotificationRow = {
   id: string;
@@ -39,45 +39,47 @@ type NotificationItem = {
 };
 
 function getStoredThemeMode(): ThemeMode {
-  if (typeof window === 'undefined') return 'system';
-  const theme = localStorage.getItem('theme');
-  return theme === 'light' || theme === 'dark' ? theme : 'system';
+  if (typeof window === "undefined") return "system";
+  const theme = localStorage.getItem("theme");
+  return theme === "light" || theme === "dark" ? theme : "system";
 }
 
 function systemPrefersDark(): boolean {
-  if (typeof window === 'undefined') return false;
-  return window.matchMedia('(prefers-color-scheme: dark)').matches;
+  if (typeof window === "undefined") return false;
+  return window.matchMedia("(prefers-color-scheme: dark)").matches;
 }
 
 function applyThemeMode(mode: ThemeMode) {
-  const useDark = mode === 'dark' || (mode === 'system' && systemPrefersDark());
+  const useDark = mode === "dark" || (mode === "system" && systemPrefersDark());
 
   if (useDark) {
-    document.documentElement.classList.add('dark');
+    document.documentElement.classList.add("dark");
   } else {
-    document.documentElement.classList.remove('dark');
+    document.documentElement.classList.remove("dark");
   }
 
-  if (mode === 'system') {
-    localStorage.removeItem('theme');
+  if (mode === "system") {
+    localStorage.removeItem("theme");
   } else {
-    localStorage.setItem('theme', mode);
+    localStorage.setItem("theme", mode);
   }
 
-  window.dispatchEvent(new CustomEvent('themeChange', { detail: { isDark: useDark, mode } }));
+  window.dispatchEvent(
+    new CustomEvent("themeChange", { detail: { isDark: useDark, mode } }),
+  );
 }
 
 function formatRelativeTime(value: string) {
   const date = new Date(value);
   const diffMs = date.getTime() - Date.now();
-  const rtf = new Intl.RelativeTimeFormat('en', { numeric: 'auto' });
+  const rtf = new Intl.RelativeTimeFormat("en", { numeric: "auto" });
   const minutes = Math.round(diffMs / (1000 * 60));
   const hours = Math.round(diffMs / (1000 * 60 * 60));
   const days = Math.round(diffMs / (1000 * 60 * 60 * 24));
 
-  if (Math.abs(minutes) < 60) return rtf.format(minutes, 'minute');
-  if (Math.abs(hours) < 24) return rtf.format(hours, 'hour');
-  return rtf.format(days, 'day');
+  if (Math.abs(minutes) < 60) return rtf.format(minutes, "minute");
+  if (Math.abs(hours) < 24) return rtf.format(hours, "hour");
+  return rtf.format(days, "day");
 }
 
 export default function FixedHeader() {
@@ -89,19 +91,25 @@ export default function FixedHeader() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isProfileDropdownOpen, setIsProfileDropdownOpen] = useState(false);
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
-  const [themeMode, setThemeMode] = useState<ThemeMode>('system');
+  const [themeMode, setThemeMode] = useState<ThemeMode>("system");
   const [notifications, setNotifications] = useState<NotificationItem[]>([]);
   const [notificationsLoading, setNotificationsLoading] = useState(false);
-  const [lastSeenAt, setLastSeenAt] = useState<string>('1970-01-01T00:00:00.000Z');
-  const { profile, isAuthenticated: profileIsAuthenticated, loading } = useCurrentUserProfile();
-  const fullName = profile?.full_name || '';
-  const email = profile?.email || '';
+  const [lastSeenAt, setLastSeenAt] = useState<string>(
+    "1970-01-01T00:00:00.000Z",
+  );
+  const {
+    profile,
+    isAuthenticated: profileIsAuthenticated,
+    loading,
+  } = useCurrentUserProfile();
+  const fullName = profile?.full_name || "";
+  const email = profile?.email || "";
   const roleTier = (profile?.role_tier as RoleTier | null) || null;
   const avatarPath = profile?.avatar_path || null;
   const currentUserId = profile?.id || null;
   const avatarUrl = useMemo(
     () => getProfileAvatarUrl(avatarPath, process.env.NEXT_PUBLIC_SUPABASE_URL),
-    [avatarPath]
+    [avatarPath],
   );
 
   useEffect(() => {
@@ -114,11 +122,11 @@ export default function FixedHeader() {
   useEffect(() => {
     setThemeMode(getStoredThemeMode());
 
-    const media = window.matchMedia('(prefers-color-scheme: dark)');
+    const media = window.matchMedia("(prefers-color-scheme: dark)");
     const handleSystemThemeChange = () => {
-      if (getStoredThemeMode() === 'system') {
-        applyThemeMode('system');
-        setThemeMode('system');
+      if (getStoredThemeMode() === "system") {
+        applyThemeMode("system");
+        setThemeMode("system");
       }
     };
 
@@ -131,12 +139,15 @@ export default function FixedHeader() {
       setThemeMode(getStoredThemeMode());
     };
 
-    media.addEventListener('change', handleSystemThemeChange);
-    window.addEventListener('themeChange', handleThemeChange as EventListener);
+    media.addEventListener("change", handleSystemThemeChange);
+    window.addEventListener("themeChange", handleThemeChange as EventListener);
 
     return () => {
-      media.removeEventListener('change', handleSystemThemeChange);
-      window.removeEventListener('themeChange', handleThemeChange as EventListener);
+      media.removeEventListener("change", handleSystemThemeChange);
+      window.removeEventListener(
+        "themeChange",
+        handleThemeChange as EventListener,
+      );
     };
   }, []);
 
@@ -154,33 +165,39 @@ export default function FixedHeader() {
     };
 
     const handleEscape = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') {
+      if (event.key === "Escape") {
         setIsProfileDropdownOpen(false);
         setIsNotificationsOpen(false);
       }
     };
 
-    document.addEventListener('mousedown', handlePointerDown);
-    document.addEventListener('keydown', handleEscape);
+    document.addEventListener("mousedown", handlePointerDown);
+    document.addEventListener("keydown", handleEscape);
 
     return () => {
-      document.removeEventListener('mousedown', handlePointerDown);
-      document.removeEventListener('keydown', handleEscape);
+      document.removeEventListener("mousedown", handlePointerDown);
+      document.removeEventListener("keydown", handleEscape);
     };
   }, []);
 
   useEffect(() => {
     if (!currentUserId || !roleTier) {
-      setLastSeenAt('1970-01-01T00:00:00.000Z');
+      setLastSeenAt("1970-01-01T00:00:00.000Z");
       return;
     }
 
     const key = `it-ticket-notifications-last-seen:${currentUserId}:${roleTier}`;
-    setLastSeenAt(localStorage.getItem(key) || '1970-01-01T00:00:00.000Z');
+    setLastSeenAt(localStorage.getItem(key) || "1970-01-01T00:00:00.000Z");
   }, [currentUserId, roleTier]);
 
   useEffect(() => {
-    if (!PORTAL_FEATURES.support || !isAuthenticated || !currentUserId || !roleTier) return;
+    if (
+      !PORTAL_FEATURES.support ||
+      !isAuthenticated ||
+      !currentUserId ||
+      !roleTier
+    )
+      return;
 
     let active = true;
 
@@ -189,17 +206,21 @@ export default function FixedHeader() {
         setNotificationsLoading(true);
 
         const { data: referralsData, error: referralsError } = await supabase
-          .from('it_referrals')
-          .select('id, ticket_number, issue_title, created_at, requester_user_id')
-          .order('created_at', { ascending: false })
+          .from("it_referrals")
+          .select(
+            "id, ticket_number, issue_title, created_at, requester_user_id",
+          )
+          .order("created_at", { ascending: false })
           .limit(20);
 
         if (referralsError) throw referralsError;
 
         const { data: updatesData, error: updatesError } = await supabase
-          .from('ticket_updates')
-          .select('id, referral_id, updated_by, update_text, author_user_id, created_at')
-          .order('created_at', { ascending: false })
+          .from("ticket_updates")
+          .select(
+            "id, referral_id, updated_by, update_text, author_user_id, created_at",
+          )
+          .order("created_at", { ascending: false })
           .limit(40);
 
         if (updatesError) throw updatesError;
@@ -207,14 +228,16 @@ export default function FixedHeader() {
         const relevantNotifications: NotificationItem[] = [];
         const referrals = (referralsData || []) as ITReferralNotificationRow[];
         const updates = (updatesData || []) as TicketUpdateNotificationRow[];
-        const referralMap = new Map(referrals.map((referral) => [referral.id, referral]));
+        const referralMap = new Map(
+          referrals.map((referral) => [referral.id, referral]),
+        );
 
-        if (roleTier === 'admin') {
+        if (roleTier === "admin") {
           referrals.forEach((referral) => {
             relevantNotifications.push({
               id: `referral-${referral.id}`,
               createdAt: referral.created_at,
-              title: `New ticket #${referral.ticket_number ?? '—'}`,
+              title: `New ticket #${referral.ticket_number ?? "—"}`,
               description: referral.issue_title,
             });
           });
@@ -231,22 +254,24 @@ export default function FixedHeader() {
           relevantNotifications.push({
             id: `update-${update.id}`,
             createdAt: update.created_at,
-            title: roleTier === 'admin'
-              ? `Ticket #${referral.ticket_number ?? '—'} updated`
-              : `Update on ticket #${referral.ticket_number ?? '—'}`,
+            title:
+              roleTier === "admin"
+                ? `Ticket #${referral.ticket_number ?? "—"} updated`
+                : `Update on ticket #${referral.ticket_number ?? "—"}`,
             description: update.update_text,
           });
         });
 
         relevantNotifications.sort(
-          (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+          (a, b) =>
+            new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
         );
 
         if (active) {
           setNotifications(relevantNotifications.slice(0, 20));
         }
       } catch (error) {
-        console.error('Error loading notifications:', error);
+        console.error("Error loading notifications:", error);
         if (active) setNotifications([]);
       } finally {
         if (active) setNotificationsLoading(false);
@@ -257,17 +282,17 @@ export default function FixedHeader() {
     const interval = window.setInterval(loadNotifications, 30000);
 
     const handleVisibility = () => {
-      if (document.visibilityState === 'visible') {
+      if (document.visibilityState === "visible") {
         loadNotifications();
       }
     };
 
-    document.addEventListener('visibilitychange', handleVisibility);
+    document.addEventListener("visibilitychange", handleVisibility);
 
     return () => {
       active = false;
       window.clearInterval(interval);
-      document.removeEventListener('visibilitychange', handleVisibility);
+      document.removeEventListener("visibilitychange", handleVisibility);
     };
   }, [currentUserId, fullName, isAuthenticated, roleTier]);
 
@@ -281,22 +306,26 @@ export default function FixedHeader() {
   }, [currentUserId, isNotificationsOpen, roleTier]);
 
   const unreadCount = useMemo(
-    () => notifications.filter((item) => new Date(item.createdAt).getTime() > new Date(lastSeenAt).getTime()).length,
-    [lastSeenAt, notifications]
+    () =>
+      notifications.filter(
+        (item) =>
+          new Date(item.createdAt).getTime() > new Date(lastSeenAt).getTime(),
+      ).length,
+    [lastSeenAt, notifications],
   );
 
   const handleSignOut = async () => {
     try {
       await signOutClientSide();
     } catch (error) {
-      console.error('Error signing out:', error);
+      console.error("Error signing out:", error);
       return;
     }
     setIsProfileDropdownOpen(false);
     setIsNotificationsOpen(false);
-    router.replace('/login');
+    router.replace("/login");
     router.refresh();
-    window.location.assign('/login');
+    window.location.assign("/login");
   };
 
   const handleSelectTheme = (mode: ThemeMode) => {
@@ -304,7 +333,7 @@ export default function FixedHeader() {
     applyThemeMode(mode);
   };
 
-  if (pathname === '/login') {
+  if (pathname === "/login") {
     return null;
   }
 
@@ -338,7 +367,7 @@ export default function FixedHeader() {
               <Icon name="bell" className="h-5 w-5" />
               {unreadCount > 0 && (
                 <span className="absolute right-0 top-0 flex h-4 min-w-4 items-center justify-center rounded-full bg-red-600 px-1 text-[10px] font-bold leading-none text-white">
-                  {unreadCount > 9 ? '9+' : unreadCount}
+                  {unreadCount > 9 ? "9+" : unreadCount}
                 </span>
               )}
             </button>
@@ -378,21 +407,25 @@ export default function FixedHeader() {
                 ) : (
                   <div className="divide-y divide-slate-200 dark:divide-slate-800">
                     {notifications.map((notification) => {
-                      const isUnread = new Date(notification.createdAt).getTime() > new Date(lastSeenAt).getTime();
+                      const isUnread =
+                        new Date(notification.createdAt).getTime() >
+                        new Date(lastSeenAt).getTime();
                       return (
                         <button
                           key={notification.id}
                           type="button"
                           onClick={() => {
                             setIsNotificationsOpen(false);
-                            router.push('/apps/it-referral-dashboard');
+                            router.push("/apps/it-referral-dashboard");
                           }}
                           className={`flex w-full flex-col items-start gap-1 px-4 py-3 text-left transition-colors hover:bg-slate-100 dark:hover:bg-slate-900 ${
-                            isUnread ? 'bg-slate-50 dark:bg-slate-900/40' : ''
+                            isUnread ? "bg-slate-50 dark:bg-slate-900/40" : ""
                           }`}
                         >
                           <div className="flex w-full items-center justify-between gap-3">
-                            <span className="text-sm font-medium">{notification.title}</span>
+                            <span className="text-sm font-medium">
+                              {notification.title}
+                            </span>
                             <span className="shrink-0 text-[11px] text-slate-500 dark:text-slate-400">
                               {formatRelativeTime(notification.createdAt)}
                             </span>
@@ -421,15 +454,19 @@ export default function FixedHeader() {
           >
             <div className="hidden min-w-0 text-right sm:block">
               <p className="truncate text-sm font-medium leading-none text-slate-900 dark:text-white">
-                {loading ? 'Loading...' : fullName || email || 'Profile'}
+                {loading ? "Loading..." : fullName || email || "Profile"}
               </p>
               <p className="mt-1 truncate text-xs capitalize leading-none text-slate-500 dark:text-slate-400">
-                {roleTier || 'User'}
+                {roleTier || "User"}
               </p>
             </div>
             <div className="flex h-10 w-10 items-center justify-center overflow-hidden rounded-full bg-slate-200 text-sm font-black text-slate-700 shadow-inner dark:bg-[#1b2740] dark:text-slate-100">
               {avatarUrl ? (
-                <img src={avatarUrl} alt="Profile" className="h-full w-full object-cover" />
+                <img
+                  src={avatarUrl}
+                  alt="Profile"
+                  className="h-full w-full object-cover"
+                />
               ) : (
                 <span>{getProfileInitials(fullName, email)}</span>
               )}
@@ -440,9 +477,17 @@ export default function FixedHeader() {
             <div className="absolute right-0 top-full z-50 mt-2 w-56 overflow-hidden rounded-md border border-slate-200 bg-white p-1 text-slate-900 shadow-md dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100">
               <div className="px-2 py-1.5 text-sm font-normal">
                 <div className="flex flex-col space-y-1">
-                  <p className="text-sm font-medium leading-none">{fullName || email || 'Profile'}</p>
-                  {email ? <p className="text-xs leading-none text-slate-500 dark:text-slate-400">{email}</p> : null}
-                  <p className="text-xs capitalize leading-none text-slate-500 dark:text-slate-400">{roleTier || 'User'}</p>
+                  <p className="text-sm font-medium leading-none">
+                    {fullName || email || "Profile"}
+                  </p>
+                  {email ? (
+                    <p className="text-xs leading-none text-slate-500 dark:text-slate-400">
+                      {email}
+                    </p>
+                  ) : null}
+                  <p className="text-xs capitalize leading-none text-slate-500 dark:text-slate-400">
+                    {roleTier || "User"}
+                  </p>
                 </div>
               </div>
 
@@ -453,7 +498,7 @@ export default function FixedHeader() {
                   type="button"
                   onClick={() => {
                     setIsProfileDropdownOpen(false);
-                    router.push('/');
+                    router.push("/");
                   }}
                   className="flex w-full select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none transition-colors hover:bg-slate-100 hover:text-slate-900 dark:hover:bg-slate-900 dark:hover:text-white"
                 >
@@ -469,7 +514,7 @@ export default function FixedHeader() {
                   type="button"
                   onClick={() => {
                     setIsProfileDropdownOpen(false);
-                    router.push('/profile');
+                    router.push("/profile");
                   }}
                   className="flex w-full select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none transition-colors hover:bg-slate-100 hover:text-slate-900 dark:hover:bg-slate-900 dark:hover:text-white"
                 >
@@ -487,9 +532,21 @@ export default function FixedHeader() {
               <div>
                 <div className="space-y-1">
                   {[
-                    { mode: 'light' as const, label: 'Light', icon: 'sun' as const },
-                    { mode: 'dark' as const, label: 'Dark', icon: 'moon' as const },
-                    { mode: 'system' as const, label: 'System', icon: 'monitor' as const },
+                    {
+                      mode: "light" as const,
+                      label: "Light",
+                      icon: "sun" as const,
+                    },
+                    {
+                      mode: "dark" as const,
+                      label: "Dark",
+                      icon: "moon" as const,
+                    },
+                    {
+                      mode: "system" as const,
+                      label: "System",
+                      icon: "monitor" as const,
+                    },
                   ].map((option) => {
                     const active = themeMode === option.mode;
                     return (
@@ -499,13 +556,19 @@ export default function FixedHeader() {
                         onClick={() => handleSelectTheme(option.mode)}
                         className={`flex w-full select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none transition-colors ${
                           active
-                            ? 'bg-slate-100 text-slate-900 dark:bg-slate-900 dark:text-white'
-                            : 'text-slate-900 hover:bg-slate-100 dark:text-slate-100 dark:hover:bg-slate-900'
+                            ? "bg-slate-100 text-slate-900 dark:bg-slate-900 dark:text-white"
+                            : "text-slate-900 hover:bg-slate-100 dark:text-slate-100 dark:hover:bg-slate-900"
                         }`}
                       >
                         <Icon name={option.icon} className="h-4 w-4" />
-                        <span className="ml-2 flex-1 text-left">{option.label}</span>
-                        {active && <span className="ml-auto text-xs text-slate-500 dark:text-slate-400">Active</span>}
+                        <span className="ml-2 flex-1 text-left">
+                          {option.label}
+                        </span>
+                        {active && (
+                          <span className="ml-auto text-xs text-slate-500 dark:text-slate-400">
+                            Active
+                          </span>
+                        )}
                       </button>
                     );
                   })}

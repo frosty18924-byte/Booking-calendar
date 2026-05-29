@@ -1,20 +1,24 @@
-'use client';
+"use client";
 
-import { ChangeEvent, FormEvent, useEffect, useMemo, useState } from 'react';
-import { useRouter } from 'next/navigation';
-import UniformButton from '@/app/components/UniformButton';
-import { supabase } from '@/lib/supabase';
-import { PROFILE_PHOTOS_BUCKET, getProfileAvatarUrl, getProfileInitials } from '@/lib/profile';
-import { useCurrentUserProfile } from '@/lib/useCurrentUserProfile';
+import { ChangeEvent, FormEvent, useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
+import UniformButton from "@/app/components/UniformButton";
+import { supabase } from "@/lib/supabase";
+import {
+  PROFILE_PHOTOS_BUCKET,
+  getProfileAvatarUrl,
+  getProfileInitials,
+} from "@/lib/profile";
+import { useCurrentUserProfile } from "@/lib/useCurrentUserProfile";
 
 function getErrorMessage(error: unknown, fallback: string) {
   if (error instanceof Error && error.message.trim()) {
     return error.message;
   }
 
-  if (typeof error === 'object' && error !== null) {
-    const maybeMessage = 'message' in error ? error.message : null;
-    if (typeof maybeMessage === 'string' && maybeMessage.trim()) {
+  if (typeof error === "object" && error !== null) {
+    const maybeMessage = "message" in error ? error.message : null;
+    if (typeof maybeMessage === "string" && maybeMessage.trim()) {
       return maybeMessage;
     }
   }
@@ -30,20 +34,21 @@ export default function ProfilePage() {
   const [error, setError] = useState<string | null>(null);
   const [userId, setUserId] = useState<string | null>(null);
   const [roleTier, setRoleTier] = useState<string | null>(null);
-  const [fullName, setFullName] = useState('');
-  const [email, setEmail] = useState('');
-  const [phoneNumber, setPhoneNumber] = useState('');
+  const [fullName, setFullName] = useState("");
+  const [email, setEmail] = useState("");
+  const [phoneNumber, setPhoneNumber] = useState("");
   const [avatarPath, setAvatarPath] = useState<string | null>(null);
-  const { profile, isAuthenticated, loading, refreshProfile } = useCurrentUserProfile();
+  const { profile, isAuthenticated, loading, refreshProfile } =
+    useCurrentUserProfile();
 
   const avatarUrl = useMemo(
     () => getProfileAvatarUrl(avatarPath, process.env.NEXT_PUBLIC_SUPABASE_URL),
-    [avatarPath]
+    [avatarPath],
   );
 
   useEffect(() => {
     if (!loading && !isAuthenticated) {
-      router.replace('/login');
+      router.replace("/login");
       return;
     }
 
@@ -51,16 +56,16 @@ export default function ProfilePage() {
 
     setError(null);
     setUserId(profile.id);
-    setFullName(profile.full_name || '');
-    setEmail(profile.email || '');
-    setPhoneNumber(profile.phone_number || '');
+    setFullName(profile.full_name || "");
+    setEmail(profile.email || "");
+    setPhoneNumber(profile.phone_number || "");
     setAvatarPath(profile.avatar_path || null);
     setRoleTier(profile.role_tier || null);
   }, [isAuthenticated, loading, profile, router]);
 
   const handleAvatarUpload = async (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
-    event.target.value = '';
+    event.target.value = "";
 
     if (!file || !userId) return;
 
@@ -69,13 +74,15 @@ export default function ProfilePage() {
       setError(null);
       setMessage(null);
 
-      const extension = file.name.includes('.') ? file.name.split('.').pop() : 'png';
+      const extension = file.name.includes(".")
+        ? file.name.split(".").pop()
+        : "png";
       const filePath = `${userId}/avatar-${Date.now()}.${extension}`;
 
       const { error: uploadError } = await supabase.storage
         .from(PROFILE_PHOTOS_BUCKET)
         .upload(filePath, file, {
-          cacheControl: '3600',
+          cacheControl: "3600",
           upsert: true,
           contentType: file.type || undefined,
         });
@@ -83,9 +90,11 @@ export default function ProfilePage() {
       if (uploadError) throw uploadError;
 
       setAvatarPath(filePath);
-      setMessage('Profile picture uploaded. Save changes to keep it.');
+      setMessage("Profile picture uploaded. Save changes to keep it.");
     } catch (uploadError: unknown) {
-      setError(getErrorMessage(uploadError, 'Unable to upload profile picture.'));
+      setError(
+        getErrorMessage(uploadError, "Unable to upload profile picture."),
+      );
     } finally {
       setUploading(false);
     }
@@ -99,10 +108,10 @@ export default function ProfilePage() {
       setError(null);
       setMessage(null);
 
-      const response = await fetch('/api/profile', {
-        method: 'PATCH',
+      const response = await fetch("/api/profile", {
+        method: "PATCH",
         headers: {
-          'Content-Type': 'application/json',
+          "Content-Type": "application/json",
         },
         body: JSON.stringify({
           full_name: fullName,
@@ -112,10 +121,17 @@ export default function ProfilePage() {
         }),
       });
 
-      const result = await response.json();
+      let result: any;
+      try {
+        result = await response.json();
+      } catch (parseError) {
+        throw new Error("Invalid server response when saving profile.");
+      }
 
       if (!response.ok) {
-        throw new Error(result?.error || 'Unable to save your profile.');
+        throw new Error(
+          result?.error || `Unable to save your profile. (${response.status})`,
+        );
       }
 
       setFullName(result.profile?.full_name || fullName);
@@ -123,11 +139,11 @@ export default function ProfilePage() {
       setPhoneNumber(result.profile?.phone_number || phoneNumber);
       setAvatarPath(result.profile?.avatar_path || avatarPath);
       setRoleTier(result.profile?.role_tier || roleTier);
-      setMessage('Your profile has been updated.');
+      setMessage("Your profile has been updated.");
       await refreshProfile();
       router.refresh();
     } catch (saveError: unknown) {
-      setError(getErrorMessage(saveError, 'Unable to save your profile.'));
+      setError(getErrorMessage(saveError, "Unable to save your profile."));
     } finally {
       setSaving(false);
     }
@@ -138,7 +154,9 @@ export default function ProfilePage() {
       <main className="min-h-screen bg-slate-100 px-4 pb-10 pt-24 text-slate-900 transition-colors dark:bg-[#0f172a] dark:text-white">
         <div className="mx-auto max-w-3xl">
           <div className="rounded-[28px] border border-slate-200 bg-white p-8 shadow-xl dark:border-slate-800 dark:bg-slate-950/50">
-            <p className="text-sm text-slate-500 dark:text-slate-400">Loading your profile...</p>
+            <p className="text-sm text-slate-500 dark:text-slate-400">
+              Loading your profile...
+            </p>
           </div>
         </div>
       </main>
@@ -153,7 +171,9 @@ export default function ProfilePage() {
             <p className="text-sm font-semibold uppercase tracking-[0.2em] text-slate-500 dark:text-slate-400">
               My Profile
             </p>
-            <h1 className="mt-2 text-3xl font-black tracking-tight">Update your details</h1>
+            <h1 className="mt-2 text-3xl font-black tracking-tight">
+              Update your details
+            </h1>
             <p className="mt-2 text-sm text-slate-600 dark:text-slate-300">
               Change your name, contact details, and profile picture.
             </p>
@@ -163,20 +183,26 @@ export default function ProfilePage() {
             <div className="flex flex-col gap-5 rounded-3xl border border-slate-200 bg-slate-50 p-5 dark:border-slate-800 dark:bg-slate-900/40 sm:flex-row sm:items-center">
               <div className="flex h-24 w-24 shrink-0 items-center justify-center overflow-hidden rounded-full bg-slate-200 text-2xl font-black text-slate-700 dark:bg-[#1b2740] dark:text-slate-100">
                 {avatarUrl ? (
-                  <img src={avatarUrl} alt="Profile" className="h-full w-full object-cover" />
+                  <img
+                    src={avatarUrl}
+                    alt="Profile"
+                    className="h-full w-full object-cover"
+                  />
                 ) : (
                   <span>{getProfileInitials(fullName, email)}</span>
                 )}
               </div>
 
               <div className="min-w-0 flex-1">
-                <p className="text-lg font-bold">{fullName || 'Your profile'}</p>
+                <p className="text-lg font-bold">
+                  {fullName || "Your profile"}
+                </p>
                 <p className="text-sm capitalize text-slate-500 dark:text-slate-400">
-                  {roleTier || 'User'}
+                  {roleTier || "User"}
                 </p>
                 <div className="mt-4 flex flex-wrap gap-3">
                   <label className="inline-flex cursor-pointer items-center justify-center rounded-xl bg-blue-600 px-4 py-2 text-sm font-bold text-white transition hover:bg-blue-700">
-                    {uploading ? 'Uploading...' : 'Upload photo'}
+                    {uploading ? "Uploading..." : "Upload photo"}
                     <input
                       type="file"
                       accept="image/png,image/jpeg,image/webp,image/gif"
@@ -200,7 +226,9 @@ export default function ProfilePage() {
 
             <div className="grid gap-5 sm:grid-cols-2">
               <label className="block">
-                <span className="mb-2 block text-sm font-bold text-slate-700 dark:text-slate-200">Name</span>
+                <span className="mb-2 block text-sm font-bold text-slate-700 dark:text-slate-200">
+                  Name
+                </span>
                 <input
                   value={fullName}
                   onChange={(event) => setFullName(event.target.value)}
@@ -211,7 +239,9 @@ export default function ProfilePage() {
               </label>
 
               <label className="block">
-                <span className="mb-2 block text-sm font-bold text-slate-700 dark:text-slate-200">Email</span>
+                <span className="mb-2 block text-sm font-bold text-slate-700 dark:text-slate-200">
+                  Email
+                </span>
                 <input
                   value={email}
                   onChange={(event) => setEmail(event.target.value)}
@@ -223,7 +253,9 @@ export default function ProfilePage() {
               </label>
 
               <label className="block sm:col-span-2">
-                <span className="mb-2 block text-sm font-bold text-slate-700 dark:text-slate-200">Phone number</span>
+                <span className="mb-2 block text-sm font-bold text-slate-700 dark:text-slate-200">
+                  Phone number
+                </span>
                 <input
                   value={phoneNumber}
                   onChange={(event) => setPhoneNumber(event.target.value)}
@@ -250,12 +282,12 @@ export default function ProfilePage() {
               <UniformButton
                 type="button"
                 variant="secondary"
-                onClick={() => router.push('/')}
+                onClick={() => router.push("/")}
               >
                 Back to portal
               </UniformButton>
               <UniformButton type="submit" disabled={saving || uploading}>
-                {saving ? 'Saving...' : 'Save profile'}
+                {saving ? "Saving..." : "Save profile"}
               </UniformButton>
             </div>
           </form>

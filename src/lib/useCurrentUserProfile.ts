@@ -1,8 +1,8 @@
-'use client';
+"use client";
 
-import { useEffect, useState } from 'react';
-import { usePathname } from 'next/navigation';
-import { supabase } from '@/lib/supabase';
+import { useEffect, useState } from "react";
+import { usePathname } from "next/navigation";
+import { supabase } from "@/lib/supabase";
 
 export type CurrentUserProfile = {
   id: string;
@@ -27,38 +27,45 @@ export function useCurrentUserProfile(): UseCurrentUserProfileState {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [loading, setLoading] = useState(true);
 
+  const parseJsonResponse = async (response: Response) => {
+    try {
+      return await response.json();
+    } catch (error) {
+      const body = await response
+        .text()
+        .catch(() => "<unable to read response body>");
+      throw new Error(`Invalid JSON response from profile endpoint: ${body}`);
+    }
+  };
+
   const loadProfile = async () => {
-    let session:
-      | {
-          access_token?: string | null;
-          user?: {
-            id: string;
-            email?: string | null;
-            user_metadata?: {
-              full_name?: string | null;
-            };
-          } | null;
-        }
-      | null = null;
-    let sessionUser:
-      | {
-          id: string;
-          email?: string | null;
-          user_metadata?: {
-            full_name?: string | null;
-          };
-        }
-      | null = null;
+    let session: {
+      access_token?: string | null;
+      user?: {
+        id: string;
+        email?: string | null;
+        user_metadata?: {
+          full_name?: string | null;
+        };
+      } | null;
+    } | null = null;
+    let sessionUser: {
+      id: string;
+      email?: string | null;
+      user_metadata?: {
+        full_name?: string | null;
+      };
+    } | null = null;
 
     try {
       const { data } = await supabase.auth.getSession();
       session = data.session || null;
       sessionUser = session?.user || null;
 
-      const response = await fetch('/api/profile', {
-        method: 'GET',
-        cache: 'no-store',
-        credentials: 'include',
+      const response = await fetch("/api/profile", {
+        method: "GET",
+        cache: "no-store",
+        credentials: "include",
         headers: session?.access_token
           ? {
               Authorization: `Bearer ${session.access_token}`,
@@ -66,15 +73,17 @@ export function useCurrentUserProfile(): UseCurrentUserProfileState {
           : undefined,
       });
 
+      const result = await parseJsonResponse(response);
       if (response.ok) {
-        const result = await response.json();
         setProfile((result?.profile || null) as CurrentUserProfile | null);
         setIsAuthenticated(true);
         return;
       }
 
       if (response.status !== 401) {
-        throw new Error('Unable to load profile');
+        throw new Error(
+          result?.error || `Unable to load profile (${response.status})`,
+        );
       }
 
       if (sessionUser) {
@@ -94,7 +103,7 @@ export function useCurrentUserProfile(): UseCurrentUserProfileState {
       setProfile(null);
       setIsAuthenticated(false);
     } catch (error) {
-      console.error('Error loading current user profile:', error);
+      console.error("Error loading current user profile:", error);
       if (sessionUser) {
         setIsAuthenticated(true);
         setProfile({
@@ -131,18 +140,20 @@ export function useCurrentUserProfile(): UseCurrentUserProfileState {
 
     syncProfile();
 
-    const { data: authListener } = supabase.auth.onAuthStateChange(async (event, session) => {
-      if (!mounted) return;
+    const { data: authListener } = supabase.auth.onAuthStateChange(
+      async (event, session) => {
+        if (!mounted) return;
 
-      if (event === 'SIGNED_OUT' || !session?.user) {
-        setProfile(null);
-        setIsAuthenticated(false);
-        setLoading(false);
-        return;
-      }
+        if (event === "SIGNED_OUT" || !session?.user) {
+          setProfile(null);
+          setIsAuthenticated(false);
+          setLoading(false);
+          return;
+        }
 
-      await syncProfile();
-    });
+        await syncProfile();
+      },
+    );
 
     return () => {
       mounted = false;
