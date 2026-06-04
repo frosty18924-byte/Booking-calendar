@@ -217,41 +217,6 @@ export default function BookingModal({ event, onClose, onRefresh, onOpenChecklis
     }
   }
 
-  const exportRosterCsv = () => {
-    if (!roster || roster.length === 0) {
-      alert('Nothing to export');
-      return;
-    }
-
-    const header = ['Full Name', 'Location', 'Attended', 'Minutes Late', 'Late Reason', 'Absence Reason'];
-    const rows = roster.map((r) => [
-      r.profiles?.full_name || '',
-      r.profiles?.location || '',
-      r.attended_at ? 'Present' : 'Absent',
-      r.minutes_late ?? '',
-      r.late_reason ?? '',
-      r.absence_reason ?? '',
-    ]);
-
-    const escape = (v: any) => {
-      const s = String(v ?? '');
-      return s.includes(',') || s.includes('"') || s.includes('\n') ? `"${s.replace(/"/g, '""')}"` : s;
-    };
-
-    const csv = [header, ...rows].map((row) => row.map(escape).join(',')).join('\n');
-
-    const filename = `event-${event?.id || 'roster'}-${new Date().toISOString().split('T')[0]}.csv`;
-    const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = filename;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-  };
-
   const toggleLocationExpanded = (locationName: string) => {
     const newExpanded = new Set(expandedLocations);
     if (newExpanded.has(locationName)) {
@@ -680,8 +645,7 @@ export default function BookingModal({ event, onClose, onRefresh, onOpenChecklis
                 </div>
               ))}
               <div className="flex gap-3 mt-6">
-                <button onClick={exportRosterCsv} className="flex-1 py-4 bg-emerald-600 text-white font-black text-[10px] uppercase rounded-2xl">Export Roster</button>
-                <button onClick={onClose} className="flex-1 py-4 bg-slate-200 dark:bg-slate-700 text-black dark:text-white font-black text-[10px] uppercase rounded-2xl">Close</button>
+                <button onClick={onClose} className="w-full py-4 bg-slate-200 dark:bg-slate-700 text-black dark:text-white font-black text-[10px] uppercase rounded-2xl">Close</button>
               </div>
             </div>
           )}

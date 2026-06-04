@@ -69,6 +69,7 @@ export default function TrainingMatrixPage() {
   const [loading, setLoading] = useState(true);
   const [isDark, setIsDark] = useState(true);
   const tableScrollContainerRef = useRef<HTMLDivElement>(null);
+  const fetchAbortControllerRef = useRef<AbortController | null>(null);
   const [editingCell, setEditingCell] = useState<{ staffId: string; courseId: string } | null>(null);
   const [editDate, setEditDate] = useState<string>('');
   const [editStatus, setEditStatus] = useState<'completed' | 'allocated' | 'not_yet_due' | 'na' | null>(null);
@@ -149,6 +150,15 @@ export default function TrainingMatrixPage() {
     return () => window.removeEventListener('themeChange', handleThemeChange);
   }, []);
 
+  // Cleanup abort controller when component unmounts
+  useEffect(() => {
+    return () => {
+      if (fetchAbortControllerRef.current) {
+        fetchAbortControllerRef.current.abort();
+      }
+    };
+  }, []);
+
   useEffect(() => {
     if (user && userRole) {
       fetchLocations();
@@ -157,9 +167,44 @@ export default function TrainingMatrixPage() {
 
   useEffect(() => {
     if (!selectedLocation) return;
-    fetchMatrixData();
+    
+    // Only abort if we're changing locations (selectedLocation changed)
+    // Don't abort on other effect re-runs (which could cause issues with user actions)
+    if (fetchAbortControllerRef.current) {
+      try {
+        fetchAbortControllerRef.current.abort();
+      } catch (e) {
+        // Ignore errors from aborting
+      }
+    }
+    
+    // Create new abort controller for this fetch
+    const abortController = new AbortController();
+    fetchAbortControllerRef.current = abortController;
+    
+    // Set a flag so we know this is the current request
+    let isCurrentRequest = true;
+    
+    // Start the fetch
+    fetchMatrixData(abortController.signal).then(() => {
+      // Mark that this request completed successfully
+      if (isCurrentRequest && abortController === fetchAbortControllerRef.current) {
+        // This was the latest request, good to go
+      }
+    }).catch(error => {
+      // Ignore abort errors - they're expected when navigating
+      if (!(error instanceof Error && error.name === 'AbortError')) {
+        console.error('Unexpected error in fetchMatrixData:', error);
+      }
+    });
+    
     // After fetching matrix data, check if there are any courses for this location
     (async () => {
+      // Guard: don't run if selectedLocation is empty or request was aborted
+      if (!selectedLocation || selectedLocation.trim() === '' || !isCurrentRequest) {
+        return;
+      }
+      
       const { data: locationCourses, error } = await supabase
         .from('location_training_courses')
         .select('training_course_id')
@@ -217,6 +262,11 @@ export default function TrainingMatrixPage() {
         }
       }
     })();
+    
+    // Cleanup function
+    return () => {
+      isCurrentRequest = false;
+    };
   }, [selectedLocation, locations]);
 
   useEffect(() => {
@@ -300,8 +350,21 @@ export default function TrainingMatrixPage() {
     }
   }
 
-  async function fetchMatrixData() {
+  async function fetchMatrixData(signal?: AbortSignal) {
     try {
+      // Safety check: don't proceed if no location selected
+      if (!selectedLocation || selectedLocation.trim() === '') {
+        console.warn('fetchMatrixData called with invalid selectedLocation:', selectedLocation);
+        setLoading(false);
+        return;
+      }
+      
+      // Check if request was aborted before we even start
+      if (signal?.aborted) {
+        console.log('fetchMatrixData: request aborted before start');
+        return;
+      }
+      
       setLoading(true);
 
       // Fetch dividers from location_matrix_dividers table
@@ -431,7 +494,7 @@ export default function TrainingMatrixPage() {
       }));
 
       // Fetch courses with LOCATION-SPECIFIC ordering from location_training_courses table.
-      // Some DB environments don't have `training_courses.category`, so fallback to a schema without it.
+      // Some DB environments don't have `training_courses.category` or `display_order`, so fallback gracefully.
       let locationCoursesData: any[] | null = null;
       let locationCoursesError: any = null;
 
@@ -448,7 +511,8 @@ export default function TrainingMatrixPage() {
       locationCoursesData = withCategoryRes.data;
       locationCoursesError = withCategoryRes.error;
 
-      if (locationCoursesError?.code === '42703') {
+      // Handle missing category column (42703)
+      if (locationCoursesError?.code === '42703' && locationCoursesError?.message?.includes('category')) {
         const withoutCategoryRes = await supabase
           .from('location_training_courses')
           .select(`
@@ -461,6 +525,34 @@ export default function TrainingMatrixPage() {
 
         locationCoursesData = withoutCategoryRes.data;
         locationCoursesError = withoutCategoryRes.error;
+      }
+
+      // Handle missing display_order column (42703)
+      if (locationCoursesError?.code === '42703' && locationCoursesError?.message?.includes('display_order')) {
+        const withoutDisplayOrderRes = await supabase
+          .from('location_training_courses')
+          .select(`
+            training_course_id,
+            training_courses(id, name, category, expiry_months, never_expires)
+          `)
+          .eq('location_id', selectedLocation);
+
+        locationCoursesData = withoutDisplayOrderRes.data;
+        locationCoursesError = withoutDisplayOrderRes.error;
+      }
+
+      // Handle missing both columns
+      if (locationCoursesError?.code === '42703') {
+        const withoutDisplayOrderRes = await supabase
+          .from('location_training_courses')
+          .select(`
+            training_course_id,
+            training_courses(id, name, expiry_months, never_expires)
+          `)
+          .eq('location_id', selectedLocation);
+
+        locationCoursesData = withoutDisplayOrderRes.data;
+        locationCoursesError = withoutDisplayOrderRes.error;
       }
 
 	      debugLog('DEBUG: selectedLocation =', selectedLocation);
@@ -814,15 +906,25 @@ export default function TrainingMatrixPage() {
 
       setMatrixData(plainMatrix);
     } catch (error) {
+      // AbortError is expected when navigating away, don't treat as real error
+      if (error instanceof Error && error.name === 'AbortError') {
+        console.log('Matrix fetch was aborted (user navigated away)');
+        return;
+      }
       console.error('Error fetching matrix data:', error);
     } finally {
-      setLoading(false);
+      // Don't update state if request was aborted
+      if (!signal?.aborted) {
+        setLoading(false);
+      }
       // Reset horizontal scroll to show first courses after data is loaded
-      setTimeout(() => {
-        if (tableScrollContainerRef.current) {
-          tableScrollContainerRef.current.scrollLeft = 0;
-        }
-      }, 50);
+      if (!signal?.aborted) {
+        setTimeout(() => {
+          if (tableScrollContainerRef.current) {
+            tableScrollContainerRef.current.scrollLeft = 0;
+          }
+        }, 50);
+      }
     }
   }
 

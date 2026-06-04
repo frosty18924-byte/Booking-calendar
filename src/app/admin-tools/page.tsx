@@ -2,10 +2,10 @@
 
 import { Suspense, useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { supabase } from '@/lib/supabase';
 import { hasPermission } from '@/lib/permissions';
 import AdminToolsPanel from '@/app/components/AdminToolsPanel';
 import BackButton from '@/app/components/BackButton';
+import { useCurrentUserProfile } from '@/lib/useCurrentUserProfile';
 
 export default function AdminToolsPage() {
   return (
@@ -24,9 +24,9 @@ export default function AdminToolsPage() {
 function AdminToolsPageInner() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const { profile, isAuthenticated, loading } = useCurrentUserProfile();
   const [isDark, setIsDark] = useState(true);
-  const [userRole, setUserRole] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [accessDenied, setAccessDenied] = useState(false);
 
   const openParam = (searchParams.get('open') || '').trim().toLowerCase();
   const initialModal =
@@ -43,36 +43,55 @@ function AdminToolsPageInner() {
     };
   }, []);
 
+  // Handle authentication and authorization
   useEffect(() => {
-    const run = async () => {
-      try {
-        const {
-          data: { user },
-        } = await supabase.auth.getUser();
-        if (!user) {
-          router.push('/login');
-          return;
-        }
+    // Wait for auth to complete
+    if (loading) return;
 
-        const { data: profile } = await supabase.from('profiles').select('role_tier').eq('id', user.id).single();
-        const role = (profile?.role_tier ?? null) as string | null;
-        setUserRole(role);
+    // Not authenticated
+    if (!isAuthenticated || !profile) {
+      router.push('/login');
+      return;
+    }
 
-        if (!hasPermission(role, 'STAFF_MANAGEMENT', 'canView')) {
-          router.push('/');
-          return;
-        }
-      } finally {
-        setLoading(false);
-      }
-    };
-    run();
-  }, [router]);
+    // Don't have permissions yet - wait for profile to fully load
+    if (!profile.role_tier) {
+      console.warn('Profile loaded but role_tier is missing, waiting...');
+      return;
+    }
+
+    // Check if user has admin permission
+    if (!hasPermission(profile.role_tier, 'STAFF_MANAGEMENT', 'canView')) {
+      setAccessDenied(true);
+      // Redirect after a brief delay to show the message
+      const timeout = setTimeout(() => {
+        router.push('/');
+      }, 2000);
+      return () => clearTimeout(timeout);
+    }
+  }, [loading, isAuthenticated, profile, router]);
 
   if (loading) {
     return (
       <main className="min-h-screen px-4 py-8">
         <div className="max-w-5xl mx-auto text-sm text-slate-600">Loading…</div>
+      </main>
+    );
+  }
+
+  if (accessDenied) {
+    return (
+      <main style={{ backgroundColor: isDark ? '#0f172a' : '#f1f5f9' }} className="min-h-screen px-4 py-8 transition-colors duration-300 flex items-center justify-center">
+        <div className="text-center">
+          <h1 style={{ color: isDark ? '#f1f5f9' : '#1e293b' }} className="text-2xl font-bold mb-4">Access Denied</h1>
+          <p style={{ color: isDark ? '#94a3b8' : '#64748b' }} className="mb-6">You don't have permission to access admin tools.</p>
+          <button
+            onClick={() => router.push('/')}
+            className="px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700"
+          >
+            Go Home
+          </button>
+        </div>
       </main>
     );
   }
@@ -98,7 +117,7 @@ function AdminToolsPageInner() {
           </div>
 
           <div className="p-6 md:p-10">
-            <AdminToolsPanel isDark={isDark} userRole={userRole} initialModal={initialModal} />
+            <AdminToolsPanel isDark={isDark} userRole={profile?.role_tier || null} initialModal={initialModal} />
           </div>
         </div>
       </div>

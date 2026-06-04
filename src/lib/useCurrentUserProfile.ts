@@ -82,17 +82,16 @@ export function useCurrentUserProfile(): UseCurrentUserProfileState {
 
         const result = await parseJsonResponse(response);
         if (response.ok) {
-          setProfile((result?.profile || null) as CurrentUserProfile | null);
-          setIsAuthenticated(true);
-          return;
+          const profileData = (result?.profile || null) as CurrentUserProfile | null;
+          if (profileData) {
+            setProfile(profileData);
+            setIsAuthenticated(true);
+            return;
+          }
         }
 
-        if (response.status !== 401) {
-          throw new Error(
-            result?.error || `Unable to load profile (${response.status})`,
-          );
-        }
-
+        // If profile API fails but we have a session, fall back to session data
+        // This prevents losing the user when the API temporarily fails
         if (sessionUser) {
           setIsAuthenticated(true);
           setProfile({
@@ -114,10 +113,27 @@ export function useCurrentUserProfile(): UseCurrentUserProfileState {
         if (fetchError instanceof Error && fetchError.name === 'AbortError') {
           throw new Error('Profile request timed out');
         }
+        // If fetch fails but we have session user, keep them logged in
+        if (sessionUser) {
+          setIsAuthenticated(true);
+          setProfile({
+            id: sessionUser.id,
+            full_name: sessionUser.user_metadata?.full_name || null,
+            email: sessionUser.email || null,
+            phone_number: null,
+            avatar_path: null,
+            role_tier: null,
+            password_needs_change: null,
+          });
+          console.warn("Profile API failed, using fallback session data", fetchError);
+          return;
+        }
         throw fetchError;
       }
     } catch (error) {
       console.error("Error loading current user profile:", error);
+      // If there's an error but we have a session user, keep them authenticated
+      // This prevents losing the user when the profile API fails
       if (sessionUser) {
         setIsAuthenticated(true);
         setProfile({
@@ -189,6 +205,33 @@ export function useCurrentUserProfile(): UseCurrentUserProfileState {
       authListener.subscription.unsubscribe();
     };
   }, [pathname]);
+
+  // Secondary effect: Refresh profile if critical fields are missing
+  // This ensures permissions are restored even if API call initially failed
+  useEffect(() => {
+    if (!isAuthenticated || !profile || loading) return;
+    
+    // If we have a profile but critical permission data is missing, refresh
+    if (profile.role_tier === null && profile.id) {
+      let retryTimeout: NodeJS.Timeout;
+      
+      const retryLoadProfile = async () => {
+        // Add a small delay to avoid hammering the API
+        await new Promise(resolve => {
+          retryTimeout = setTimeout(resolve, 500);
+        });
+        await loadProfile();
+      };
+      
+      retryLoadProfile();
+      
+      return () => {
+        if (retryTimeout) {
+          clearTimeout(retryTimeout);
+        }
+      };
+    }
+  }, [isAuthenticated, profile, loading]);
 
   return {
     profile,

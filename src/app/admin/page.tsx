@@ -2,8 +2,6 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { supabase } from '@/lib/supabase';
-import type { User } from '@supabase/supabase-js';
 import CourseManagerModal from '@/app/components/CourseManagerModal';
 import LocationManagerModal from '@/app/components/LocationManagerModal';
 import ChecklistTemplateModal from '@/app/components/ChecklistTemplateModal';
@@ -11,49 +9,48 @@ import { debugLog } from '@/lib/debug';
 import { hasPermission } from '@/lib/permissions';
 import BackButton from '@/app/components/BackButton';
 import UniformButton from '@/app/components/UniformButton';
+import { useCurrentUserProfile } from '@/lib/useCurrentUserProfile';
 
 export default function AdminPage() {
   const router = useRouter();
-  const [user, setUser] = useState<User | null>(null);
-  const [userRole, setUserRole] = useState<string | null>(null);
+  const { profile, isAuthenticated, loading } = useCurrentUserProfile();
   const [isDark, setIsDark] = useState(true);
-  const [loading, setLoading] = useState(false); // Start with false to avoid hydration
   const [showCourseModal, setShowCourseModal] = useState(false);
   const [showLocationModal, setShowLocationModal] = useState(false);
   const [showChecklistTemplateModal, setShowChecklistTemplateModal] = useState(false);
+  const [accessDenied, setAccessDenied] = useState(false);
 
   useEffect(() => {
     checkTheme();
-    const runAuthCheck = async () => {
-      try {
-        const { data: { user: currentUser } } = await supabase.auth.getUser();
-        if (!currentUser) {
-          router.push('/login');
-          return;
-        }
-        setUser(currentUser);
+  }, []);
 
-        const { data: profile } = await supabase
-          .from('profiles')
-          .select('role_tier')
-          .eq('id', currentUser.id)
-          .single();
-        const role = profile?.role_tier || null;
-        setUserRole(role);
+  // Handle authentication and authorization
+  useEffect(() => {
+    // Wait for auth to complete
+    if (loading) return;
 
-        if (!hasPermission(role, 'ADMIN_DASHBOARD', 'canView')) {
-          router.push('/apps/booking-calendar');
-          return;
-        }
-      } catch (err) {
-        console.error('Error checking auth:', err);
-        router.push('/login');
-      } finally {
-        setLoading(false);
-      }
-    };
-    runAuthCheck();
-  }, [router]);
+    // Not authenticated
+    if (!isAuthenticated || !profile) {
+      router.push('/login');
+      return;
+    }
+
+    // Don't have permissions yet - wait for profile to fully load
+    if (!profile.role_tier) {
+      console.warn('Profile loaded but role_tier is missing, waiting...');
+      return;
+    }
+
+    // Check if user has admin permission
+    if (!hasPermission(profile.role_tier, 'ADMIN_DASHBOARD', 'canView')) {
+      setAccessDenied(true);
+      // Redirect after a brief delay to show the message
+      const timeout = setTimeout(() => {
+        router.push('/apps/booking-calendar');
+      }, 2000);
+      return () => clearTimeout(timeout);
+    }
+  }, [loading, isAuthenticated, profile, router]);
 
   useEffect(() => {
     // Only run on client side
@@ -94,12 +91,29 @@ export default function AdminPage() {
     router.push('/apps/booking-calendar');
   };
 
-  const isAdmin = (userRole || '').trim().toLowerCase() === 'admin';
+  const isAdmin = (profile?.role_tier || '').trim().toLowerCase() === 'admin';
 
   if (loading) {
     return (
       <main style={{ backgroundColor: isDark ? '#0f172a' : '#f1f5f9', minHeight: '100vh' }} className="p-8 transition-colors duration-300 flex items-center justify-center">
         <p style={{ color: isDark ? '#94a3b8' : '#64748b' }}>Loading...</p>
+      </main>
+    );
+  }
+
+  if (accessDenied) {
+    return (
+      <main style={{ backgroundColor: isDark ? '#0f172a' : '#f1f5f9', minHeight: '100vh' }} className="p-8 transition-colors duration-300 flex items-center justify-center">
+        <div className="text-center">
+          <h1 style={{ color: isDark ? '#f1f5f9' : '#1e293b' }} className="text-2xl font-bold mb-4">Access Denied</h1>
+          <p style={{ color: isDark ? '#94a3b8' : '#64748b' }} className="mb-6">You don't have permission to access the admin panel.</p>
+          <button
+            onClick={handleBack}
+            className="px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700"
+          >
+            Go Back
+          </button>
+        </div>
       </main>
     );
   }
