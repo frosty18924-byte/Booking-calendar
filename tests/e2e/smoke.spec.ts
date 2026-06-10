@@ -16,7 +16,7 @@ const PROTECTED_ROUTES = [
 test('login page renders', async ({ page }) => {
   const response = await page.goto('/login');
   expect(response?.status()).toBe(200);
-  await expect(page.getByRole('heading', { name: 'Staff Login' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Cascade Portal' })).toBeVisible();
 });
 
 test.describe('unauthenticated redirects', () => {
@@ -26,7 +26,7 @@ test.describe('unauthenticated redirects', () => {
       // Middleware redirects typically return 307/302.
       expect([200, 302, 303, 307, 308]).toContain(response?.status() ?? 0);
       await page.waitForURL('**/login', { timeout: 10_000 });
-      await expect(page.getByRole('heading', { name: 'Staff Login' })).toBeVisible();
+      await expect(page.getByRole('heading', { name: 'Cascade Portal' })).toBeVisible();
     });
   }
 });

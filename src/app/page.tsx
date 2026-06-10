@@ -3,7 +3,6 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import TileButton from '@/app/components/TileButton';
-import { PORTAL_FEATURES } from '@/lib/portalFeatures';
 import { hasPermission } from '@/lib/permissions';
 import { useCurrentUserProfile } from '@/lib/useCurrentUserProfile';
 
@@ -58,15 +57,6 @@ export default function LandingPage() {
                 onClick={() => router.push('/dashboard')}
               />
 
-              {PORTAL_FEATURES.templates && (
-                <TileButton
-                  title="Template Gallery"
-                  description="Search, view, print, or download templates."
-                  emoji="📄"
-                  showChevron
-                  onClick={() => router.push('/templates')}
-                />
-              )}
 
               {canAdmin && (
                 <TileButton

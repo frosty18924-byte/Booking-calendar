@@ -29,12 +29,6 @@ export const PERMISSIONS = {
     canEdit: ['admin'],
     canDelete: ['admin'],
   },
-  TEMPLATES: {
-    canView: ['staff', 'manager', 'scheduler', 'admin'],
-    canCreate: ['admin'],
-    canEdit: ['admin'],
-    canDelete: ['admin'],
-  },
   PROFILE: {
     canView: ['staff', 'manager', 'scheduler', 'admin'],
     canEditOwn: ['staff', 'manager', 'scheduler', 'admin'],

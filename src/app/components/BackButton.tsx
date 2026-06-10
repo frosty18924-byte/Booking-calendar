@@ -19,18 +19,7 @@ type Props = {
 function getParentRoute(pathname: string | null): string {
   if (!pathname || pathname === '/') return '/';
 
-  if (pathname === '/apps/support') return '/';
-  if (
-    pathname.startsWith('/apps/support/') ||
-    pathname === '/apps/it-referral' ||
-    pathname.startsWith('/apps/it-referral/') ||
-    pathname === '/apps/it-referral-dashboard' ||
-    pathname.startsWith('/apps/it-referral-dashboard/') ||
-    pathname === '/apps/it-referral-analytics' ||
-    pathname.startsWith('/apps/it-referral-analytics/')
-  ) {
-    return '/apps/support';
-  }
+
 
   if (pathname === '/dashboard') return '/';
   if (
@@ -45,14 +34,7 @@ function getParentRoute(pathname: string | null): string {
     return '/dashboard';
   }
 
-  if (pathname === '/templates') return '/';
-  if (
-    pathname === '/templates/admin' ||
-    pathname.startsWith('/templates/admin/') ||
-    pathname.startsWith('/templates/')
-  ) {
-    return '/templates';
-  }
+
 
   if (pathname === '/admin') return '/';
   if (
