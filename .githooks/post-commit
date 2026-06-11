@@ -1,26 +1,40 @@
 #!/bin/bash
 
-# 1. Fetch your secret credentials from your local Git config
+# 1. Fetch credentials
 TOKEN=$(git config monday.token)
 BOARD_ID=$(git config monday.boardid)
 
-# If credentials aren't set locally, skip silently so it doesn't break your git commit
 if [ -z "$TOKEN" ] || [ -z "$BOARD_ID" ]; then
-    echo "⚠️ Monday.com integration skipped: Missing local git config settings."
     exit 0
 fi
 
-# 2. Get the last commit message and short hash
+# 2. Get commit info
 MSG=$(git log -1 --pretty=%B)
 HASH=$(git rev-parse --short HEAD)
-
-# 3. Clean up the message for JSON
 CLEAN_MSG=$(echo "$MSG" | sed 's/"/\\"/g' | tr -d '\n')
 
-# 4. Push to Monday.com
+# 3. Detect the Type based on how the commit starts
+case "$CLEAN_MSG" in
+  feat:*)   TYPE_LABEL="Feature" ;;
+  fix:*)    TYPE_LABEL="Fix" ;;
+  update:*) TYPE_LABEL="Update" ;;
+  *)        TYPE_LABEL="" ;;
+esac
+
+# 4. Get today's date (YYYY-MM-DD)
+CURRENT_DATE=$(date +"%Y-%m-%d")
+
+# 5. Build the Monday column data (assuming default column IDs 'status' and 'date')
+if [ -n "$TYPE_LABEL" ]; then
+    COLUMN_VALUES="{\\\"status\\\": {\\\"label\\\": \\\"$TYPE_LABEL\\\"}, \\\"date\\\": {\\\"date\\\": \\\"$CURRENT_DATE\\\"}}"
+else
+    COLUMN_VALUES="{\\\"date\\\": {\\\"date\\\": \\\"$CURRENT_DATE\\\"}}"
+fi
+
+# 6. Push everything to Monday
 curl -s -X POST \
   -H "Authorization: $TOKEN" \
   -H "Content-Type: application/json" \
   -H "API-Version: 2023-10" \
-  -d "{\"query\": \"mutation { create_item (board_id: $BOARD_ID, item_name: \\\"$CLEAN_MSG ($HASH)\\\") { id } }\"}" \
+  -d "{\"query\": \"mutation { create_item (board_id: $BOARD_ID, item_name: \\\"$CLEAN_MSG ($HASH)\\\", column_values: \\\"$COLUMN_VALUES\\\") { id } }\"}" \
   https://api.monday.com/v2 > /dev/null
