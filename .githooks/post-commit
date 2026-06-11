@@ -1,0 +1,26 @@
+#!/bin/bash
+
+# 1. Fetch your secret credentials from your local Git config
+TOKEN=$(git config monday.token)
+BOARD_ID=$(git config monday.boardid)
+
+# If credentials aren't set locally, skip silently so it doesn't break your git commit
+if [ -z "$TOKEN" ] || [ -z "$BOARD_ID" ]; then
+    echo "⚠️ Monday.com integration skipped: Missing local git config settings."
+    exit 0
+fi
+
+# 2. Get the last commit message and short hash
+MSG=$(git log -1 --pretty=%B)
+HASH=$(git rev-parse --short HEAD)
+
+# 3. Clean up the message for JSON
+CLEAN_MSG=$(echo "$MSG" | sed 's/"/\\"/g' | tr -d '\n')
+
+# 4. Push to Monday.com
+curl -s -X POST \
+  -H "Authorization: $TOKEN" \
+  -H "Content-Type: application/json" \
+  -H "API-Version: 2023-10" \
+  -d "{\"query\": \"mutation { create_item (board_id: $BOARD_ID, item_name: \\\"$CLEAN_MSG ($HASH)\\\") { id } }\"}" \
+  https://api.monday.com/v2 > /dev/null
