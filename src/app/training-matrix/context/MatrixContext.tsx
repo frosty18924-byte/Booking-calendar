@@ -219,15 +219,38 @@ export function MatrixProvider({ children }: { children: React.ReactNode }) {
 
   const checkAuth = async (): Promise<void> => {
     try {
-      const { data: { user } } = await supabase.auth.getUser();
+      const userResp = await supabase.auth.getUser();
+      const sessionResp = await supabase.auth.getSession();
+      console.debug('[Matrix] supabase.getUser()', userResp);
+      console.debug('[Matrix] supabase.getSession()', sessionResp);
+      const user = userResp.data?.user ?? null;
       if (!user) {
-        // Middleware handles unauthenticated redirects — do not push to /login
-        // from the client side as it creates a redirect loop (middleware bounces
-        // authenticated sessions back to / before the client token refreshes).
+        console.debug('[Matrix] No supabase user found in checkAuth; falling back to /api/profile');
+        try {
+          const resp = await fetch('/api/profile', { credentials: 'include' });
+          if (resp.ok) {
+            const payload = await resp.json();
+            const profile = payload.profile;
+            if (profile && profile.id) {
+              setUser({ id: profile.id });
+              setUserRole(profile.role_tier || 'staff');
+              setLoading(false);
+              return;
+            }
+          } else {
+            console.debug('[Matrix] /api/profile fallback returned', resp.status);
+          }
+        } catch (e) {
+          console.warn('[Matrix] fallback /api/profile failed', e);
+        }
+
+        console.debug('[Matrix] No supabase user found in checkAuth');
         setLoading(false);
         return;
       }
+
       setUser(user);
+
       const { data: profile } = await supabase
         .from('profiles')
         .select('role_tier')
@@ -236,7 +259,6 @@ export function MatrixProvider({ children }: { children: React.ReactNode }) {
       setUserRole(profile?.role_tier || 'staff');
     } catch (error) {
       console.error('Auth check error:', error);
-      // Do not redirect on error — middleware will handle this server-side.
       setLoading(false);
     }
   };
@@ -255,17 +277,20 @@ export function MatrixProvider({ children }: { children: React.ReactNode }) {
       const headers: Record<string, string> = {};
       if (token) headers.Authorization = `Bearer ${token}`;
 
+      console.debug('[Matrix] fetching /api/locations/user-locations with token headers', headers);
       const response = await fetch('/api/locations/user-locations', {
         credentials: 'include',
         headers,
       });
 
       if (!response.ok) {
+        console.warn('[Matrix] /api/locations/user-locations returned', response.status, await response.text());
         setLoading(false);
         return;
       }
 
       const payload = await response.json();
+      console.debug('[Matrix] /api/locations/user-locations payload', payload);
       const scopedLocations = Array.isArray(payload.locations) ? payload.locations : [];
 
       if (scopedLocations.length > 0) {
@@ -296,6 +321,7 @@ export function MatrixProvider({ children }: { children: React.ReactNode }) {
         setLoading(false);
         return;
       }
+      console.debug('[Matrix] fetchMatrixData start for location', selectedLocation);
       if (signal?.aborted) return;
 
       setLoading(true);
@@ -306,6 +332,7 @@ export function MatrixProvider({ children }: { children: React.ReactNode }) {
         .eq('location_id', selectedLocation)
         .order('display_order', { ascending: true });
 
+      console.debug('[Matrix] dividersData', dividersData, 'error', dividersError);
       if (dividersError) console.warn('Error fetching dividers:', dividersError);
 
       const { data: staffLocationsData, error: staffLocationsError } = await supabase
@@ -314,55 +341,15 @@ export function MatrixProvider({ children }: { children: React.ReactNode }) {
         .eq('location_id', selectedLocation)
         .order('display_order', { ascending: true, nullsFirst: false });
 
+      console.debug('[Matrix] staffLocationsData count', staffLocationsData?.length, 'error', staffLocationsError);
       if (staffLocationsError) console.warn('Error fetching staff structural data:', staffLocationsError);
 
       const activeStaffLocationsData = staffLocationsData?.filter((sl: any) => !sl.profiles?.is_deleted) || [];
-
-      let allTrainingStaffIds: any[] = [];
-      let pageNum = 0;
-      const staffPageSize = 1000;
-      let hasMoreStaff = true;
-
-      while (hasMoreStaff) {
-        const { data: trainingStaffIds, error: trainingStaffIdError } = await supabase
-          .from('staff_training_matrix')
-          .select('staff_id')
-          .eq('completed_at_location_id', selectedLocation)
-          .range(pageNum * staffPageSize, (pageNum + 1) * staffPageSize - 1);
-
-        if (trainingStaffIdError) break;
-
-        if (!trainingStaffIds || trainingStaffIds.length === 0) {
-          hasMoreStaff = false;
-        } else {
-          allTrainingStaffIds = allTrainingStaffIds.concat(trainingStaffIds);
-          pageNum++;
-          if (trainingStaffIds.length < staffPageSize) hasMoreStaff = false;
-        }
-      }
-
-      const uniqueStaffIds = new Set<string>();
-      allTrainingStaffIds?.forEach((t: any) => { if (t.staff_id) uniqueStaffIds.add(t.staff_id); });
-
-      const staffLocationsIds = new Set(activeStaffLocationsData.map((sl: any) => sl.staff_id));
-      const filteredTrainingStaffIds = Array.from(uniqueStaffIds).filter(id => staffLocationsIds.has(id));
-
-      let trainingStaffData: any[] = [];
-      if (filteredTrainingStaffIds.length > 0) {
-        const { data: profiles } = await supabase
-          .from('profiles')
-          .select('id, full_name')
-          .in('id', filteredTrainingStaffIds)
-          .eq('is_deleted', false);
-        trainingStaffData = profiles?.map((p: any) => ({ profiles: p })) || [];
-      }
+      console.debug('[Matrix] activeStaffLocationsData count', activeStaffLocationsData.length);
 
       const staffMap = new Map<string, any>();
       activeStaffLocationsData?.forEach((s: any) => {
         if (s.profiles) staffMap.set(s.profiles.id, { id: s.profiles.id, full_name: s.profiles.full_name });
-      });
-      trainingStaffData?.forEach((s: any) => {
-        if (s.profiles && !staffMap.has(s.profiles.id)) staffMap.set(s.profiles.id, { id: s.profiles.id, full_name: s.profiles.full_name });
       });
 
       const staffData = Array.from(staffMap.values()).map(s => ({ profiles: { id: s.id, full_name: s.full_name } }));
@@ -378,6 +365,8 @@ export function MatrixProvider({ children }: { children: React.ReactNode }) {
 
       locationCoursesData = withCategoryRes.data;
       locationCoursesError = withCategoryRes.error;
+
+      console.debug('[Matrix] locationCoursesData count', locationCoursesData?.length, 'error', locationCoursesError);
 
       if (
         locationCoursesError?.code === '42703' ||
@@ -463,7 +452,7 @@ export function MatrixProvider({ children }: { children: React.ReactNode }) {
         const { data: pageData, error: pageError } = await supabase
           .from('staff_training_matrix')
           .select('id, staff_id, course_id, completion_date, expiry_date, status, completed_at_location_id')
-          .eq('completed_at_location_id', selectedLocation)
+          .or(`completed_at_location_id.eq.${selectedLocation},completed_at_location_id.is.null`)
           .range(pageNumber * pageSize, (pageNumber + 1) * pageSize - 1);
 
         if (pageError) break;
@@ -476,8 +465,14 @@ export function MatrixProvider({ children }: { children: React.ReactNode }) {
         }
       }
 
+      console.debug('[Matrix] allTrainingData count', allTrainingData.length);
+
       const staffFromTrainingSet = new Set<string>();
-      allTrainingData?.forEach((t: any) => { if (t.completed_at_location_id === selectedLocation) staffFromTrainingSet.add(t.staff_id); });
+      allTrainingData?.forEach((t: any) => {
+        if (t.completed_at_location_id === selectedLocation || t.completed_at_location_id === null) {
+          staffFromTrainingSet.add(t.staff_id);
+        }
+      });
 
       const allStaffIds = new Set<string>();
       staffData?.forEach((s: any) => { if (s.profiles) allStaffIds.add(s.profiles.id); });
@@ -536,7 +531,7 @@ export function MatrixProvider({ children }: { children: React.ReactNode }) {
       allStaffProfiles?.forEach((s: any) => { if (s.profiles) plainMatrix[s.profiles.id] = {}; });
 
       allTrainingData?.forEach((t: any) => {
-        if (t.completed_at_location_id === selectedLocation && plainMatrix[t.staff_id]) {
+        if ((t.completed_at_location_id === selectedLocation || t.completed_at_location_id === null) && plainMatrix[t.staff_id]) {
           const effectiveCourseId = careskillsToBaseMap.get(t.course_id) || t.course_id;
           plainMatrix[t.staff_id][effectiveCourseId] = {
             completion_date: t.completion_date,

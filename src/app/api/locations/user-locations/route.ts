@@ -4,6 +4,7 @@ import { createServiceClient, getScopedLocationIds, requireRole } from '@/lib/ap
 export const dynamic = 'force-dynamic';
 
 export async function GET(_request: NextRequest) {
+  console.debug('[API] GET /api/locations/user-locations called');
   try {
     const authz = await requireRole(['admin', 'manager', 'scheduler', 'staff']);
     if ('error' in authz) return authz.error;

@@ -8,6 +8,13 @@ export async function middleware(request: NextRequest) {
     },
   })
 
+  try {
+    const cookieNames = request.cookies.getAll().map(c => c.name).join(', ');
+    console.debug('[Middleware] Incoming request:', request.nextUrl.pathname, 'cookies:', cookieNames);
+  } catch (e) {
+    // ignore
+  }
+
   const pathname = request.nextUrl.pathname
 
   const supabase = createServerClient(
